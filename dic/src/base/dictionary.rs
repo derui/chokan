@@ -22,8 +22,8 @@ impl Dictionary {
     }
 
     /// エントリ全体をcopyして返す
-    pub fn entries(self) -> Vec<Entry> {
-        self.entries
+    pub fn entries(&self) -> Vec<Entry> {
+        self.entries.to_vec()
     }
 
     /// エントリ全体のリファレンスを返す

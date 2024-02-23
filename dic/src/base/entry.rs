@@ -2,7 +2,7 @@ use super::{speech::Speech, word::Word};
 
 /// 辞書における一単語を表現する型
 /// 語幹と活用形は辞書でのみ必要になる属性であるため、基本的にはWordを利用する必要がある
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Entry {
     /// 語幹
     stem: String,
