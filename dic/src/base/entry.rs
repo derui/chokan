@@ -2,7 +2,7 @@ use super::{speech::Speech, word::Word};
 
 /// 辞書における一単語を表現する型
 /// 語幹と活用形は辞書でのみ必要になる属性であるため、基本的にはWordを利用する必要がある
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Entry {
     /// 語幹
     stem: String,
@@ -26,23 +26,23 @@ impl Entry {
     }
 }
 
-impl Into<Vec<Word>> for Entry {
+impl From<Entry> for Vec<Word> {
     /// Entryから活用した形式一覧をWordのリストに変換する
-    fn into(self) -> Vec<Word> {
+    fn from(val: Entry) -> Self {
         let mut words = Vec::new();
-        let forms = &self.forms;
+        let forms = &val.forms;
 
         for form in forms {
-            let reading = format!("{}{}", self.stem_reading, form);
+            let reading = format!("{}{}", val.stem_reading, form);
             words.push(Word::new(
-                &format!("{}{}", self.stem, form),
+                &format!("{}{}", val.stem, form),
                 &reading,
-                self.speech,
+                val.speech,
             ));
         }
 
-        if forms.len() == 0 {
-            words.push(Word::new(&self.stem, &self.stem_reading, self.speech));
+        if forms.is_empty() {
+            words.push(Word::new(&val.stem, &val.stem_reading, val.speech));
         }
 
         words
