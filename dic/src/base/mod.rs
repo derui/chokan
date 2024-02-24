@@ -1,6 +1,6 @@
 // mod file
-mod dictionary;
-mod entry;
-mod io;
-mod speech;
-mod word;
+pub mod dictionary;
+pub mod entry;
+pub mod io;
+pub mod speech;
+pub mod word;

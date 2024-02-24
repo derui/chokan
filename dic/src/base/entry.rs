@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use super::{speech::Speech, word::Word};
 
 /// 辞書における一単語を表現する型
@@ -24,6 +26,36 @@ impl Entry {
             speech,
         }
     }
+
+    /// 辞書形のかなを返す
+    fn get_dictionary_kana(&self) -> String {
+        match &self.speech {
+            // 動詞の場合、活用形次第で変わってくるため、ここでは判定しない
+            Speech::Verb(form) => form.to_dictionary_form(&self.stem_reading),
+            Speech::Adjective => format!("{}い", self.stem_reading),
+            Speech::AdjectivalVerb => format!("{}だ", self.stem_reading),
+            _ => self.stem.clone(),
+        }
+    }
+
+    /// 辞書形の変換語を返す
+    fn get_dictionary_kanji(&self) -> String {
+        match &self.speech {
+            // 動詞の場合、活用形次第で変わってくるため、ここでは判定しない
+            Speech::Verb(form) => form.to_dictionary_form(&self.stem),
+            Speech::Adjective => format!("{}い", self.stem),
+            Speech::AdjectivalVerb => format!("{}だ", self.stem),
+            _ => self.stem.clone(),
+        }
+    }
+}
+
+impl Display for Entry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let kana = self.get_dictionary_kana();
+        let kanji = self.get_dictionary_kanji();
+        write!(f, "{}\t{}\t/{}/", kana, kanji, self.speech)
+    }
 }
 
 impl From<Entry> for Vec<Word> {
@@ -37,12 +69,12 @@ impl From<Entry> for Vec<Word> {
             words.push(Word::new(
                 &format!("{}{}", val.stem, form),
                 &reading,
-                val.speech,
+                val.speech.clone(),
             ));
         }
 
         if forms.is_empty() {
-            words.push(Word::new(&val.stem, &val.stem_reading, val.speech));
+            words.push(Word::new(&val.stem, &val.stem_reading, val.speech.clone()));
         }
 
         words
@@ -51,16 +83,19 @@ impl From<Entry> for Vec<Word> {
 
 #[cfg(test)]
 mod tests {
+    use crate::base::speech::VerbForm;
+
     use super::*;
 
     #[test]
     fn test_entry_to_word() {
         // Arrange
+        let verb = Speech::Verb(VerbForm::SimoIchidan("バ".to_string()));
         let entry = Entry::new(
             "食べ",
             vec!["る".to_string(), "ない".to_string()],
             "たべ",
-            Speech::Verb,
+            verb.clone(),
         );
 
         // Act
@@ -68,8 +103,8 @@ mod tests {
 
         // Assert
         assert_eq!(words.len(), 2);
-        assert_eq!(words[0], Word::new("食べる", "たべる", Speech::Verb));
-        assert_eq!(words[1], Word::new("食べない", "たべない", Speech::Verb));
+        assert_eq!(words[0], Word::new("食べる", "たべる", verb.clone()));
+        assert_eq!(words[1], Word::new("食べない", "たべない", verb.clone()));
     }
 
     #[test]
@@ -83,5 +118,34 @@ mod tests {
         // Assert
         assert_eq!(words.len(), 1);
         assert_eq!(words[0], Word::new("大きな", "おおきな", Speech::Adjective));
+    }
+
+    #[test]
+    fn display_adjective_entry() {
+        // Arrange
+        let entry = Entry::new("大き", vec!["い".to_string()], "おおき", Speech::Adjective);
+
+        // Act
+        let actual = format!("{}", entry);
+
+        // Assert
+        assert_eq!(actual, "おおきい\t大きい\t/形容詞/");
+    }
+
+    #[test]
+    fn display_verb_entry() {
+        // Arrange
+        let entry = Entry::new(
+            "引",
+            vec!["く".to_string()],
+            "ひ",
+            Speech::Verb(VerbForm::Godan("カ".to_string())),
+        );
+
+        // Act
+        let actual = format!("{}", entry);
+
+        // Assert
+        assert_eq!(actual, "ひく\t引く\t/カ行五段/");
     }
 }
