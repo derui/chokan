@@ -25,6 +25,7 @@ enum NoteSpeech {
     AdjectivalVerb(String),                         // 形容動詞
     Adverb(String),                                 // 副詞
     Noun(String, String),                           // 名詞の種類と、語幹の後に続く文字を含めた名詞
+    Counter(String),                                // 助数詞
 }
 
 // 動詞の活用形
@@ -56,7 +57,7 @@ peg::parser! {
       pub rule stem() -> String = n:$([^ ';']+) { n.to_string() }
       // 品詞部分
       rule fixed_okuri() -> String = "(-" n:$(kana()+) ")" { n.to_string() }
-      rule char_class() -> String = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')']+) "]" { n.to_string() }
+      rule char_class() -> String = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')' | 'φ']+) "]" { n.to_string() }
       rule noun() -> NoteSpeech = t:$("サ変名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句")  n:fixed_okuri() { NoteSpeech::Noun(t.to_string(), n.to_string()) }
       rule verb_form() -> VerbForm = k:katakana() n:$("行五段" / "行四段" / "行上一" / "行下一" /"行上二" / "行下二" / "変" ) {?
           match n {
@@ -73,11 +74,12 @@ peg::parser! {
       rule verb() -> NoteSpeech = t:verb_form() fix:fixed_okuri()? cl:char_class()? { NoteSpeech::Verb(t, cl, fix) }
       rule adjective() -> NoteSpeech = "形容詞" fix:fixed_okuri()? cl:char_class()? { NoteSpeech::Adjective(cl, fix) }
       rule adverb() -> NoteSpeech =  "副詞"  n:fixed_okuri() { NoteSpeech::Adverb(n.to_string()) }
-      rule adjectival_verb() -> NoteSpeech = "形容動詞" "(" n:$([^ ')']) ")" { NoteSpeech::AdjectivalVerb(n.to_string()) }
-      rule speech() -> NoteSpeech = "∥" "<base>"? n:(noun() / verb() / adjective()) { n }
+      rule adjectival_verb() -> NoteSpeech = "形容動詞" n:fixed_okuri() { NoteSpeech::AdjectivalVerb(n.to_string()) }
+      rule counter() -> NoteSpeech = "助数詞" cl:char_class() { NoteSpeech::Counter(cl.to_string()) }
+      rule speech() -> NoteSpeech = "∥" "<base>"? n:(noun() / verb() / adjective() / counter()) { n }
       rule annotation() = ";" [^ '∥']*
       rule entry() -> NoteEntry = "/" s:stem() annotation() ss:speech() { NoteEntry { stem: s, speech: ss } }
-      pub rule note() -> Note = h:headword() o:okuri() space()+ entries:entry()+ "/" eof() { Note { headword: h, okuri: o, entries: entries } }
+      pub rule note() -> Note = h:headword() o:okuri()? space()+ entries:entry()+ "/" eof() { Note { headword: h, okuri: o.map(|v|v.to_string()).unwrap_or("".to_string()), entries: entries } }
 
       pub rule comment() = ";" any()*
   }
@@ -186,6 +188,18 @@ mod tests {
                 }]
             })
         );
+
+        assert_eq!(
+            note_parser::note("えんきょう /円強;∥助数詞[#]/"),
+            Ok(Note {
+                headword: "えんきょう".to_string(),
+                okuri: "".to_string(),
+                entries: vec![NoteEntry {
+                    stem: "円強".to_string(),
+                    speech: NoteSpeech::Counter("#".to_string())
+                }]
+            })
+        )
     }
 
     #[test]
