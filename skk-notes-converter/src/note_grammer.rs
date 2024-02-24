@@ -4,22 +4,23 @@
 //
 // [見出しかな]+[送りアルファベット]space*/語幹;∥品詞[[送り仮名情報][活用]](/...)/\n
 //
+use peg::{error::ParseError, str::LineCol};
 
 #[derive(Debug, PartialEq, Eq)]
-struct Note {
+pub struct Note {
     pub headword: String,
     pub okuri: String,
     pub entries: Vec<NoteEntry>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct NoteEntry {
-    stem: String,
-    speech: NoteSpeech,
+pub struct NoteEntry {
+    pub stem: String,
+    pub speech: NoteSpeech,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-enum NoteSpeech {
+pub enum NoteSpeech {
     Verb(VerbForm, Option<Okuri>), // 活用形と、キャラクタクラス,を含めた動詞
     Adjective(Option<Okuri>),      // 活用形を含む形容詞
     AdjectivalVerb(Okuri),         // 形容動詞
@@ -30,7 +31,7 @@ enum NoteSpeech {
 
 // 動詞の活用形
 #[derive(Debug, PartialEq, Eq, Clone)]
-enum VerbForm {
+pub enum VerbForm {
     Godan(String),       // 五段活用
     Yodan(String),       // 四段活用
     SimoIchidan(String), // 下一段活用
@@ -42,7 +43,7 @@ enum VerbForm {
 
 // 送り仮名の情報
 #[derive(Debug, PartialEq, Eq, Clone)]
-enum Okuri {
+pub enum Okuri {
     Fixed(String),     // -いる、-えるなどの固定の送り仮名
     CharClass(String), // []で囲まれたキャラクタクラス
 }
@@ -94,6 +95,11 @@ peg::parser! {
 
       pub rule comment() = ";" any()*
   }
+}
+
+/// 対象の一行を解析して、Noteを返す
+pub fn parse_note(s: &str) -> Result<Note, ParseError<LineCol>> {
+    note_parser::note(s)
 }
 
 #[cfg(test)]
