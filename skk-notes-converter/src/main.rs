@@ -2,6 +2,7 @@ use std::{env, error::Error, fs::File, io::Read};
 
 use encoding_rs_io::DecodeReaderBytesBuilder;
 
+mod converter;
 mod note_grammer;
 
 fn main() {

@@ -1,3 +1,4 @@
+use dic::base::speech::VerbForm;
 // SKKの辞書におけるnotesの一行分の文法を定義する
 //
 // notesの構成は以下のようになっている。
@@ -27,18 +28,8 @@ pub enum NoteSpeech {
     Adverb(Okuri),                 // 副詞
     Noun(String, Option<Okuri>),   // 名詞の種類と、語幹の後に続く文字を含めた名詞
     Counter(Okuri),                // 助数詞
-}
-
-// 動詞の活用形
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum VerbForm {
-    Godan(String),       // 五段活用
-    Yodan(String),       // 四段活用
-    SimoIchidan(String), // 下一段活用
-    KamiIchidan(String), // 上一段活用
-    SimoNidan(String),   // 下二段活用
-    KamiNidan(String),   // 上二段活用
-    Hen(String),         // 変格活用
+    Verbatim(Okuri),               // 感動詞
+    PreNounAdjectival(Option<Okuri>), // 連体詞
 }
 
 // 送り仮名の情報
@@ -85,7 +76,9 @@ peg::parser! {
       rule adverb() -> NoteSpeech =  "副詞"  o:okuri() { NoteSpeech::Adverb(o) }
       rule adjectival_verb() -> NoteSpeech = "形容動詞" o:okuri() { NoteSpeech::AdjectivalVerb(o) }
       rule counter() -> NoteSpeech = "助数詞" o:okuri() { NoteSpeech::Counter(o) }
-      rule speech() -> Vec<NoteSpeech> = "∥" "<base>"? n:(noun() / verb() / adjective() / adjectival_verb() / counter()) ** "," { n }
+      rule verbatim() -> NoteSpeech = "感動詞" o:okuri() { NoteSpeech::Verbatim(o) }
+      rule pre_noun_adjectival() -> NoteSpeech = "連体詞" o:okuri()? { NoteSpeech::PreNounAdjectival(o) }
+      rule speech() -> Vec<NoteSpeech> = "∥" "<base>"? n:(noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival()) ** "," { n }
       rule annotation() = ";" [^ '∥']*
       rule entry() -> Vec<NoteEntry> = "/" s:stem() annotation() ss:speech() { ss.iter().map(|v| NoteEntry { stem: s.clone(), speech: v.clone() }).collect() }
       pub rule note() -> Note = h:headword() o:okuri_alpha()? space()+ entries:entry()+ "/" eof() {
@@ -235,6 +228,36 @@ mod tests {
                         speech: NoteSpeech::Noun("名詞".to_string(), None)
                     }
                 ]
+            })
+        );
+
+        assert_eq!(
+            note_parser::note("ありがとu /有り難;∥感動詞(-う)/有難;∥感動詞(-う)/"),
+            Ok(Note {
+                headword: "ありがと".to_string(),
+                okuri: "u".to_string(),
+                entries: vec![
+                    NoteEntry {
+                        stem: "有り難".to_string(),
+                        speech: NoteSpeech::Verbatim(Okuri::Fixed("う".to_string()))
+                    },
+                    NoteEntry {
+                        stem: "有難".to_string(),
+                        speech: NoteSpeech::Verbatim(Okuri::Fixed("う".to_string()))
+                    }
+                ]
+            })
+        );
+
+        assert_eq!(
+            note_parser::note("ゆめn /夢;∥連体詞(-の)/"),
+            Ok(Note {
+                headword: "ゆめ".to_string(),
+                okuri: "n".to_string(),
+                entries: vec![NoteEntry {
+                    stem: "夢".to_string(),
+                    speech: NoteSpeech::PreNounAdjectival(Some(Okuri::Fixed("の".to_string())))
+                }]
             })
         )
     }

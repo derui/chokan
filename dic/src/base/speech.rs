@@ -48,16 +48,16 @@ pub enum VerbForm {
 }
 
 impl VerbForm {
-    /// 辞書形に対応する活用形を返す
-    pub fn to_dictionary_form(&self, stem: &str) -> String {
-        let okuri = match self {
+    /// 対応する辞書形の送り仮名を返す
+    pub fn to_dictionary_okuri(&self) -> &str {
+        match self {
             VerbForm::Godan(row) => match row.as_str() {
-                "ア" => "う",
                 "カ" => "く",
+                "ガ" => "ぐ",
                 "サ" => "す",
                 "タ" => "つ",
                 "ナ" => "ぬ",
-                "ハ" => "ふ",
+                "バ" => "ぶ",
                 "マ" => "む",
                 "ラ" => "る",
                 "ワ" => "う",
@@ -65,24 +65,28 @@ impl VerbForm {
             },
 
             VerbForm::Yodan(row) => match row.as_str() {
-                "ア" => "う",
                 "カ" => "く",
-                "サ" => "る",
+                "ガ" => "ぐ",
+                "サ" => "す",
                 "タ" => "つ",
                 "ナ" => "ぬ",
                 "ハ" => "ふ",
+                "バ" => "ぶ",
                 "マ" => "む",
                 "ラ" => "る",
-                "ワ" => "う",
                 _ => panic!("Can not get okuri for godan verb with {}", row),
             },
             VerbForm::SimoIchidan(row) => match row.as_str() {
                 "ア" => "える",
                 "カ" => "ける",
+                "ガ" => "げる",
                 "サ" => "せる",
+                "ザ" => "ぜる",
                 "タ" => "てる",
+                "ダ" => "でる",
                 "ナ" => "ねる",
                 "ハ" => "へる",
+                "バ" => "べる",
                 "マ" => "める",
                 "ラ" => "れる",
                 _ => panic!("Can not get okuri for godan verb with {}", row),
@@ -90,21 +94,27 @@ impl VerbForm {
             VerbForm::KamiIchidan(row) => match row.as_str() {
                 "ア" => "いる",
                 "カ" => "きる",
+                "ガ" => "ぎる",
                 "タ" => "ちる",
-                // ハ行上一は、「にる」のみ
+                // ナ行上一は、「にる」のみ
                 "ナ" => "る",
                 // ハ行上一は、「ひる」のみ
                 "ハ" => "る",
+                "バ" => "びる",
+                // 語幹自体が「み」のものも含む
                 "マ" => "みる",
                 "ラ" => "りる",
                 _ => panic!("Can not get okuri for godan verb with {}", row),
             },
             VerbForm::SimoNidan(row) => match row.as_str() {
                 // ア行下二は、「得る」のみ
-                "ア" => "う",
+                "ア" => "る",
                 "カ" => "く",
+                "ガ" => "ぐ",
                 "サ" => "す",
+                "ザ" => "ず",
                 "タ" => "つ",
+                "ダ" => "づ",
                 "ナ" => "ぬ",
                 "ハ" => "ふ",
                 "マ" => "む",
@@ -115,8 +125,11 @@ impl VerbForm {
             },
             VerbForm::KamiNidan(row) => match row.as_str() {
                 "カ" => "く",
+                "ガ" => "ぐ",
                 "タ" => "つ",
+                "ダ" => "づ",
                 "ハ" => "ふ",
+                "バ" => "ぶ",
                 "マ" => "む",
                 "ヤ" => "ゆ",
                 "ラ" => "る",
@@ -124,13 +137,17 @@ impl VerbForm {
                 _ => panic!("Can not get okuri for godan verb with {}", row),
             },
             VerbForm::Hen(row) => match row.as_str() {
+                // 変格活用では、基本的に語幹自体が無いという考え方がある。
                 "カ" => "る",
                 "サ" => "る",
                 _ => panic!("Can not get okuri for henkaku verb with {}", row),
             },
-        };
+        }
+    }
 
-        format!("{}{}", stem, okuri)
+    /// 辞書形に対応する活用形を返す
+    pub fn to_dictionary_form(&self, stem: &str) -> String {
+        format!("{}{}", stem, self.to_dictionary_okuri())
     }
 }
 
