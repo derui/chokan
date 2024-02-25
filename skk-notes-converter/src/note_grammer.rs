@@ -55,11 +55,11 @@ peg::parser! {
       // 語幹の漢字部分
       pub rule stem() -> String = n:$([^ ';' | '/']+) { n.to_string() }
       // 品詞部分
-      rule fixed_okuri() -> Okuri = "(-" n:$(kana()+) ")" { Okuri::Fixed(n.to_string()) }
+      rule fixed_okuri() -> Okuri = "(" n:$("-" (kana()+)) ** "," ")" { Okuri::Fixed(n.first().unwrap()[1..].to_string()) }
       rule char_class() -> Okuri = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')' | 'φ' | '.']+) "]" { Okuri::CharClass(n.to_string()) }
       // 複数の送り仮名がある場合は、Fixedを優先する
       rule okuri() -> Okuri = n:(fixed_okuri() / char_class()) (fixed_okuri() / char_class())? { n }
-            rule noun() -> NoteSpeech = t:$("サ変名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句")  o:okuri()? { NoteSpeech::Noun(t.to_string(), o) }
+      rule noun() -> Option<NoteSpeech> = t:$("サ変名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句")  o:okuri()? { Some(NoteSpeech::Noun(t.to_string(), o)) }
       rule verb_form() -> VerbForm = k:katakana() n:$("行五段" / "行四段" / "行上一" / "行下一" /"行上二" / "行下二" / "変" ) {?
           match n {
               "行五段" => Ok(VerbForm::Godan(k)),
@@ -72,17 +72,24 @@ peg::parser! {
               _ => Err("Invalid verb form")
           }
       }
-      rule note_in_entry() = space()* "¶" [^ '/']+
-      rule verb() -> NoteSpeech = t:verb_form() o:okuri()?  { NoteSpeech::Verb(t, o) }
-      rule adjective() -> NoteSpeech = "形容詞" o:okuri()? { NoteSpeech::Adjective(o) }
-      rule adverb() -> NoteSpeech =  "副詞"  o:okuri() { NoteSpeech::Adverb(o) }
-      rule adjectival_verb() -> NoteSpeech = "形容動詞" o:okuri() { NoteSpeech::AdjectivalVerb(o) }
-      rule counter() -> NoteSpeech = "助数詞" o:okuri() { NoteSpeech::Counter(o) }
-      rule verbatim() -> NoteSpeech = "感動詞" o:okuri() { NoteSpeech::Verbatim(o) }
-      rule pre_noun_adjectival() -> NoteSpeech = "連体詞" o:okuri()? { NoteSpeech::PreNounAdjectival(o) }
-      rule speech() -> Vec<NoteSpeech> = "∥" "<base>"? "(文語)"? n:(
-          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb()
-      ) ** "," note_in_entry()? { n }
+      rule note_in_entry() = space()* "¶" [^ '/']*
+
+      rule verb() -> Option<NoteSpeech> = t:verb_form() o:okuri()?  { Some(NoteSpeech::Verb(t, o)) }
+      rule adjective() -> Option<NoteSpeech> = "形容詞" o:okuri()? { Some(NoteSpeech::Adjective(o)) }
+      rule adverb() -> Option<NoteSpeech> =  "副詞"  o:okuri() { Some(NoteSpeech::Adverb(o)) }
+      rule adjectival_verb() -> Option<NoteSpeech> = "形容動詞" o:okuri() { Some(NoteSpeech::AdjectivalVerb(o)) }
+      rule counter() -> Option<NoteSpeech> = "助数詞" o:okuri() { Some(NoteSpeech::Counter(o)) }
+      rule verbatim() -> Option<NoteSpeech> = "感動詞" o:okuri() { Some(NoteSpeech::Verbatim(o)) }
+      rule pre_noun_adjectival() -> Option<NoteSpeech> = "連体詞" o:okuri()? { Some(NoteSpeech::PreNounAdjectival(o)) }
+      rule subsidiary_verb() -> Option<NoteSpeech> = "補助動詞" o:okuri()? { None }
+
+      rule speech_header() = ("<base>" / "(文語)" / "文語")?
+      rule speech() -> Vec<NoteSpeech> = "∥" speech_header() n:(
+          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / subsidiary_verb()
+      ) ** "," note_in_entry()? {
+          n.iter().cloned().filter(|v|v.is_some()).map(|v| v.unwrap()).collect()
+      }
+
       rule annotation() = ";" [^ '∥' | '/']*
       // 送りなしエントリは今回取り扱わない
       rule okuri_nasi() = "∥<okuri-nasi>" [^ '/']*
@@ -327,6 +334,24 @@ mod tests {
                 entries: vec![NoteEntry {
                     stem: "訳無".to_string(),
                     speech: NoteSpeech::Adjective(Some(Okuri::CharClass("iks".to_string())))
+                }]
+            })
+        )
+    }
+
+    #[test]
+    fn ignore_subsidiary_verb() {
+        assert_eq!(
+            note_parser::note("みr /見;∥<base>マ行上一[a-z],補助動詞[<(c)mnrstyz]/"),
+            Ok(Note {
+                headword: "み".to_string(),
+                okuri: "r".to_string(),
+                entries: vec![NoteEntry {
+                    stem: "見".to_string(),
+                    speech: NoteSpeech::Verb(
+                        VerbForm::KamiIchidan("マ".to_string()),
+                        Some(Okuri::CharClass("a-z".to_string()))
+                    )
                 }]
             })
         )
