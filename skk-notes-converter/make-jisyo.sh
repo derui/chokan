@@ -6,4 +6,4 @@ fi
 
 cargo build
 
-target/debug/skk-notes-converter /tmp/SKK-JISYO.notes > chokan.jisyo.dat
+target/debug/skk-notes-converter /tmp/SKK-JISYO.notes > chokan.jisyo.dat 2> error.txt

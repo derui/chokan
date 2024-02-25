@@ -26,7 +26,6 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     let lines = content.split('\n').collect::<Vec<_>>();
 
     for (index, line) in lines.iter().enumerate() {
-        println!("{}: {}", index, line);
         match note_grammer::parse_note(line) {
             Ok(Some(note)) => {
                 let entries = note.to_entries();

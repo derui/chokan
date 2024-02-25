@@ -46,7 +46,7 @@ peg::parser! {
       rule any() = [_]
       rule space() = [' ' | '\t' ]
       rule kana() -> String = n:$(['あ'..='ん' | 'ゐ' | 'ゃ' | 'ゅ' | 'ょ' | 'ぁ' | 'ぃ' | 'ぅ' | 'ぇ' | 'ぉ' | 'っ']) { n.to_string() }
-      rule katakana() -> String = n:$(['ア'..='ン']) { n.to_string() }
+      rule katakana() -> String = n:$(['ア' |'カ'| 'サ' | 'タ' |'ナ' | 'ハ'|'マ'|'ヤ'|'ワ' | 'ラ' | 'ダ' | 'バ' | 'ガ' | 'ザ']) { n.to_string() }
 
     pub rule headword() -> String
       = n:kana()+ { n.concat() }
@@ -56,7 +56,7 @@ peg::parser! {
       pub rule stem() -> String = n:$([^ ';']+) { n.to_string() }
       // 品詞部分
       rule fixed_okuri() -> Okuri = "(-" n:$(kana()+) ")" { Okuri::Fixed(n.to_string()) }
-      rule char_class() -> Okuri = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')' | 'φ']+) "]" { Okuri::CharClass(n.to_string()) }
+      rule char_class() -> Okuri = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')' | 'φ' | '.']+) "]" { Okuri::CharClass(n.to_string()) }
       rule okuri() -> Okuri = n:(fixed_okuri() / char_class()) { n }
             rule noun() -> NoteSpeech = t:$("サ変名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句")  o:okuri()? { NoteSpeech::Noun(t.to_string(), o) }
       rule verb_form() -> VerbForm = k:katakana() n:$("行五段" / "行四段" / "行上一" / "行下一" /"行上二" / "行下二" / "変" ) {?
@@ -71,6 +71,7 @@ peg::parser! {
               _ => Err("Invalid verb form")
           }
       }
+      rule note_in_entry() = space()* "¶" [^ '/']+
       rule verb() -> NoteSpeech = t:verb_form() o:okuri()?  { NoteSpeech::Verb(t, o) }
       rule adjective() -> NoteSpeech = "形容詞" o:okuri()? { NoteSpeech::Adjective(o) }
       rule adverb() -> NoteSpeech =  "副詞"  o:okuri() { NoteSpeech::Adverb(o) }
@@ -78,15 +79,18 @@ peg::parser! {
       rule counter() -> NoteSpeech = "助数詞" o:okuri() { NoteSpeech::Counter(o) }
       rule verbatim() -> NoteSpeech = "感動詞" o:okuri() { NoteSpeech::Verbatim(o) }
       rule pre_noun_adjectival() -> NoteSpeech = "連体詞" o:okuri()? { NoteSpeech::PreNounAdjectival(o) }
-      rule speech() -> Vec<NoteSpeech> = "∥" "<base>"? n:(noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival()) ** "," { n }
+      rule speech() -> Vec<NoteSpeech> = "∥" "<base>"? "(文語)"? n:(noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival()) ** "," note_in_entry()? { n }
       rule annotation() = ";" [^ '∥']*
+      // 送りなしエントリは今回取り扱わない
+      rule okuri_nasi() = "∥<okuri-nasi>" [^ '/']*
+      rule okuri_nasi_entry() -> Vec<NoteEntry> = "/" s:stem() annotation() okuri_nasi() {vec![]}
       rule entry() -> Vec<NoteEntry> = "/" s:stem() annotation() ss:speech() { ss.iter().map(|v| NoteEntry { stem: s.clone(), speech: v.clone() }).collect() }
-      pub rule note() -> Note = h:headword() o:okuri_alpha()? space()+ entries:entry()+ "/" eof() {
-          let entries = entries.iter().flatten().cloned().collect();
+      pub rule note() -> Note = h:headword() o:okuri_alpha()? space()+ entries:(okuri_nasi_entry() / entry())+ "/" eof() {
+          let entries = entries.iter().filter(|v| v.len() > 0).flatten().cloned().collect();
           let okuri = o.map(|v|v.to_string()).unwrap_or("".to_string());
           Note { headword: h, okuri , entries  } }
 
-      pub rule root() -> Option<Note> = comment() {None} / n:note() { Some(n) }
+      pub rule root() -> Option<Note> = comment() {None} / n:note() { if n.entries.len() > 0 { Some(n) } else { None } }
 
       pub rule comment() = ";" any()*
   }
@@ -261,6 +265,14 @@ mod tests {
                     speech: NoteSpeech::PreNounAdjectival(Some(Okuri::Fixed("の".to_string())))
                 }]
             })
+        );
+        assert_eq!(
+            note_parser::note("わるよi /悪酔;∥<okuri-nasi> -い/"),
+            Ok(Note {
+                headword: "わるよ".to_string(),
+                okuri: "i".to_string(),
+                entries: vec![]
+            })
         )
     }
 
@@ -269,6 +281,21 @@ mod tests {
         assert!(
             note_parser::note("わらe /笑;∥<derived>/").is_err(),
             "should be error if derived"
+        )
+    }
+
+    #[test]
+    fn ignore_note_in_entry() {
+        assert_eq!(
+            note_parser::note("わけなi /訳無;∥形容詞[iks] ¶実質kのみ/"),
+            Ok(Note {
+                headword: "わけな".to_string(),
+                okuri: "i".to_string(),
+                entries: vec![NoteEntry {
+                    stem: "訳無".to_string(),
+                    speech: NoteSpeech::Adjective(Some(Okuri::CharClass("iks".to_string())))
+                }]
+            })
         )
     }
 }
