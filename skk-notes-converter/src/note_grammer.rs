@@ -59,7 +59,7 @@ peg::parser! {
       rule char_class() -> Okuri = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')' | 'φ' | '.']+) "]" { Okuri::CharClass(n.to_string()) }
       // 複数の送り仮名がある場合は、Fixedを優先する
       rule okuri() -> Okuri = n:(fixed_okuri() / char_class()) (fixed_okuri() / char_class())? { n }
-      rule noun() -> Option<NoteSpeech> = t:$("サ変名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句" / "連句")  o:okuri()? { Some(NoteSpeech::Noun(t.to_string(), o)) }
+      rule noun() -> Option<NoteSpeech> = t:$("サ変名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句" / "連句" / "連濁")  o:okuri()? { Some(NoteSpeech::Noun(t.to_string(), o)) }
       rule verb_form() -> VerbForm = k:katakana() n:$("行五段" / "行四段" / "行上一" / "行下一" /"行上二" / "行下二" / "変" ) {?
           match n {
               "行五段" => Ok(VerbForm::Godan(k)),
@@ -83,7 +83,7 @@ peg::parser! {
       rule pre_noun_adjectival() -> Option<NoteSpeech> = "連体詞" o:okuri()? { Some(NoteSpeech::PreNounAdjectival(o)) }
       rule subsidiary_verb() -> Option<NoteSpeech> = "補助動詞" o:okuri()? { None }
 
-      rule speech_header() = ("<base>" / "(文語)" / "文語")?
+      rule speech_header() = ("<base>" / "(文語)" / "文語" / "(連濁)")?
       rule speech() -> Vec<NoteSpeech> = "∥" speech_header() n:(
           noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / subsidiary_verb()
       ) ** "," note_in_entry()? {
