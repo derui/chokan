@@ -36,7 +36,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
             }
             Ok(None) => {}
             Err(e) => {
-                eprintln!("Error at line {}: {}", index, e);
+                eprintln!("Error at line {}: {}", index + 1, e);
             }
         }
     }

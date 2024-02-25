@@ -53,7 +53,7 @@ peg::parser! {
 
       pub rule okuri_alpha() -> String = n:$(['a'..='z']) { n.to_string() }
       // 語幹の漢字部分
-      pub rule stem() -> String = n:$([^ ';']+) { n.to_string() }
+      pub rule stem() -> String = n:$([^ ';' | '/']+) { n.to_string() }
       // 品詞部分
       rule fixed_okuri() -> Okuri = "(-" n:$(kana()+) ")" { Okuri::Fixed(n.to_string()) }
       rule char_class() -> Okuri = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')' | 'φ' | '.']+) "]" { Okuri::CharClass(n.to_string()) }
@@ -84,8 +84,13 @@ peg::parser! {
       // 送りなしエントリは今回取り扱わない
       rule okuri_nasi() = "∥<okuri-nasi>" [^ '/']*
       rule okuri_nasi_entry() -> Vec<NoteEntry> = "/" s:stem() annotation() okuri_nasi() {vec![]}
+      // derivedは別から導出できるので今回は取り扱わない
+      rule derived() = "∥<derived>" [^ '/']*
+      rule derived_entry() -> Vec<NoteEntry> = "/" s:stem() annotation() derived() {vec![]}
+      // 品詞がついていないものはどう仕様もないので今回は取り扱わない
+      rule no_entry() -> Vec<NoteEntry> = "/" s:stem() !annotation() {vec![]}
       rule entry() -> Vec<NoteEntry> = "/" s:stem() annotation() ss:speech() { ss.iter().map(|v| NoteEntry { stem: s.clone(), speech: v.clone() }).collect() }
-      pub rule note() -> Note = h:headword() o:okuri_alpha()? space()+ entries:(okuri_nasi_entry() / entry())+ "/" eof() {
+      pub rule note() -> Note = h:headword() o:okuri_alpha()? space()+ entries:(okuri_nasi_entry() / derived_entry() / entry() / no_entry())+ "/" eof() {
           let entries = entries.iter().filter(|v| v.len() > 0).flatten().cloned().collect();
           let okuri = o.map(|v|v.to_string()).unwrap_or("".to_string());
           Note { headword: h, okuri , entries  } }
@@ -277,10 +282,26 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_derived() {
-        assert!(
-            note_parser::note("わらe /笑;∥<derived>/").is_err(),
-            "should be error if derived"
+    fn ignore_derived() {
+        assert_eq!(
+            note_parser::note("わらe /笑;∥<derived>/"),
+            Ok(Note {
+                headword: "わら".to_string(),
+                okuri: "e".to_string(),
+                entries: vec![]
+            })
+        )
+    }
+
+    #[test]
+    fn ignore_no_entry() {
+        assert_eq!(
+            note_parser::note("わk /訳/"),
+            Ok(Note {
+                headword: "わ".to_string(),
+                okuri: "k".to_string(),
+                entries: vec![]
+            })
         )
     }
 
