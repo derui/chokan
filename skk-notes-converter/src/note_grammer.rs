@@ -57,7 +57,8 @@ peg::parser! {
       // 品詞部分
       rule fixed_okuri() -> Okuri = "(-" n:$(kana()+) ")" { Okuri::Fixed(n.to_string()) }
       rule char_class() -> Okuri = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')' | 'φ' | '.']+) "]" { Okuri::CharClass(n.to_string()) }
-      rule okuri() -> Okuri = n:(fixed_okuri() / char_class()) { n }
+      // 複数の送り仮名がある場合は、Fixedを優先する
+      rule okuri() -> Okuri = n:(fixed_okuri() / char_class()) (fixed_okuri() / char_class())? { n }
             rule noun() -> NoteSpeech = t:$("サ変名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句")  o:okuri()? { NoteSpeech::Noun(t.to_string(), o) }
       rule verb_form() -> VerbForm = k:katakana() n:$("行五段" / "行四段" / "行上一" / "行下一" /"行上二" / "行下二" / "変" ) {?
           match n {
@@ -79,8 +80,10 @@ peg::parser! {
       rule counter() -> NoteSpeech = "助数詞" o:okuri() { NoteSpeech::Counter(o) }
       rule verbatim() -> NoteSpeech = "感動詞" o:okuri() { NoteSpeech::Verbatim(o) }
       rule pre_noun_adjectival() -> NoteSpeech = "連体詞" o:okuri()? { NoteSpeech::PreNounAdjectival(o) }
-      rule speech() -> Vec<NoteSpeech> = "∥" "<base>"? "(文語)"? n:(noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival()) ** "," note_in_entry()? { n }
-      rule annotation() = ";" [^ '∥']*
+      rule speech() -> Vec<NoteSpeech> = "∥" "<base>"? "(文語)"? n:(
+          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb()
+      ) ** "," note_in_entry()? { n }
+      rule annotation() = ";" [^ '∥' | '/']*
       // 送りなしエントリは今回取り扱わない
       rule okuri_nasi() = "∥<okuri-nasi>" [^ '/']*
       rule okuri_nasi_entry() -> Vec<NoteEntry> = "/" s:stem() annotation() okuri_nasi() {vec![]}
@@ -88,7 +91,7 @@ peg::parser! {
       rule derived() = "∥<derived>" [^ '/']*
       rule derived_entry() -> Vec<NoteEntry> = "/" s:stem() annotation() derived() {vec![]}
       // 品詞がついていないものはどう仕様もないので今回は取り扱わない
-      rule no_entry() -> Vec<NoteEntry> = "/" s:stem() !annotation() {vec![]}
+      rule no_entry() -> Vec<NoteEntry> = "/" s:stem() annotation()? {vec![]}
       rule entry() -> Vec<NoteEntry> = "/" s:stem() annotation() ss:speech() { ss.iter().map(|v| NoteEntry { stem: s.clone(), speech: v.clone() }).collect() }
       pub rule note() -> Note = h:headword() o:okuri_alpha()? space()+ entries:(okuri_nasi_entry() / derived_entry() / entry() / no_entry())+ "/" eof() {
           let entries = entries.iter().filter(|v| v.len() > 0).flatten().cloned().collect();
@@ -302,6 +305,15 @@ mod tests {
                 okuri: "k".to_string(),
                 entries: vec![]
             })
+        );
+
+        assert_eq!(
+            note_parser::note("わk /訳;わけ/"),
+            Ok(Note {
+                headword: "わ".to_string(),
+                okuri: "k".to_string(),
+                entries: vec![]
+            })
         )
     }
 
@@ -316,6 +328,33 @@ mod tests {
                     stem: "訳無".to_string(),
                     speech: NoteSpeech::Adjective(Some(Okuri::CharClass("iks".to_string())))
                 }]
+            })
+        )
+    }
+
+    #[test]
+    fn multiple_entry_in_same_stem() {
+        assert_eq!(
+            note_parser::note("ゆるg /揺;∥ガ行五段(-ぐ)[gi],サ行五段(-がす)/"),
+            Ok(Note {
+                headword: "ゆる".to_string(),
+                okuri: "g".to_string(),
+                entries: vec![
+                    NoteEntry {
+                        stem: "揺".to_string(),
+                        speech: NoteSpeech::Verb(
+                            VerbForm::Godan("ガ".to_string()),
+                            Some(Okuri::Fixed("ぐ".to_string()))
+                        )
+                    },
+                    NoteEntry {
+                        stem: "揺".to_string(),
+                        speech: NoteSpeech::Verb(
+                            VerbForm::Godan("サ".to_string()),
+                            Some(Okuri::Fixed("がす".to_string()))
+                        )
+                    }
+                ]
             })
         )
     }
