@@ -55,6 +55,7 @@ impl VerbForm {
                 "カ" => "く",
                 "ガ" => "ぐ",
                 "サ" => "す",
+                "ザ" => "ず",
                 "タ" => "つ",
                 "ナ" => "ぬ",
                 "バ" => "ぶ",
@@ -69,12 +70,13 @@ impl VerbForm {
                 "ガ" => "ぐ",
                 "サ" => "す",
                 "タ" => "つ",
+                "ダ" => "づ",
                 "ナ" => "ぬ",
                 "ハ" => "ふ",
                 "バ" => "ぶ",
                 "マ" => "む",
                 "ラ" => "る",
-                _ => panic!("Can not get okuri for godan verb with {}", row),
+                _ => panic!("Can not get okuri for yodan verb with {}", row),
             },
             VerbForm::SimoIchidan(row) => match row.as_str() {
                 "ア" => "える",
@@ -89,12 +91,13 @@ impl VerbForm {
                 "バ" => "べる",
                 "マ" => "める",
                 "ラ" => "れる",
-                _ => panic!("Can not get okuri for godan verb with {}", row),
+                _ => panic!("Can not get okuri for shimoichidan verb with {}", row),
             },
             VerbForm::KamiIchidan(row) => match row.as_str() {
                 "ア" => "いる",
                 "カ" => "きる",
                 "ガ" => "ぎる",
+                "ザ" => "じる",
                 "タ" => "ちる",
                 // ナ行上一は、「にる」のみ
                 "ナ" => "る",
@@ -104,7 +107,7 @@ impl VerbForm {
                 // 語幹自体が「み」のものも含む
                 "マ" => "みる",
                 "ラ" => "りる",
-                _ => panic!("Can not get okuri for godan verb with {}", row),
+                _ => panic!("Can not get okuri for kamiichidan verb with {}", row),
             },
             VerbForm::SimoNidan(row) => match row.as_str() {
                 // ア行下二は、「得る」のみ
@@ -140,6 +143,7 @@ impl VerbForm {
                 // 変格活用では、基本的に語幹自体が無いという考え方がある。
                 "カ" => "る",
                 "サ" => "る",
+                "ラ" => "り",
                 _ => panic!("Can not get okuri for henkaku verb with {}", row),
             },
         }

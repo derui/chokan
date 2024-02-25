@@ -86,13 +86,15 @@ peg::parser! {
           let okuri = o.map(|v|v.to_string()).unwrap_or("".to_string());
           Note { headword: h, okuri , entries  } }
 
+      pub rule root() -> Option<Note> = comment() {None} / n:note() { Some(n) }
+
       pub rule comment() = ";" any()*
   }
 }
 
 /// 対象の一行を解析して、Noteを返す
-pub fn parse_note(s: &str) -> Result<Note, ParseError<LineCol>> {
-    note_parser::note(s)
+pub fn parse_note(s: &str) -> Result<Option<Note>, ParseError<LineCol>> {
+    note_parser::root(s)
 }
 
 #[cfg(test)]

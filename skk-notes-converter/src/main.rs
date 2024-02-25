@@ -23,16 +23,21 @@ fn try_main() -> Result<(), Box<dyn Error>> {
         .build(file);
     let mut content = String::new();
     std::io::BufReader::new(transcoded).read_to_string(&mut content)?;
-    let lines = content.split("\n").collect::<Vec<_>>();
+    let lines = content.split('\n').collect::<Vec<_>>();
 
     for (index, line) in lines.iter().enumerate() {
         println!("{}: {}", index, line);
-        match note_grammer::parse_note(*line) {
-            Ok(note) => {
-                println!("{:?}", note);
+        match note_grammer::parse_note(line) {
+            Ok(Some(note)) => {
+                let entries = note.to_entries();
+
+                for entry in entries {
+                    println!("{}", entry)
+                }
             }
+            Ok(None) => {}
             Err(e) => {
-                println!("Error at line {}: {}", index, e);
+                eprintln!("Error at line {}: {}", index, e);
             }
         }
     }

@@ -1,9 +1,6 @@
 use std::fmt::Display;
 
-use dic::base::{
-    entry::Entry,
-    speech::{Speech, VerbForm},
-};
+use dic::base::speech::{Speech, VerbForm};
 
 use crate::note_grammer::{Note, NoteEntry, NoteSpeech, Okuri};
 
@@ -68,7 +65,7 @@ impl NoteSpeech {
 
 impl NoteEntry {
     /// 辞書形を返す
-    fn get_stem(&self, headword: &str) -> (String, String) {
+    fn get_dictionary_form(&self, headword: &str) -> (String, String) {
         let okuri = self.speech.to_okuri_kana();
 
         (
@@ -89,7 +86,7 @@ impl NoteEntry {
             NoteSpeech::Verbatim(_) => Speech::Verbatim,
             NoteSpeech::PreNounAdjectival(_) => Speech::PreNounAdjectival,
         };
-        let (word, headword) = self.get_stem(headword);
+        let (word, headword) = self.get_dictionary_form(headword);
 
         ConvertedEntry {
             headword,
