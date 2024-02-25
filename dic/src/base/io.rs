@@ -11,5 +11,5 @@ pub trait DictonaryReader {
 /// Dictionaryをどこかに書き込むためのtrait
 pub trait DictionaryWriter {
     /// 指定された [Dictionary] を特定の場所に一括で書き込む。
-    fn write_all(&self, dict: &Dictionary) -> Result<usize, io::Error>;
+    fn write_all(&mut self, dict: &Dictionary) -> Result<usize, io::Error>;
 }
