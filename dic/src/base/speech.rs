@@ -124,13 +124,14 @@ impl VerbForm {
                 "ザ" => "じる",
                 "タ" => "ちる",
                 // ナ行上一は、「にる」のみ
-                "ナ" => "る",
+                "ナ" => "にる",
                 // ハ行上一は、「ひる」のみ
-                "ハ" => "る",
+                "ハ" => "ひる",
                 "バ" => "びる",
                 // 語幹自体が「み」のものも含む
                 "マ" => "みる",
                 "ラ" => "りる",
+                "ワ" => "ゐる",
                 _ => panic!("Can not get okuri for kamiichidan verb with {}", row),
             },
             VerbForm::SimoNidan(row) => match row.as_str() {
@@ -165,9 +166,10 @@ impl VerbForm {
             },
             VerbForm::Hen(row) => match row.as_str() {
                 // 変格活用では、基本的に語幹自体が無いという考え方がある。
-                "カ" => "る",
-                "サ" => "る",
+                "カ" => "くる",
+                "サ" => "する",
                 "ラ" => "り",
+                "ナ" => "ぬ",
                 _ => panic!("Can not get okuri for henkaku verb with {}", row),
             },
         }

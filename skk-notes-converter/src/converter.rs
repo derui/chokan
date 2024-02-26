@@ -76,18 +76,29 @@ impl NoteEntry {
 
     /// NoteEntry自体を単独の[Entry]に変換する
     fn to_entry(&self, headword: &str) -> ConvertedEntry {
-        let speech = match &self.speech {
-            NoteSpeech::Verb(form, _) => Speech::Verb(form.clone()),
-            NoteSpeech::Adjective(_) => Speech::Adjective,
-            NoteSpeech::AdjectivalVerb(_) => Speech::AdjectivalVerb,
-            NoteSpeech::Adverb(_) => Speech::Adverb,
-            NoteSpeech::Noun(_, _) => Speech::Noun,
-            NoteSpeech::Counter(_) => Speech::Counter,
-            NoteSpeech::Verbatim(_) => Speech::Verbatim,
-            NoteSpeech::PreNounAdjectival(_) => Speech::PreNounAdjectival,
+        let (speech, dic_okuri) = match &self.speech {
+            NoteSpeech::Verb(form, _) => (Speech::Verb(form.clone()), form.to_dictionary_okuri()),
+            NoteSpeech::Adjective(_) => (Speech::Adjective, "い"),
+            NoteSpeech::AdjectivalVerb(_) => (Speech::AdjectivalVerb, "だ"),
+            NoteSpeech::Adverb(_) => (Speech::Adverb, ""),
+            NoteSpeech::Noun(_, _) => (Speech::Noun, ""),
+            NoteSpeech::Counter(_) => (Speech::Counter, ""),
+            NoteSpeech::Verbatim(_) => (Speech::Verbatim, ""),
+            NoteSpeech::PreNounAdjectival(_) => (Speech::PreNounAdjectival, ""),
         };
         let (word, headword) = self.get_dictionary_form(headword);
-
+        let (word, headword) = (
+            if word.len() >= dic_okuri.len() {
+                word[..word.len() - dic_okuri.len()].to_string()
+            } else {
+                word[..1].to_string()
+            },
+            if headword.len() != dic_okuri.len() {
+                headword[..headword.len() - dic_okuri.len()].to_string()
+            } else {
+                headword[..1].to_string()
+            },
+        );
         ConvertedEntry {
             headword,
             word,
