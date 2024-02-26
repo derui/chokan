@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use super::{speech::Speech, word::Word};
+use super::{speech::Speech, support, word::Word};
 
 /// 辞書における一単語を表現する型
 /// 語幹と活用形は辞書でのみ必要になる属性であるため、基本的にはWordを利用する必要がある
@@ -19,6 +19,18 @@ pub struct Entry {
 impl Entry {
     /// 新しいEntryを生成する
     pub fn new(stem: &str, forms: Vec<String>, stem_reading: &str, speech: Speech) -> Entry {
+        Entry {
+            stem: stem.to_string(),
+            forms,
+            stem_reading: stem_reading.to_string(),
+            speech,
+        }
+    }
+
+    /// 読みと漢字、品詞からEntryを返す
+    pub fn from_jisyo(reading: &str, kanji: &str, speech: Speech) -> Entry {
+        let stem_reading = support::reading_to_stem_reading(reading, &speech);
+        let stem = support::kanji_to_stem(kanji, &speech);
         Entry {
             stem: stem.to_string(),
             forms,

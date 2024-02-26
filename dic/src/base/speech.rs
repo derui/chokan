@@ -3,17 +3,17 @@ use std::fmt::Display;
 // 単語における品詞
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Speech {
-    Noun,              // 名詞
-    Verb(VerbForm),    // 動詞。引数は辞書系で利用する活用
-    Adjective,         // 形容詞
-    Adverb,            // 副詞
-    AdjectivalVerb,    // 形容動詞
-    Verbatim,          // 感動詞
-    Conjunction,       // 接続詞
-    Particle,          // 助詞
-    AuxiliaryVerb,     // 助動詞
-    PreNounAdjectival, // 連体詞
-    Counter,           // 助数詞
+    Noun,                   // 名詞
+    Verb(VerbForm),         // 動詞。引数は辞書系で利用する活用
+    Adjective,              // 形容詞
+    Adverb,                 // 副詞
+    AdjectivalVerb,         // 形容動詞
+    Verbatim,               // 感動詞
+    Conjunction,            // 接続詞
+    Particle(ParticleType), // 助詞
+    AuxiliaryVerb,          // 助動詞
+    PreNounAdjectival,      // 連体詞
+    Counter,                // 助数詞
 }
 
 impl Display for Speech {
@@ -26,10 +26,34 @@ impl Display for Speech {
             Speech::AdjectivalVerb => write!(f, "形容動詞"),
             Speech::Verbatim => write!(f, "感動詞"),
             Speech::Conjunction => write!(f, "接続詞"),
-            Speech::Particle => write!(f, "助詞"),
+            Speech::Particle(typ) => write!(f, "{}助詞", typ),
             Speech::AuxiliaryVerb => write!(f, "助動詞"),
             Speech::PreNounAdjectival => write!(f, "連体詞"),
             Speech::Counter => write!(f, "助数詞"),
+        }
+    }
+}
+
+/// 助詞の種類
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ParticleType {
+    Case,          // 格助詞
+    Adverbial,     // 副助詞
+    Conjunctive,   // 接続助詞
+    SentenceFinal, // 終助詞
+    Quotation,     // 引用助詞
+    Other,         // その他
+}
+
+impl Display for ParticleType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParticleType::Case => write!(f, "格"),
+            ParticleType::Adverbial => write!(f, "副"),
+            ParticleType::Conjunctive => write!(f, "接続"),
+            ParticleType::SentenceFinal => write!(f, "終"),
+            ParticleType::Quotation => write!(f, "引用"),
+            ParticleType::Other => write!(f, ""),
         }
     }
 }
