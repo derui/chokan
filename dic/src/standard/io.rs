@@ -70,13 +70,8 @@ mod tests {
     fn write_with_entries() {
         // arrange
         let dictionary = Dictionary::new(vec![
-            Entry::new("大き", vec!["い".to_string()], "おおき", Speech::Adjective),
-            Entry::new(
-                "引",
-                vec!["く".to_string()],
-                "ひ",
-                Speech::Verb(VerbForm::Godan("カ".to_string())),
-            ),
+            Entry::from_jisyo("おおき", "大き", Speech::Adjective),
+            Entry::from_jisyo("ひ", "引", Speech::Verb(VerbForm::Godan("カ".to_string()))),
         ]);
         let file = tempfile::NamedTempFile::with_prefix("chokan").unwrap();
         let mut another = file.reopen().unwrap();
@@ -95,8 +90,8 @@ mod tests {
         another.read_to_string(&mut buf).unwrap();
         assert_eq!(
             buf,
-            r#"おおきい	大きい	/形容詞/
-ひく	引く	/カ行五段/
+            r#"おおき	大き	/形容詞/
+ひ	引	/カ行五段/
 "#
         );
     }

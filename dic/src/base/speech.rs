@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashSet, fmt::Display};
 
 // 単語における品詞
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -14,6 +14,37 @@ pub enum Speech {
     AuxiliaryVerb,          // 助動詞
     PreNounAdjectival,      // 連体詞
     Counter,                // 助数詞
+}
+
+impl Speech {
+    /// 各品詞の活用形の一覧を返す
+    ///
+    /// # Arguments
+    ///
+    /// - `stem_reading` - 語幹の読み
+    ///
+    /// 活用が存在しない品詞の場合は、empty stringのみを含むvecを返す
+    pub fn to_forms(&self, stem_reading: &str) -> HashSet<String> {
+        match self {
+            Speech::Noun => vec!["".to_string()].iter().cloned().collect(),
+            Speech::Verb(form) => form.to_forms(stem_reading),
+            Speech::Adjective => vec!["い", "く", "け", "かっ", "う"]
+                .iter()
+                .map(|v| v.to_string())
+                .collect(),
+            Speech::Adverb => vec!["".to_string()].iter().cloned().collect(),
+            Speech::AdjectivalVerb => vec!["だ", "だっ", "な", "なら", "で", "に"]
+                .iter()
+                .map(|v| v.to_string())
+                .collect(),
+            Speech::Verbatim => vec!["".to_string()].iter().cloned().collect(),
+            Speech::Conjunction => vec!["".to_string()].iter().cloned().collect(),
+            Speech::Particle(_) => vec!["".to_string()].iter().cloned().collect(),
+            Speech::AuxiliaryVerb => vec!["".to_string()].iter().cloned().collect(),
+            Speech::PreNounAdjectival => vec!["".to_string()].iter().cloned().collect(),
+            Speech::Counter => vec!["".to_string()].iter().cloned().collect(),
+        }
+    }
 }
 
 impl Display for Speech {
@@ -72,14 +103,14 @@ pub enum VerbForm {
 }
 
 impl VerbForm {
-    /// 各活用形の一覧を返す
+    /// 各動詞の活用形の一覧を返す
     ///
     /// # Arguments
     ///
     /// - `stem_reading` - 語幹の読み
     ///
     /// 活用形は、語幹の読みによって変化するケースがあるため、それらを含めて対応をする。
-    pub fn to_forms(&self, stem_reading: &str) -> Vec<String> {
+    pub fn to_forms(&self, stem_reading: &str) -> HashSet<String> {
         let vec = match self {
             VerbForm::Godan(row) => match row.as_str() {
                 "カ" => match stem_reading
