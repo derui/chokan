@@ -1,2 +1,2 @@
-mod dic_grammer;
+// mod dic_grammer;
 pub mod io;

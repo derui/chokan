@@ -33,39 +33,17 @@ impl Entry {
         let stem = support::kanji_to_stem(kanji, &speech);
         Entry {
             stem: stem.to_string(),
-            forms,
+            forms: todo!(),
             stem_reading: stem_reading.to_string(),
             speech,
-        }
-    }
-
-    /// 辞書形のかなを返す
-    fn get_dictionary_kana(&self) -> String {
-        match &self.speech {
-            // 動詞の場合、活用形次第で変わってくるため、ここでは判定しない
-            Speech::Verb(form) => form.to_dictionary_form(&self.stem_reading),
-            Speech::Adjective => format!("{}い", self.stem_reading),
-            Speech::AdjectivalVerb => format!("{}だ", self.stem_reading),
-            _ => self.stem.clone(),
-        }
-    }
-
-    /// 辞書形の変換語を返す
-    fn get_dictionary_kanji(&self) -> String {
-        match &self.speech {
-            // 動詞の場合、活用形次第で変わってくるため、ここでは判定しない
-            Speech::Verb(form) => form.to_dictionary_form(&self.stem),
-            Speech::Adjective => format!("{}い", self.stem),
-            Speech::AdjectivalVerb => format!("{}だ", self.stem),
-            _ => self.stem.clone(),
         }
     }
 }
 
 impl Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let kana = self.get_dictionary_kana();
-        let kanji = self.get_dictionary_kanji();
+        let kana = &self.stem_reading;
+        let kanji = &self.stem;
         write!(f, "{}\t{}\t/{}/", kana, kanji, self.speech)
     }
 }

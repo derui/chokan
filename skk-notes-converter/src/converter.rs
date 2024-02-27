@@ -34,7 +34,130 @@ impl Okuri {
 fn form_to_okuri_kana(form: &VerbForm, okuri: &Option<Okuri>) -> String {
     match okuri {
         Some(Okuri::Fixed(v)) => v.to_string(),
-        _ => form.to_dictionary_okuri().to_string(),
+        _ => form_to_skk_okuri(form).to_string(),
+    }
+}
+
+/// 対応する辞書形の送り仮名を返す
+/// 返した送り仮名は、語幹のみを取り出すのに利用される
+fn form_to_skk_okuri(form: &VerbForm) -> &str {
+    match form {
+        VerbForm::Godan(row) => match row.as_str() {
+            "カ" => "く",
+            "ガ" => "ぐ",
+            "サ" => "す",
+            "ザ" => "ず",
+            "タ" => "つ",
+            "ナ" => "ぬ",
+            "バ" => "ぶ",
+            "マ" => "む",
+            "ラ" => "る",
+            "ワ" => "う",
+            _ => panic!("Can not get okuri for godan verb with {}", row),
+        },
+
+        VerbForm::Yodan(row) => match row.as_str() {
+            "カ" => "く",
+            "ガ" => "ぐ",
+            "サ" => "す",
+            "タ" => "つ",
+            "ダ" => "づ",
+            "ナ" => "ぬ",
+            "ハ" => "ふ",
+            "バ" => "ぶ",
+            "マ" => "む",
+            "ラ" => "る",
+            _ => panic!("Can not get okuri for yodan verb with {}", row),
+        },
+        VerbForm::SimoIchidan(row) => match row.as_str() {
+            "ア" => "える",
+            "カ" => "ける",
+            "ガ" => "げる",
+            "サ" => "せる",
+            "ザ" => "ぜる",
+            "タ" => "てる",
+            "ダ" => "でる",
+            "ナ" => "ねる",
+            "ハ" => "へる",
+            "バ" => "べる",
+            "マ" => "める",
+            "ラ" => "れる",
+            _ => panic!("Can not get okuri for shimoichidan verb with {}", row),
+        },
+        VerbForm::KamiIchidan(row) => match row.as_str() {
+            "ア" => "いる",
+            "カ" => "きる",
+            "ガ" => "ぎる",
+            "ザ" => "じる",
+            "タ" => "ちる",
+            // ナ行上一は、「にる」のみ
+            "ナ" => "る",
+            // ハ行上一は、「ひる」のみ
+            "ハ" => "る",
+            "バ" => "びる",
+            // 語幹自体が「み」のものも含む
+            "マ" => "みる",
+            "ラ" => "りる",
+            "ワ" => "ゐる",
+            _ => panic!("Can not get okuri for kamiichidan verb with {}", row),
+        },
+        VerbForm::SimoNidan(row) => match row.as_str() {
+            // ア行下二は、「得る」のみ
+            "ア" => "る",
+            "カ" => "く",
+            "ガ" => "ぐ",
+            "サ" => "す",
+            "ザ" => "ず",
+            "タ" => "つ",
+            "ダ" => "づ",
+            "ナ" => "ぬ",
+            "ハ" => "ふ",
+            "マ" => "む",
+            "ラ" => "る",
+            "ヤ" => "ゆ",
+            "ワ" => "う",
+            _ => panic!("Can not get okuri for godan verb with {}", row),
+        },
+        VerbForm::KamiNidan(row) => match row.as_str() {
+            "カ" => "く",
+            "ガ" => "ぐ",
+            "タ" => "つ",
+            "ダ" => "づ",
+            "ハ" => "ふ",
+            "バ" => "ぶ",
+            "マ" => "む",
+            "ヤ" => "ゆ",
+            "ラ" => "る",
+            "ワ" => "る",
+            _ => panic!("Can not get okuri for godan verb with {}", row),
+        },
+        VerbForm::Hen(row) => match row.as_str() {
+            // カ行変格活用では、基本的に語幹自体が無いという考え方がある。
+            "カ" => "くる",
+            "サ" => "する",
+            "ラ" => "り",
+            "ナ" => "ぬ",
+            _ => panic!("Can not get okuri for henkaku verb with {}", row),
+        },
+    }
+}
+
+/// 辞書形の送り仮名を削除して語幹のみを返す
+/// SKKのnotesでは、辞書形が見出しから確定できないものに限っては、固定されたものが設定されているため、
+/// 迂遠だがこういう形をとらないといけない
+fn drop_dictionary_okuri(word: &str, speech: &NoteSpeech) -> String {
+    match speech {
+        NoteSpeech::Verb(form, _) => {
+            let okuri = form_to_skk_okuri(form);
+
+            if word.len() == okuri.len() {
+                word.chars().nth(0).unwrap().to_string()
+            } else {
+                word[..(word.len() - okuri.len())].to_string()
+            }
+        }
+        NoteSpeech::Adjective(_) => word[..(word.len() - "い".len())].to_string(),
+        _ => word.to_string(),
     }
 }
 
@@ -68,37 +191,31 @@ impl NoteEntry {
     fn get_dictionary_form(&self, headword: &str) -> (String, String) {
         let okuri = self.speech.to_okuri_kana();
 
-        (
+        let (stem_with_okuri, headword_with_okuri) = (
             format!("{}{}", self.stem, okuri),
             format!("{}{}", headword, okuri),
+        );
+        println!("{} -> {}", &stem_with_okuri, headword_with_okuri);
+
+        (
+            drop_dictionary_okuri(&stem_with_okuri, &self.speech),
+            drop_dictionary_okuri(&headword_with_okuri, &self.speech),
         )
     }
 
     /// NoteEntry自体を単独の[Entry]に変換する
     fn to_entry(&self, headword: &str) -> ConvertedEntry {
-        let (speech, dic_okuri) = match &self.speech {
-            NoteSpeech::Verb(form, _) => (Speech::Verb(form.clone()), form.to_dictionary_okuri()),
-            NoteSpeech::Adjective(_) => (Speech::Adjective, "い"),
-            NoteSpeech::AdjectivalVerb(_) => (Speech::AdjectivalVerb, "だ"),
-            NoteSpeech::Adverb(_) => (Speech::Adverb, ""),
-            NoteSpeech::Noun(_, _) => (Speech::Noun, ""),
-            NoteSpeech::Counter(_) => (Speech::Counter, ""),
-            NoteSpeech::Verbatim(_) => (Speech::Verbatim, ""),
-            NoteSpeech::PreNounAdjectival(_) => (Speech::PreNounAdjectival, ""),
+        let speech = match &self.speech {
+            NoteSpeech::Verb(form, _) => (Speech::Verb(form.clone())),
+            NoteSpeech::Adjective(_) => (Speech::Adjective),
+            NoteSpeech::AdjectivalVerb(_) => (Speech::AdjectivalVerb),
+            NoteSpeech::Adverb(_) => (Speech::Adverb),
+            NoteSpeech::Noun(_, _) => (Speech::Noun),
+            NoteSpeech::Counter(_) => (Speech::Counter),
+            NoteSpeech::Verbatim(_) => (Speech::Verbatim),
+            NoteSpeech::PreNounAdjectival(_) => (Speech::PreNounAdjectival),
         };
         let (word, headword) = self.get_dictionary_form(headword);
-        let (word, headword) = (
-            if word.len() >= dic_okuri.len() {
-                word[..word.len() - dic_okuri.len()].to_string()
-            } else {
-                word[..1].to_string()
-            },
-            if headword.len() != dic_okuri.len() {
-                headword[..headword.len() - dic_okuri.len()].to_string()
-            } else {
-                headword[..1].to_string()
-            },
-        );
         ConvertedEntry {
             headword,
             word,
