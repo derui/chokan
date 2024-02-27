@@ -71,6 +71,201 @@ pub enum VerbForm {
     Hen(String),         // 変格活用
 }
 
+impl VerbForm {
+    /// 各活用形の一覧を返す
+    ///
+    /// # Arguments
+    ///
+    /// - `stem_reading` - 語幹の読み
+    ///
+    /// 活用形は、語幹の読みによって変化するケースがあるため、それらを含めて対応をする。
+    pub fn to_forms(&self, stem_reading: &str) -> Vec<String> {
+        let vec = match self {
+            VerbForm::Godan(row) => match row.as_str() {
+                "カ" => match stem_reading
+                    .chars()
+                    .last()
+                    .map(|v| v.to_string())
+                    .unwrap_or_default()
+                    .as_str()
+                {
+                    "い" => vec!["く", "か", "こ", "き", "け", "っ"],
+                    _ => vec!["く", "か", "こ", "き", "け", "い"],
+                },
+                "ガ" => vec!["ぐ", "が", "ご", "ぎ", "げ", "い"],
+                "サ" => vec!["す", "さ", "そ", "し", "せ"],
+                "ザ" => vec!["ず", "ざ", "ぞ", "じ", "ぜ"],
+                "タ" => vec!["つ", "た", "と", "ち", "て", "っ"],
+                "ナ" => vec!["ぬ", "な", "の", "に", "ね", "ん"],
+                "バ" => vec!["ぶ", "ば", "ぼ", "び", "べ", "ん"],
+                "マ" => vec!["む", "ま", "も", "み", "め", "ん"],
+                "ラ" => vec!["る", "ら", "ろ", "り", "れ", "っ"],
+                "ワ" => vec!["う", "わ", "い", "え", "お", "っ"],
+                _ => panic!("Can not get okuri for godan verb with {}", row),
+            },
+
+            VerbForm::Yodan(row) => match row.as_str() {
+                "カ" => vec!["く", "か", "き", "け"],
+                "ガ" => vec!["ぐ", "が", "ぎ", "げ"],
+                "サ" => vec!["す", "さ", "し", "せ"],
+                "タ" => vec!["つ", "た", "ち", "て"],
+                "ダ" => vec!["づ", "だ", "ぢ", "で"],
+                "ナ" => vec!["ぬ", "な", "に", "ね"],
+                "ハ" => vec!["ふ", "は", "ひ", "へ"],
+                "バ" => vec!["ぶ", "ば", "び", "べ"],
+                "マ" => vec!["む", "ま", "み", "め"],
+                "ラ" => vec!["る", "ら", "り", "れ"],
+                _ => panic!("Can not get okuri for yodan verb with {}", row),
+            },
+            VerbForm::SimoIchidan(row) => match row.as_str() {
+                "ア" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["え"]
+                    }
+                }
+                "カ" => vec!["け"],
+                "ガ" => vec!["げ"],
+                "サ" => vec!["せ"],
+                "ザ" => vec!["ぜ"],
+                "タ" => vec!["て"],
+                "ダ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["で"]
+                    }
+                }
+                "ナ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["ね"]
+                    }
+                }
+                "ハ" => vec![""],
+                "バ" => vec!["べ"],
+                "マ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["め"]
+                    }
+                }
+                "ラ" => vec!["れ"],
+                _ => panic!("Can not get okuri for shimoichidan verb with {}", row),
+            },
+            VerbForm::KamiIchidan(row) => match row.as_str() {
+                "ア" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["い"]
+                    }
+                }
+                "カ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["き"]
+                    }
+                }
+                "ガ" => vec!["ぎ"],
+                "ザ" => vec!["じ"],
+                "タ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["ち"]
+                    }
+                }
+                "ナ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["に"]
+                    }
+                }
+                "ハ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["ひ"]
+                    }
+                }
+                "バ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["び"]
+                    }
+                }
+                "マ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["み"]
+                    }
+                }
+                "ラ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["り"]
+                    }
+                }
+                "ワ" => {
+                    if stem_reading.len() == 1 {
+                        vec![""]
+                    } else {
+                        vec!["ゐ"]
+                    }
+                }
+                _ => panic!("Can not get okuri for kamiichidan verb with {}", row),
+            },
+            VerbForm::SimoNidan(row) => match row.as_str() {
+                // ア行下二は、「得る」のみ
+                "ア" => vec!["え", "う"],
+                "カ" => vec!["け", "く"],
+                "ガ" => vec!["げ", "ぐ"],
+                "サ" => vec!["せ", "す"],
+                "ザ" => vec!["ぜ", "ず"],
+                "タ" => vec!["て", "つ"],
+                "ダ" => vec!["で", "づ"],
+                "ナ" => vec!["ぬ", "ね"],
+                "ハ" => vec!["へ", "ふ"],
+                "マ" => vec!["め", "む"],
+                "ラ" => vec!["れ", "る"],
+                "ヤ" => vec!["え", "ゆ"],
+                "ワ" => vec!["ゑ", "う"],
+                _ => panic!("Can not get okuri for godan verb with {}", row),
+            },
+            VerbForm::KamiNidan(row) => match row.as_str() {
+                "カ" => vec!["き", "く"],
+                "ガ" => vec!["ぎ", "ぐ"],
+                "タ" => vec!["ち", "つ"],
+                "ダ" => vec!["ぢ", "づ"],
+                "ハ" => vec!["ひ", "ふ"],
+                "バ" => vec!["び", "ぶ"],
+                "マ" => vec!["み", "む"],
+                "ヤ" => vec!["い", "ゆ"],
+                "ラ" => vec!["り", "る"],
+                _ => panic!("Can not get okuri for godan verb with {}", row),
+            },
+            VerbForm::Hen(row) => match row.as_str() {
+                // カ行変格活用では、基本的に語幹自体が無いという考え方がある。
+                "カ" => vec!["こ", "き", "く"],
+                "サ" => vec!["さ", "せ", "し", "す"],
+                "ラ" => vec!["ら", "れ", "り", "る"],
+                "ナ" => vec!["な", "ね", "に", "ぬ"],
+                _ => panic!("Can not get okuri for henkaku verb with {}", row),
+            },
+        };
+        vec.iter().map(|v| v.to_string()).collect()
+    }
+}
+
 impl Display for VerbForm {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
