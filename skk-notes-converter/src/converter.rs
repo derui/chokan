@@ -151,7 +151,7 @@ fn drop_dictionary_okuri(word: &str, speech: &NoteSpeech) -> String {
             let okuri = form_to_skk_okuri(form);
 
             if word.len() == okuri.len() {
-                word.chars().nth(0).unwrap().to_string()
+                word.chars().next().unwrap().to_string()
             } else {
                 word[..(word.len() - okuri.len())].to_string()
             }
@@ -206,14 +206,14 @@ impl NoteEntry {
     /// NoteEntry自体を単独の[Entry]に変換する
     fn to_entry(&self, headword: &str) -> ConvertedEntry {
         let speech = match &self.speech {
-            NoteSpeech::Verb(form, _) => (Speech::Verb(form.clone())),
-            NoteSpeech::Adjective(_) => (Speech::Adjective),
-            NoteSpeech::AdjectivalVerb(_) => (Speech::AdjectivalVerb),
-            NoteSpeech::Adverb(_) => (Speech::Adverb),
-            NoteSpeech::Noun(_, _) => (Speech::Noun),
-            NoteSpeech::Counter(_) => (Speech::Counter),
-            NoteSpeech::Verbatim(_) => (Speech::Verbatim),
-            NoteSpeech::PreNounAdjectival(_) => (Speech::PreNounAdjectival),
+            NoteSpeech::Verb(form, _) => Speech::Verb(form.clone()),
+            NoteSpeech::Adjective(_) => Speech::Adjective,
+            NoteSpeech::AdjectivalVerb(_) => Speech::AdjectivalVerb,
+            NoteSpeech::Adverb(_) => Speech::Adverb,
+            NoteSpeech::Noun(_, _) => Speech::Noun,
+            NoteSpeech::Counter(_) => Speech::Counter,
+            NoteSpeech::Verbatim(_) => Speech::Verbatim,
+            NoteSpeech::PreNounAdjectival(_) => Speech::PreNounAdjectival,
         };
         let (word, headword) = self.get_dictionary_form(headword);
         ConvertedEntry {

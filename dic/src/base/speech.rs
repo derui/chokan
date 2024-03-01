@@ -26,23 +26,23 @@ impl Speech {
     /// 活用が存在しない品詞の場合は、empty stringのみを含むvecを返す
     pub fn to_forms(&self, stem_reading: &str) -> HashSet<String> {
         match self {
-            Speech::Noun => vec!["".to_string()].iter().cloned().collect(),
+            Speech::Noun => ["".to_string()].iter().cloned().collect(),
             Speech::Verb(form) => form.to_forms(stem_reading),
-            Speech::Adjective => vec!["い", "く", "け", "かっ", "う"]
+            Speech::Adjective => ["い", "く", "け", "かっ", "う"]
                 .iter()
                 .map(|v| v.to_string())
                 .collect(),
-            Speech::Adverb => vec!["".to_string()].iter().cloned().collect(),
-            Speech::AdjectivalVerb => vec!["だ", "だっ", "な", "なら", "で", "に"]
+            Speech::Adverb => ["".to_string()].iter().cloned().collect(),
+            Speech::AdjectivalVerb => ["だ", "だっ", "な", "なら", "で", "に"]
                 .iter()
                 .map(|v| v.to_string())
                 .collect(),
-            Speech::Verbatim => vec!["".to_string()].iter().cloned().collect(),
-            Speech::Conjunction => vec!["".to_string()].iter().cloned().collect(),
-            Speech::Particle(_) => vec!["".to_string()].iter().cloned().collect(),
-            Speech::AuxiliaryVerb => vec!["".to_string()].iter().cloned().collect(),
-            Speech::PreNounAdjectival => vec!["".to_string()].iter().cloned().collect(),
-            Speech::Counter => vec!["".to_string()].iter().cloned().collect(),
+            Speech::Verbatim => ["".to_string()].iter().cloned().collect(),
+            Speech::Conjunction => ["".to_string()].iter().cloned().collect(),
+            Speech::Particle(_) => ["".to_string()].iter().cloned().collect(),
+            Speech::AuxiliaryVerb => ["".to_string()].iter().cloned().collect(),
+            Speech::PreNounAdjectival => ["".to_string()].iter().cloned().collect(),
+            Speech::Counter => ["".to_string()].iter().cloned().collect(),
         }
     }
 }

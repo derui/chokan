@@ -87,7 +87,7 @@ peg::parser! {
       rule speech() -> Vec<NoteSpeech> = "∥" speech_header() n:(
           noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / subsidiary_verb()
       ) ** "," note_in_entry()? {
-          n.iter().cloned().filter(|v|v.is_some()).map(|v| v.unwrap()).collect()
+          n.iter().filter(|&v|v.is_some()).cloned().map(|v| v.unwrap()).collect()
       }
 
       rule annotation() = ";" [^ '∥' | '/']*
@@ -101,11 +101,11 @@ peg::parser! {
       rule no_entry() -> Vec<NoteEntry> = "/" s:stem() annotation()? {vec![]}
       rule entry() -> Vec<NoteEntry> = "/" s:stem() annotation() ss:speech() { ss.iter().map(|v| NoteEntry { stem: s.clone(), speech: v.clone() }).collect() }
       pub rule note() -> Note = h:headword() o:okuri_alpha()? space()+ entries:(okuri_nasi_entry() / derived_entry() / entry() / no_entry())+ "/" eof() {
-          let entries = entries.iter().filter(|v| v.len() > 0).flatten().cloned().collect();
+          let entries = entries.iter().filter(|v| !v.is_empty()).flatten().cloned().collect();
           let okuri = o.map(|v|v.to_string()).unwrap_or("".to_string());
           Note { headword: h, okuri , entries  } }
 
-      pub rule root() -> Option<Note> = comment() {None} / n:note() { if n.entries.len() > 0 { Some(n) } else { None } }
+      pub rule root() -> Option<Note> = comment() {None} / n:note() { if !n.entries.is_empty() { Some(n) } else { None } }
 
       pub rule comment() = ";" any()*
   }
