@@ -3,9 +3,9 @@ use std::io;
 use super::dictionary::Dictionary;
 
 /// Dictionaryを取得するためのtrait
-pub trait DictonaryReader {
+pub trait DictionaryReader {
     /// 指定された [Dictionary] に対して、読み込んだエントリを追加する。完了したら、読み込んだエントリ数を返す。
-    fn read_all(&self, buf: &mut Dictionary) -> Result<usize, io::Error>;
+    fn read_all(&mut self, buf: &mut Dictionary) -> Result<usize, io::Error>;
 }
 
 /// Dictionaryをどこかに書き込むためのtrait
