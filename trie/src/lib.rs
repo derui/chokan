@@ -62,8 +62,12 @@ impl Trie {
     /// 返却される値は、すべてのlabelが設定可能と判定されたbaseのindexである
     fn xcheck(&self, labels: &Vec<Label>) -> Base {
         let ary_size = self.nodes.len() as u32;
-        let min_label = labels.iter().min().unwrap();
-        let other_labels: Vec<Label> = labels.iter().filter(|v| *v == min_label).cloned().collect();
+        let mut labels = labels.clone();
+
+        labels.sort();
+
+        let min_label = labels.first().unwrap();
+        let other_labels = &labels[1..];
 
         for e in Empties::as_iter(&self.nodes) {
             // 実際に空として認識するのは、最小のlabelのみが基準となる
@@ -71,7 +75,7 @@ impl Trie {
                 let mut is_ok = true;
 
                 // 一つでも利用中のcheckがある場合は、何もしない
-                for label in other_labels.iter() {
+                for label in other_labels {
                     let i = t + *label;
                     if self.nodes[usize::from(i)].check.is_used() {
                         is_ok = false;

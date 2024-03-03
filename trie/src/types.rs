@@ -387,4 +387,34 @@ mod tests {
             assert_eq!(range, vec![base + Label::new(1), base + Label::new(2)]);
         }
     }
+
+    mod empty {
+        use crate::types::{Base, Empty, Label};
+
+        #[test]
+        fn get_base_if_label_was_valid() {
+            // arrange
+            let label = Label(3);
+            let empty = Empty(5);
+
+            // act
+            let base = empty - label;
+
+            // assert
+            assert_eq!(base, Some(Base::new(2)));
+        }
+
+        #[test]
+        fn do_not_return_base_if_base_is_invalid() {
+            // arrange
+            let label = Label(3);
+            let empty = Empty(2);
+
+            // act
+            let base = empty - label;
+
+            // assert
+            assert_eq!(None, base);
+        }
+    }
 }
