@@ -69,7 +69,7 @@ impl Trie {
         let min_label = labels.first().unwrap();
         let other_labels = &labels[1..];
 
-        for e in Empties::as_iter(&self.nodes) {
+        for e in Empties::as_empties(&self.nodes) {
             // 実際に空として認識するのは、最小のlabelのみが基準となる
             if let Some(t) = e - *min_label {
                 let mut is_ok = true;

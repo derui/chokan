@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops};
+use std::{collections::HashMap, ops, slice::Iter};
 
 /// 内部で利用するbase/checkのペア
 /// ここで定義されるbase/checkは、内部的には未使用領域を負の値で管理している。
@@ -42,7 +42,7 @@ impl Empty {
 
 impl Empties {
     /// 空配列の集合を返す
-    pub fn as_iter(nodes: &Vec<Node>) -> Box<dyn Iterator<Item = Empty>> {
+    pub fn as_empties(nodes: &Vec<Node>) -> Vec<Empty> {
         let mut vec: Vec<Empty> = Vec::new();
 
         let mut root = nodes[0].check.next_empty().unwrap().clone();
@@ -58,7 +58,7 @@ impl Empties {
             }
         }
 
-        unimplemented!("")
+        vec
     }
 
     /// 対象の遷移位置を未使用に変更する
@@ -326,7 +326,7 @@ impl From<NodeIdx> for i32 {
 /// 遷移を表す型
 ///
 /// 実際には、Checkを指し示すindex
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Transition(usize);
 
 impl Transition {
@@ -380,7 +380,8 @@ mod tests {
 
             // act
             let base = Base::new(12);
-            let range = base.transition_range(&labels);
+            let mut range = base.transition_range(&labels);
+            range.sort();
 
             // assert
             assert_eq!(range.len(), 2);
