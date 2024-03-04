@@ -20,7 +20,7 @@ pub struct Trie {
 impl Trie {
     /// 新しいTrieを生成する
     pub fn from_keys(keys: &Vec<char>) -> Trie {
-        let labels = Labels::from_keys(keys);
+        let labels = Labels::from_chars(keys);
 
         let mut nodes = Vec::new();
         // 仕組み上、0のcheckが利用されることはないため、初期化時点では常に1を指しておく

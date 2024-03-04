@@ -124,7 +124,7 @@ pub mod empties {
 /// Labelの集合を表す型
 ///
 /// charからlabelへの変換も実施するが、
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Labels(HashMap<char, u8>);
 
 impl Labels {
@@ -134,7 +134,7 @@ impl Labels {
         self.0.len()
     }
 
-    pub fn from_keys(keys: &Vec<char>) -> Labels {
+    pub fn from_chars(keys: &Vec<char>) -> Labels {
         assert!(!keys.is_empty(), "can not accept empty keys");
         let mut key_map = HashMap::new();
 
@@ -382,7 +382,7 @@ mod tests {
         #[test]
         fn get_transition_range() {
             // arrange
-            let labels = Labels::from_keys(&vec!['a', 'b']);
+            let labels = Labels::from_chars(&vec!['a', 'b']);
 
             // act
             let base = Base::new(12);
@@ -634,6 +634,48 @@ mod tests {
                     },
                 ]
             )
+        }
+    }
+
+    mod labels {
+        use crate::types::{Label, Labels};
+
+        #[test]
+        #[should_panic]
+        fn do_not_allow_empty_labels() {
+            Labels::from_chars(&vec![]);
+        }
+
+        #[test]
+        fn get_labeled_keys_from_key() {
+            // arrange
+            let ls = Labels::from_chars(&vec!['a', 'b', 'c']);
+
+            // act
+            let ret = ls.key_to_labels("aabc");
+
+            // assert
+            assert_eq!(
+                ret,
+                Ok(vec![
+                    Label::new(1),
+                    Label::new(1),
+                    Label::new(2),
+                    Label::new(3)
+                ])
+            )
+        }
+
+        #[test]
+        fn should_return_error_if_key_contains_char_that_is_not_contained_labels() {
+            // arrange
+            let ls = Labels::from_chars(&vec!['a', 'b', 'c']);
+
+            // act
+            let ret = ls.key_to_labels("adabc");
+
+            // assert
+            assert_eq!(ret, Err(()))
         }
     }
 }
