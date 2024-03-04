@@ -3,7 +3,7 @@ mod types;
 
 use std::collections::HashSet;
 
-use types::{Base, Check, Empties, Label, Labels, Node, NodeIdx};
+use types::{empties, Base, Check, Label, Labels, Node, NodeIdx};
 
 /// 最も基本的なtrie構造を表現する
 /// 任意のデータ構造を保有する必要がある場合は、[HoldableTrie<T>]を利用すること
@@ -30,7 +30,7 @@ impl Trie {
         });
 
         let value_len = labels.len();
-        Empties::expand_empties(&mut nodes, value_len);
+        empties::expand_empties(&mut nodes, value_len);
 
         Trie { nodes, labels }
     }
@@ -69,7 +69,7 @@ impl Trie {
         let min_label = labels.first().unwrap();
         let other_labels = &labels[1..];
 
-        for e in Empties::as_empties(&self.nodes) {
+        for e in empties::as_empties(&self.nodes) {
             // 実際に空として認識するのは、最小のlabelのみが基準となる
             if let Some(t) = e - *min_label {
                 let mut is_ok = true;
