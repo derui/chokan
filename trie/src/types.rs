@@ -64,15 +64,17 @@ pub mod empties {
     }
 
     /// 対象の遷移位置を未使用に変更する
-    pub fn push_unused(vec: &mut Vec<Node>, transiton: Transition) {
-        let base_idx: usize = transiton.into();
+    pub fn push_unused(vec: &mut Vec<Node>, transition: Transition) {
+        let last_empty = vec.iter().rposition(|v| v.check.is_empty());
 
-        for i in 1..base_idx {
-            if let Some(old) = vec[base_idx - i].check.next_empty() {
-                vec[base_idx - i].check = Check::into_chain(transiton);
-                vec[base_idx].check = Check::from(old);
-                break;
-            }
+        if let Some(idx) = last_empty {
+            let current_check = vec[idx].check;
+            let (current_check, new_check) = current_check.chain(&transition);
+            vec[idx].check = current_check;
+            vec[usize::from(transition)].check = new_check;
+        } else {
+            // 見つからない場合は、自分自身を参照したものを設定する
+            vec[usize::from(transition)].check = Check::empty_at(usize::from(transition));
         }
     }
 
@@ -244,14 +246,6 @@ impl Check {
         Check(-(s as i32))
     }
 
-    /// 指定したTransitionを未使用のCheckに変換する
-    ///
-    /// # Returns
-    /// 対象の位置を未使用としてマークした[Check]
-    pub fn into_chain(transition: Transition) -> Self {
-        Self(-(transition.0 as i32))
-    }
-
     /// Checkが未使用かどうか返す
     #[inline]
     pub fn is_empty(&self) -> bool {
@@ -271,6 +265,15 @@ impl Check {
         } else {
             Some(Empty((-self.0) as usize))
         }
+    }
+
+    /// 現在指している次の未使用領域を切り替えて、再設定する
+    ///
+    /// # Returns
+    /// 0として現在位置に設定される新しい [Check] 、1に、nextのindexに対して設定される [Check] を返す
+    fn chain(&self, next: &Transition) -> (Self, Self) {
+        assert!(self.is_empty(), "Can not chain with used");
+        (Self::empty_at(usize::from(*next)), Self(self.0))
     }
 }
 
