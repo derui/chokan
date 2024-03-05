@@ -9,6 +9,13 @@ pub struct Node {
     pub check: Check,
 }
 
+impl Node {
+    /// Nodeがidxに対してtransitできるかどうかを返す
+    pub fn is_transit(&self, idx: &NodeIdx) -> bool {
+        self.check.is_used() && NodeIdx::from(self.check) == *idx
+    }
+}
+
 /// 未使用領域そのものを与える型
 #[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct Empty(usize);
@@ -34,7 +41,7 @@ impl Empty {
 pub mod empties {
     use std::collections::HashSet;
 
-    use super::{Base, Check, Empty, Node, Transition};
+    use super::{Base, Check, Empty, Node, NodeIdx};
 
     /// 空配列の集合を返す
     pub fn as_empties(nodes: &Vec<Node>) -> Vec<Empty> {
@@ -63,24 +70,44 @@ pub mod empties {
         vec
     }
 
-    /// 対象の遷移位置を未使用に変更する
-    pub fn push_unused(vec: &mut Vec<Node>, transition: Transition) {
-        let last_empty = vec.iter().rposition(|v| v.check.is_empty());
+    /// 指定したindexを未使用領域から削除する
+    pub fn delete_at(vec: &mut Vec<Node>, idx: &NodeIdx) {
+        let pos = vec
+            .iter()
+            .position(|p| p.check.next_empty() == Some(Empty::from(*idx)));
 
-        if let Some(idx) = last_empty {
-            let current_check = vec[idx].check;
-            let (current_check, new_check) = current_check.chain(&transition);
-            vec[idx].check = current_check;
-            vec[usize::from(transition)].check = new_check;
-        } else {
-            // 見つからない場合は、自分自身を参照したものを設定する
-            vec[usize::from(transition)].check = Check::empty_at(usize::from(transition));
+        match pos {
+            Some(pos) => {
+                if pos == usize::from(*idx) {
+                    // 自分自身が対象だったら何もしない
+                    return;
+                }
+
+                let check = vec[usize::from(*idx)].check;
+                vec[pos].check = vec[pos].check.unchain(&check);
+            }
+            None => (),
         }
     }
 
-    /// 対象の遷移位置がemptyかどうかを返す
-    pub fn is_empty_at(vec: &Vec<Node>, transition: Transition) -> bool {
-        if let Some(v) = vec.get(usize::from(transition)) {
+    /// 対象の位置を未使用に変更する
+    pub fn push_unused(vec: &mut Vec<Node>, idx: NodeIdx) {
+        let last_empty = vec.iter().rposition(|v| v.check.is_empty());
+
+        if let Some(last_empty_idx) = last_empty {
+            let current_check = vec[last_empty_idx].check;
+            let (current_check, new_check) = current_check.chain(&idx);
+            vec[last_empty_idx].check = current_check;
+            vec[usize::from(idx)].check = new_check;
+        } else {
+            // 見つからない場合は、自分自身を参照したものを設定する
+            vec[usize::from(idx)].check = Check::empty_at(usize::from(idx));
+        }
+    }
+
+    /// 対象の位置がemptyかどうかを返す
+    pub fn is_empty_at(vec: &Vec<Node>, idx: NodeIdx) -> bool {
+        if let Some(v) = vec.get(usize::from(idx)) {
             v.check.is_empty()
         } else {
             true
@@ -136,6 +163,7 @@ impl Labels {
         self.0.len()
     }
 
+    /// labelをキーになる値から生成する
     pub fn from_chars(keys: &Vec<char>) -> Labels {
         assert!(!keys.is_empty(), "can not accept empty keys");
         let mut key_map = HashMap::new();
@@ -145,6 +173,21 @@ impl Labels {
         }
 
         Self(key_map)
+    }
+
+    /// labelから文字に変換する
+    ///
+    /// # Arguments
+    /// - `label` - 変換するlabel
+    ///
+    /// # Returns
+    /// 対応する文字。labelが存在しない場合はpanic
+    pub fn label_to_char(&self, label: &Label) -> char {
+        self.0
+            .iter()
+            .find(|(_, v)| **v == label.0)
+            .map(|(k, _)| *k)
+            .unwrap()
     }
 
     /// keyからLabelに変換する
@@ -190,14 +233,13 @@ pub struct Base(i32);
 
 impl Base {
     /// Baseから利用されうるtransitionの範囲を返す
-    pub fn transition_range(self, labels: &Labels) -> Vec<Transition> {
+    pub fn transition_range(self, labels: &Labels) -> Vec<NodeIdx> {
         let labels = labels.labels();
         labels.iter().map(|v| self + *v).collect()
     }
 
     /// Baseを新規に作成する
     pub fn new(v: u32) -> Base {
-        assert!(v > 0, "All bases are should greater than 0");
         Self(v as i32)
     }
 
@@ -223,11 +265,11 @@ impl Base {
 }
 
 impl ops::Add<Label> for Base {
-    type Output = Transition;
+    type Output = NodeIdx;
 
     fn add(self, rhs: Label) -> Self::Output {
         assert!(self.0 >= 0, "base should be used");
-        Transition(self.0 as usize + rhs.0 as usize)
+        NodeIdx(self.0 as usize + rhs.0 as usize)
     }
 }
 
@@ -271,17 +313,28 @@ impl Check {
     ///
     /// # Returns
     /// 0として現在位置に設定される新しい [Check] 、1に、nextのindexに対して設定される [Check] を返す
-    fn chain(&self, next: &Transition) -> (Self, Self) {
+    fn chain(&self, next: &NodeIdx) -> (Self, Self) {
         assert!(self.is_empty(), "Can not chain with used");
         (Self::empty_at(usize::from(*next)), Self(self.0))
     }
+
+    /// 現在指している先を、 `next` で渡された先に変更する
+    fn unchain(&self, next: &Self) -> Self {
+        assert!(self.is_empty() && next.is_empty(), "should be all empty");
+
+        if let Some(v) = next.next_empty() {
+            Self::from(v)
+        } else {
+            panic!("Illegal path")
+        }
+    }
 }
 
-impl From<Check> for Base {
-    /// Baseに変換する
+impl From<Check> for NodeIdx {
+    /// NodeIdxに変換する
     fn from(val: Check) -> Self {
         assert!(val.is_used(), "should be used");
-        Base(val.0)
+        NodeIdx(val.0 as usize)
     }
 }
 
@@ -310,7 +363,7 @@ impl Label {
 }
 
 /// Nodeを指し示すindex
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct NodeIdx(usize);
 
 impl NodeIdx {
@@ -320,9 +373,16 @@ impl NodeIdx {
     }
 }
 
-impl From<NodeIdx> for usize {
-    fn from(value: NodeIdx) -> Self {
-        value.0
+impl From<NodeIdx> for Check {
+    /// NodeIdxから[Check]に変換する
+    fn from(val: NodeIdx) -> Self {
+        Check(val.0 as i32)
+    }
+}
+
+impl From<usize> for NodeIdx {
+    fn from(value: usize) -> Self {
+        Self(value)
     }
 }
 
@@ -332,35 +392,15 @@ impl From<NodeIdx> for i32 {
     }
 }
 
-/// 遷移を表す型
-///
-/// 実際には、Checkを指し示すindex
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Transition(usize);
-
-impl Transition {
-    fn is_root(&self) -> bool {
-        self.0 == 0
-    }
-}
-
-impl From<Transition> for NodeIdx {
-    fn from(val: Transition) -> Self {
-        NodeIdx(val.0)
-    }
-}
-
-impl From<Transition> for usize {
-    fn from(value: Transition) -> Self {
+impl From<NodeIdx> for usize {
+    fn from(value: NodeIdx) -> Self {
         value.0
     }
 }
 
-impl ops::Sub<Label> for Transition {
-    type Output = Base;
-
-    fn sub(self, rhs: Label) -> Self::Output {
-        Base((self.0 - rhs.0 as usize) as i32)
+impl From<NodeIdx> for Empty {
+    fn from(value: NodeIdx) -> Self {
+        Empty::new(value.0)
     }
 }
 
@@ -368,18 +408,12 @@ impl ops::Sub<Label> for Transition {
 mod tests {
 
     mod base {
-        use crate::types::{Base, Label, Labels, Transition};
+        use crate::types::{Base, Label, Labels, NodeIdx};
 
         #[test]
         fn root_is_not_empty() {
             assert!(Base::root().is_used(), "should be used");
             assert!(!Base::root().is_empty(), "should be used");
-        }
-
-        #[test]
-        #[should_panic]
-        fn should_panic_when_new_base_with_root_index() {
-            Base::new(0);
         }
 
         #[test]
@@ -407,7 +441,7 @@ mod tests {
             let ret = base + label;
 
             // assert
-            assert_eq!(ret, Transition(5))
+            assert_eq!(ret, NodeIdx(5))
         }
     }
 
@@ -442,7 +476,7 @@ mod tests {
     }
 
     mod empties {
-        use crate::types::{empties, Base, Check, Empty, Label, Node, Transition};
+        use crate::types::{empties, Base, Check, Empty, Label, Node};
 
         #[test]
         fn return_empties_in_nodes() {

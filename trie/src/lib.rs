@@ -60,7 +60,7 @@ impl Trie {
     ///
     /// # Returns
     /// 返却される値は、すべてのlabelが設定可能と判定されたbaseのindexである
-    fn xcheck(&self, labels: &Vec<Label>) -> Base {
+    fn xcheck(&mut self, labels: &Vec<Label>) -> Base {
         let ary_size = self.nodes.len() as u32;
         let mut labels = labels.clone();
 
@@ -77,7 +77,13 @@ impl Trie {
                 // 一つでも利用中のcheckがある場合は、何もしない
                 for label in other_labels {
                     let i = t + *label;
-                    if self.nodes[usize::from(i)].check.is_used() {
+                    if let Some(n) = self.nodes.get(usize::from(i)) {
+                        if n.check.is_used() {
+                            is_ok = false;
+                            break;
+                        }
+                    } else {
+                        // Noneになる場合、範囲を超えてしまっているので、領域の追加が必要である
                         is_ok = false;
                         break;
                     }
@@ -91,6 +97,7 @@ impl Trie {
         }
 
         // 一切見つからなかった場合は、新しい領域を追加する必要がある
+        empties::expand_empties(&mut self.nodes, labels.len());
         Base::new(ary_size)
     }
 
@@ -135,6 +142,24 @@ impl Trie {
         // }
     }
 
+    /// 指定した位置に `label` を書き込み、書き込んだ位置を [NodeIdx] として返す
+    ///
+    /// # Arguments
+    /// - `idx` - 遷移元のindex
+    /// - `label` - 設定するlabel
+    /// - `base` - 設定もとのbase
+    fn write_at(&mut self, idx: &NodeIdx, label: &Label, base: &Base) -> NodeIdx {
+        let transition = *base + *label;
+
+        // 先に未使用領域から外してから、対象の位置に書き込む
+        let next_idx = NodeIdx::from(transition);
+        empties::delete_at(&mut self.nodes, &next_idx);
+        self.nodes[usize::from(next_idx)].check = Check::from(*idx);
+        self.nodes[usize::from(*idx)].base = *base;
+
+        next_idx
+    }
+
     /// Trieに新しいキーを追加する
     ///
     /// 追加は、以下のアルゴリズムで行う。
@@ -152,30 +177,84 @@ impl Trie {
     /// - `key` - 追加するキー
     ///
     /// # Returns
-    /// すでに存在するキーの場合は、そのIDを返す。
+    /// すでに存在するキーの場合は、何も行わない。
     /// 利用できない文字が含まれている場合は、Errを返す
-    pub fn insert(&mut self, key: &str) -> Result<i32, ()> {
+    pub fn insert(&mut self, key: &str) -> Result<(), ()> {
         let labels = self.labels.key_to_labels(key)?;
         let mut current = NodeIdx::head();
 
         for label in labels.iter() {
-            let base = self.nodes[usize::from(current)].base;
-            let transition = base + *label;
+            let mut base = self.nodes[usize::from(current)].base;
+            println!("{:?}, {:?}", base, current);
 
-            // 対象の場所が空いていればそのままそこに書き込み、空いていなければ衝突しているので解消する
-            self.nodes[usize::from(transition)].check.is_empty();
+            // baseが未使用の場合は、xcheck経由で新しいbaseを計算する
+            if base.is_empty() {
+                base = self.xcheck(&vec![*label]);
+            }
+            println!("{:?}, {:?}", base, current);
 
-            // 次の位置はcheckの場所からになる
-            current = transition.into();
+            current = self.write_at(&current, label, &base);
         }
 
-        Ok(i32::from(current))
+        Ok(())
+    }
+
+    /// Trieから指定したキーを検索する
+    ///
+    /// 指定されたキーの部分文字列が発見された場合は、その都度 `callback` が呼び出される。
+    ///
+    /// # Arguments
+    /// - `key` - 検索するキー
+    /// - `callback` - 部分文字列が発見された場合に呼び出される関数
+    ///
+    /// # Returns
+    /// 発見されたnodeのindex。見つからなかった場合はNone
+    pub fn search<F>(&self, key: &str, callback: F) -> Option<usize>
+    where
+        F: Fn(NodeIdx, &str) -> (),
+    {
+        let labels = self.labels.key_to_labels(key).unwrap();
+        let mut current = NodeIdx::head();
+        let mut result = Vec::new();
+        let mut found_labels = String::new();
+
+        for label in labels.iter() {
+            let node = &self.nodes[usize::from(current)];
+            let base = node.base;
+            let transition = base + *label;
+
+            if node.is_transit(&current) {
+                return None;
+            }
+
+            found_labels.push(self.labels.label_to_char(label));
+            current = NodeIdx::from(transition);
+            callback(current, &found_labels);
+            result.push(current);
+        }
+
+        Some(usize::from(current))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::Trie;
+
+    fn labels() -> Vec<char> {
+        vec!['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+    }
 
     #[test]
-    fn it_works() {}
+    fn write_key_and_search_it() {
+        // arrange
+        let mut trie = Trie::from_keys(&labels());
+        trie.insert("abc");
+
+        // act
+        let index = trie.search("ab", |_, _| {});
+        println!("{:?}", trie);
+        // assert
+        assert_ne!(index, None);
+    }
 }
