@@ -207,10 +207,7 @@ impl Trie {
     ///
     /// # Returns
     /// 発見されたnodeのindex。見つからなかった場合はNone
-    pub fn search<F>(&self, key: &str, callback: F) -> Option<usize>
-    where
-        F: Fn(NodeIdx, &str) -> (),
-    {
+    pub fn search(&self, key: &str, callback: &dyn Fn(NodeIdx, &str) -> ()) -> Option<usize> {
         let labels = self.labels.key_to_labels(key).unwrap();
         let mut current = NodeIdx::head();
         let mut result = Vec::new();
@@ -237,6 +234,8 @@ impl Trie {
 
 #[cfg(test)]
 mod tests {
+    use std::{borrow::BorrowMut, cell::RefCell, collections::HashSet};
+
     use crate::Trie;
 
     fn labels() -> Vec<char> {
@@ -250,9 +249,33 @@ mod tests {
         let _ = trie.insert("abc");
 
         // act
-        let index = trie.search("ab", |_, _| {});
-
+        let index = trie.search("ab", &|_, _| {});
         // assert
         assert_ne!(index, None);
+    }
+
+    #[test]
+    fn get_first_part_match_label() {
+        // arrange
+        let mut trie = Trie::from_keys(&labels());
+        let _ = trie.insert("abc");
+        let _ = trie.insert("aac");
+
+        // act
+        let chars = RefCell::new(vec![]);
+        let _ = trie.search("abc", &|_, k| {
+            let mut c = chars.borrow_mut();
+            c.push(k.to_string())
+        });
+
+        // assert
+        assert_eq!(
+            chars.borrow().iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from_iter(
+                ["a".to_string(), "ab".to_string(), "abc".to_string()]
+                    .iter()
+                    .cloned()
+            )
+        );
     }
 }
