@@ -185,13 +185,11 @@ impl Trie {
 
         for label in labels.iter() {
             let mut base = self.nodes[usize::from(current)].base;
-            println!("{:?}, {:?}", base, current);
 
             // baseが未使用の場合は、xcheck経由で新しいbaseを計算する
             if base.is_empty() {
                 base = self.xcheck(&vec![*label]);
             }
-            println!("{:?}, {:?}", base, current);
 
             current = self.write_at(&current, label, &base);
         }
@@ -219,11 +217,11 @@ impl Trie {
         let mut found_labels = String::new();
 
         for label in labels.iter() {
+            println!("{:?}, {:?}", label, current);
             let node = &self.nodes[usize::from(current)];
-            let base = node.base;
-            let transition = base + *label;
+            let transition = node.base + *label;
 
-            if node.is_transit(&current) {
+            if node.is_transit(&transition) {
                 return None;
             }
 
@@ -249,11 +247,11 @@ mod tests {
     fn write_key_and_search_it() {
         // arrange
         let mut trie = Trie::from_keys(&labels());
-        trie.insert("abc");
+        let _ = trie.insert("abc");
 
         // act
         let index = trie.search("ab", |_, _| {});
-        println!("{:?}", trie);
+
         // assert
         assert_ne!(index, None);
     }
