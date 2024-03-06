@@ -159,7 +159,7 @@ pub struct Labels(HashMap<char, u8>);
 impl Labels {
     /// labelの集合の数を返す
     #[inline]
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.0.len()
     }
 
@@ -220,7 +220,7 @@ impl Labels {
     }
 
     /// 内部で保持しているラベルの集合を返す
-    pub fn labels(&self) -> Vec<Label> {
+    pub fn label_set(&self) -> Vec<Label> {
         self.0.values().map(|v| Label(*v)).collect()
     }
 }
@@ -234,7 +234,7 @@ pub struct Base(i32);
 impl Base {
     /// Baseから利用されうるtransitionの範囲を返す
     pub fn transition_range(self, labels: &Labels) -> Vec<NodeIdx> {
-        let labels = labels.labels();
+        let labels = labels.label_set();
         labels.iter().map(|v| self + *v).collect()
     }
 

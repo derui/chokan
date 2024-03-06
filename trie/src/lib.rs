@@ -1,7 +1,7 @@
 /// Trieのデータ型と操作を提供するmodule
 mod types;
 
-use std::collections::HashSet;
+use std::{cmp::min, collections::HashSet};
 
 use types::{empties, Base, Check, Label, Labels, Node, NodeIdx};
 
@@ -29,29 +29,38 @@ impl Trie {
             check: Check::root(),
         });
 
-        let value_len = labels.len();
-        empties::expand_empties(&mut nodes, value_len);
-
         Trie { nodes, labels }
     }
 
-    /// checkを変更する。
-    ///
-    /// checkの変更では、対象が未使用である場合には、一つ前のindexが、更新しようとしているcheckが指している
-    /// indexを指すようにしなければならない
-    fn write_check(&mut self, _base: i32, _label: i32) {}
-
-    /// nodeから遷移する先のラベルを挿入する
-    ///
-    /// ラベル集合が挿入できる場所に挿入するが、挿入できない場合は新しい領域を確保する。
-    /// この処理では、衝突回避は行わず、挿入と拡張のみを行う。
+    /// 現在指している `idx` から遷移するlabelの一覧を返す
     ///
     /// # Arguments
-    /// - `node` - 現在注目しているnode
-    /// - `base` - baseとして設定する値
-    /// - `labels` - 遷移先ラベルの集合
+    /// - `idx` - 遷移元のindex
     ///
-    fn write_labels(&mut self, _node: usize, _base: i32, _labels: &HashSet<i32>) {}
+    /// # Returns
+    /// 遷移先のlabelの一覧
+    fn find_labels_of(&self, idx: &NodeIdx) -> Vec<Label> {
+        let mut labels = Vec::new();
+        let base = self.nodes[usize::from(*idx)].base;
+
+        if base.is_empty() {
+            return labels;
+        }
+
+        // 遷移先の数の上限は、 `labels` から返されるlabelの数が上限になる
+        for l in self.labels.label_set() {
+            let l_idx = base + l;
+
+            match self.nodes.get(usize::from(l_idx)) {
+                Some(ck) if ck.is_transit(&l_idx) => {
+                    labels.push(l);
+                }
+                _ => (),
+            }
+        }
+
+        labels
+    }
 
     /// xcheckアルゴリズムの実装。
     ///
@@ -77,27 +86,26 @@ impl Trie {
                 // 一つでも利用中のcheckがある場合は、何もしない
                 for label in other_labels {
                     let i = t + *label;
-                    if let Some(n) = self.nodes.get(usize::from(i)) {
-                        if n.check.is_used() {
+                    match self.nodes.get(usize::from(i)) {
+                        Some(n) if n.check.is_used() => {
                             is_ok = false;
                             break;
                         }
-                    } else {
-                        // Noneになる場合、範囲を超えてしまっているので、領域の追加が必要である
-                        is_ok = false;
-                        break;
+                        None => {
+                            // Noneになる場合、範囲を超えてしまっているので、領域の追加が必要である
+                            is_ok = false;
+                            break;
+                        }
+                        _ => (),
                     }
                 }
 
                 if is_ok {
-                    // 見つけたbaseを利用する。
                     return t;
                 }
             }
         }
 
-        // 一切見つからなかった場合は、新しい領域を追加する必要がある
-        empties::expand_empties(&mut self.nodes, labels.len());
         Base::new(ary_size)
     }
 
@@ -149,7 +157,12 @@ impl Trie {
     /// - `label` - 設定するlabel
     /// - `base` - 設定もとのbase
     fn write_at(&mut self, idx: &NodeIdx, label: &Label, base: &Base) -> NodeIdx {
+        // 必要なら領域を拡張してから書き込む
         let transition = *base + *label;
+        let current_len = self.nodes.len();
+        if current_len <= usize::from(transition) {
+            empties::expand_empties(&mut self.nodes, usize::from(transition) - current_len + 1);
+        }
 
         // 先に未使用領域から外してから、対象の位置に書き込む
         let next_idx = NodeIdx::from(transition);
@@ -190,6 +203,7 @@ impl Trie {
             if base.is_empty() {
                 base = self.xcheck(&vec![*label]);
             }
+            println!("{:?}", base);
 
             current = self.write_at(&current, label, &base);
         }
