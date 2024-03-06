@@ -1,8 +1,6 @@
 /// Trieのデータ型と操作を提供するmodule
 mod types;
 
-use std::{cmp::min, collections::HashSet};
-
 use types::{empties, Base, Check, Label, Labels, Node, NodeIdx};
 
 /// 最も基本的なtrie構造を表現する
@@ -165,7 +163,7 @@ impl Trie {
         }
 
         // 先に未使用領域から外してから、対象の位置に書き込む
-        let next_idx = NodeIdx::from(transition);
+        let next_idx = transition;
         empties::delete_at(&mut self.nodes, &next_idx);
         self.nodes[usize::from(next_idx)].check = Check::from(*idx);
         self.nodes[usize::from(*idx)].base = *base;
@@ -203,7 +201,6 @@ impl Trie {
             if base.is_empty() {
                 base = self.xcheck(&vec![*label]);
             }
-            println!("{:?}", base);
 
             current = self.write_at(&current, label, &base);
         }
@@ -221,14 +218,13 @@ impl Trie {
     ///
     /// # Returns
     /// 発見されたnodeのindex。見つからなかった場合はNone
-    pub fn search(&self, key: &str, callback: &dyn Fn(NodeIdx, &str) -> ()) -> Option<usize> {
+    pub fn search(&self, key: &str, callback: &dyn Fn(NodeIdx, &str)) -> Option<usize> {
         let labels = self.labels.key_to_labels(key).unwrap();
         let mut current = NodeIdx::head();
         let mut result = Vec::new();
         let mut found_labels = String::new();
 
         for label in labels.iter() {
-            println!("{:?}, {:?}", label, current);
             let node = &self.nodes[usize::from(current)];
             let transition = node.base + *label;
 
@@ -237,7 +233,7 @@ impl Trie {
             }
 
             found_labels.push(self.labels.label_to_char(label));
-            current = NodeIdx::from(transition);
+            current = transition;
             callback(current, &found_labels);
             result.push(current);
         }

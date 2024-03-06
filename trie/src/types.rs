@@ -131,7 +131,7 @@ pub mod empties {
         expanded[size - 1].check = vec
             .iter()
             .position(|v| v.check.is_empty())
-            .map(|i| Check::empty_at(i))
+            .map(Check::empty_at)
             .unwrap_or(Check::empty_at(current_len));
 
         // 現在ある末尾のcheckの値を、今追加する先頭のindexに向ける
