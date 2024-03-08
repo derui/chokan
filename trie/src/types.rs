@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops};
+use std::{collections::HashMap, fmt::Display, ops};
 
 /// 内部で利用するbase/checkのペア
 /// ここで定義されるbase/checkは、内部的には未使用領域を負の値で管理している。
@@ -10,9 +10,26 @@ pub struct Node {
 }
 
 impl Node {
-    /// Nodeがidxに対してtransitできるかどうかを返す
+    /// Nodeがidxに対する遷移かどうか返す
     pub fn is_transit(&self, idx: &NodeIdx) -> bool {
         self.check.is_used() && NodeIdx::from(self.check) == *idx
+    }
+
+    /// Nodeがidxに対してtransitできるかどうかを返す
+    pub fn can_transit(&self) -> bool {
+        self.check.is_empty()
+    }
+
+    /// 現在のbaseと対象のlabelから、次の遷移先のindexを返す
+    pub fn next_node(&self, label: &Label) -> NodeIdx {
+        assert!(self.check.is_used(), "Can not transit if check is empty");
+        self.base + *label
+    }
+}
+
+impl Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}:{}]", self.base.0, self.check.0)
     }
 }
 
@@ -103,6 +120,8 @@ pub mod empties {
             // 見つからない場合は、自分自身を参照したものを設定する
             vec[usize::from(idx)].check = Check::empty_at(usize::from(idx));
         }
+
+        vec[usize::from(idx)].base = Base::empty()
     }
 
     /// 対象の位置がemptyかどうかを返す
