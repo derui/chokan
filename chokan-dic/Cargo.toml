@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 analytics-graph = { version = "0.1.0", path = "../libs/analytics-graph" }
 dic = { version = "0.1.0", path = "../libs/dic" }
+log = "0.4.21"
 postcard = { version = "1.0.8", features = ["alloc"] }
 serde = "1.0.197"
 trie = { version = "0.1.0", path = "../libs/trie" }

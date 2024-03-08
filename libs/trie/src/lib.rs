@@ -1,7 +1,7 @@
 /// Trieのデータ型と操作を提供するmodule
 mod types;
 
-use std::cmp::max;
+use std::usize;
 
 use serde::{Deserialize, Serialize};
 use types::{empties, Base, Check, Label, Labels, Node, NodeIdx};
@@ -63,14 +63,6 @@ impl Trie {
         labels
     }
 
-    /// アクセスする領域に対して不足して入れば追加する
-    fn expand_if_needed(&mut self, next_idx: &NodeIdx) {
-        if self.nodes.len() <= usize::from(*next_idx) {
-            let size = usize::from(*next_idx) - self.nodes.len();
-            empties::expand_empties(&mut self.nodes, max(1, size) * 2)
-        }
-    }
-
     /// xcheckアルゴリズムの実装。
     ///
     /// # Arguments
@@ -81,6 +73,10 @@ impl Trie {
     fn xcheck(&self, labels: &Vec<Label>) -> Base {
         let ary_size = self.nodes.len() as u32;
         let mut labels = labels.clone();
+
+        if labels.is_empty() {
+            return Base::new(ary_size);
+        }
 
         labels.sort();
 
@@ -101,9 +97,7 @@ impl Trie {
                             break;
                         }
                         None => {
-                            // Noneになる場合、範囲を超えてしまっているので、領域の追加が必要である
-                            is_ok = false;
-                            break;
+                            // Noneになる場合、範囲を超えてしまっているので、領域の追加が必要であるが、空として認識できる
                         }
                         _ => (),
                     }
@@ -128,24 +122,23 @@ impl Trie {
     ///
     /// # Returns
     /// 現在注目していた[NodeIdx]に対して衝突を回避した後、基準になるBase
-    fn move_conflicted(&mut self, node: &NodeIdx, label: &Label) -> Base {
+    fn move_conflicted(&mut self, node: &NodeIdx, label: &Label, base: &Base) -> NodeIdx {
         // 移動する対象を確定する
         let detect_to_move_base: (NodeIdx, Vec<Label>);
 
         // できるだけ遷移先が少ない方を移動する
         {
-            let check_idx = self.nodes[usize::from(*node)].base + *label;
-            let check_conflicted = &self.nodes[usize::from(check_idx)].check;
-            let conflicted_node = NodeIdx::from(*check_conflicted);
+            let check_idx = *base + *label;
+            let conflicted_node = NodeIdx::from(self.nodes[usize::from(check_idx)].check);
 
             assert!(*node != conflicted_node, "each node should be different");
 
-            let mut current_labels = self.find_labels_of(node);
-            current_labels.push(*label);
+            let current_labels = self.find_labels_of(node);
             let conflicted_labels = self.find_labels_of(&conflicted_node);
 
             // 今注目しているnodeのlabelsは、本来移動するものより一個少ない
-            if current_labels.len() < conflicted_labels.len() {
+            // ただし、この後の処理で移動するときに問題になるので、labelsにはくわえていない
+            if current_labels.len() + 1 < conflicted_labels.len() {
                 detect_to_move_base = (*node, current_labels);
             } else {
                 detect_to_move_base = (conflicted_node, conflicted_labels);
@@ -173,11 +166,11 @@ impl Trie {
             empties::push_unused(&mut self.nodes, current_base + *l);
         }
 
-        // 現在注目しているnodeが移動した場合は、新しいbaseをつかい、元々あった方を移動させた場合は、注目しているほうのbaseを使う
+        // 現在注目しているnodeが移動した場合は、新しいbaseに対して書き込み、そうではない場合はbaseを起点にして書き込む
         if detect_to_move_base.0 == *node {
-            new_base
+            self.write_at(node, label, &new_base)
         } else {
-            self.nodes[usize::from(*node)].base
+            self.write_at(node, label, base)
         }
     }
 
@@ -237,7 +230,7 @@ impl Trie {
             if base.is_empty() {
                 let mut labels = self.find_labels_of(&current);
                 labels.push(*label);
-                base = self.xcheck(&labels)
+                base = self.xcheck(&labels);
             }
 
             match self.nodes.get(usize::from(base + *label)) {
@@ -246,16 +239,14 @@ impl Trie {
                     current = node.next_node(label);
                     continue;
                 }
-                Some(n) => {
+                Some(n) if !n.can_transit() => {
                     // 使用中の場合は衝突しているので、衝突を解消してから書き込みを行う
-                    if !n.can_transit() {
-                        base = self.move_conflicted(&current, label);
-                    }
+                    current = self.move_conflicted(&current, label, &base);
                 }
-                _ => (),
+                _ => {
+                    current = self.write_at(&current, label, &base);
+                }
             }
-
-            current = self.write_at(&current, label, &base);
         }
 
         Ok(())

@@ -126,15 +126,6 @@ pub mod empties {
         vec[usize::from(idx)].base = Base::empty()
     }
 
-    /// 対象の位置がemptyかどうかを返す
-    pub fn is_empty_at(vec: &Vec<Node>, idx: NodeIdx) -> bool {
-        if let Some(v) = vec.get(usize::from(idx)) {
-            v.check.is_empty()
-        } else {
-            true
-        }
-    }
-
     /// 未使用領域を `size` だけ広げる
     ///
     /// 拡張するというのは未使用領域に閉じている。
@@ -149,17 +140,14 @@ pub mod empties {
             })
             .collect();
 
-        expanded[size - 1].check = vec
-            .iter()
-            .position(|v| v.check.is_empty())
-            .map(Check::empty_at)
-            .unwrap_or(Check::empty_at(current_len));
-
         // 現在ある末尾のcheckの値を、今追加する先頭のindexに向ける
         // 追加するcheckの末尾は、未使用領域の先頭に向けておく
-        // ここではSomeではあるが、実際にはrootの位置が常に未使用になるため、Noneになることはない。
-        if let Some((idx, _)) = vec.iter().enumerate().rfind(|(_, v)| v.check.is_empty()) {
-            vec[idx].check = Check::empty_at(current_len);
+        if let Some((idx, v)) = vec.iter().enumerate().rfind(|(_, v)| v.check.is_empty()) {
+            let (for_idx, for_last) = v.check.chain(&NodeIdx::from(current_len));
+            vec[idx].check = for_idx;
+            expanded[size - 1].check = for_last;
+        } else {
+            expanded[size - 1].check = Check::empty_at(current_len);
         }
 
         // 直接追加する
@@ -497,7 +485,7 @@ mod tests {
     }
 
     mod empties {
-        use crate::types::{empties, Base, Check, Empty, Label, Node};
+        use crate::types::{empties, Base, Check, Empty, Label, Node, NodeIdx};
 
         #[test]
         fn return_empties_in_nodes() {
@@ -692,6 +680,36 @@ mod tests {
                     },
                 ]
             )
+        }
+
+        #[test]
+        fn unchain_empty_from_list() {
+            // arrange
+            let mut nodes = vec![
+                Node {
+                    base: Base::root(),
+                    check: Check::root(),
+                },
+                Node {
+                    base: Base::root(),
+                    check: Check::empty_at(2),
+                },
+                Node {
+                    base: Base::root(),
+                    check: Check::empty_at(3),
+                },
+                Node {
+                    base: Base::root(),
+                    check: Check::empty_at(1),
+                },
+            ];
+
+            // act
+            empties::delete_at(&mut nodes, &NodeIdx::from(2));
+            let ret = empties::as_empties(&nodes);
+
+            // assert
+            assert_eq!(ret, vec![Empty(1), Empty(3)])
         }
     }
 

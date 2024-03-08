@@ -16,7 +16,7 @@ pub struct ConvertedEntry {
 
 impl Display for ConvertedEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}\t{}\t{}", self.headword, self.word, self.speech)
+        write!(f, "{}\t{}\t/{}/", self.headword, self.word, self.speech)
     }
 }
 

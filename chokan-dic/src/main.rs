@@ -5,6 +5,7 @@ use dic::{
     base::{dictionary::Dictionary, io::DictionaryReader, word::Word},
     standard::io::StandardDictionaryReader,
 };
+use log::info;
 use postcard::{to_allocvec, to_vec};
 use serde::Serialize;
 
@@ -34,11 +35,16 @@ fn read_and_make_dictionary(dic_path: &Path) -> Result<ReadDictionary, std::io::
 
     let mut trie = trie::Trie::from_keys(&label_keys());
     let mut dic_map = HashMap::new();
+    let mut count = 0u64;
 
     for entry in dic.entries_ref() {
         let words: Vec<Word> = entry.clone().into();
 
         for word in words {
+            count += 1;
+            if count % 1000 == 0 {
+                info!("Words: {} processed...", count);
+            }
             let _ = trie.insert(&word.reading);
             let v = dic_map.entry(word.reading.clone()).or_insert(Vec::new());
             v.push(word);
