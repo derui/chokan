@@ -3,11 +3,12 @@ mod types;
 
 use std::cmp::max;
 
+use serde::{Deserialize, Serialize};
 use types::{empties, Base, Check, Label, Labels, Node, NodeIdx};
 
 /// 最も基本的なtrie構造を表現する
 /// 任意のデータ構造を保有する必要がある場合は、[HoldableTrie<T>]を利用すること
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Trie {
     /// ダブル配列を構成するための基本的なデータ構造。
     nodes: Vec<Node>,
@@ -176,7 +177,7 @@ impl Trie {
         if detect_to_move_base.0 == *node {
             new_base
         } else {
-            self.nodes[usize::from(*node)].base.clone()
+            self.nodes[usize::from(*node)].base
         }
     }
 

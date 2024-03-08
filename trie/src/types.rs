@@ -1,9 +1,11 @@
 use std::{collections::HashMap, fmt::Display, ops};
 
+use serde::{Deserialize, Serialize};
+
 /// 内部で利用するbase/checkのペア
 /// ここで定義されるbase/checkは、内部的には未使用領域を負の値で管理している。
 /// baseにおける負の値は **前の未使用baseのindex** を負の値としており、 checkにおける負の値は、 **次の未使用checkのindex** を負の値としている
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Node {
     pub base: Base,
     pub check: Check,
@@ -172,7 +174,7 @@ pub mod empties {
 /// Labelの集合を表す型
 ///
 /// charからlabelへの変換も実施するが、
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Labels(HashMap<char, u8>);
 
 impl Labels {
@@ -247,7 +249,7 @@ impl Labels {
 /// Base自体を表す型
 ///
 /// Baseはそもそもoffset自体を表現しているので、実際はindexで利用することがほとんどである
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Base(i32);
 
 impl Base {
@@ -293,7 +295,7 @@ impl ops::Add<Label> for Base {
 }
 
 /// Check自体を表す型
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Check(i32);
 
 impl Check {

@@ -1,7 +1,9 @@
 use std::{collections::HashSet, fmt::Display};
 
+use serde::{Deserialize, Serialize};
+
 // 単語における品詞
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Speech {
     Noun,                   // 名詞
     Verb(VerbForm),         // 動詞。引数は辞書系で利用する活用
@@ -66,7 +68,7 @@ impl Display for Speech {
 }
 
 /// 助詞の種類
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum ParticleType {
     Case,          // 格助詞
     Adverbial,     // 副助詞
@@ -91,7 +93,7 @@ impl Display for ParticleType {
 
 /// 動詞の活用形
 /// 引数は、各活用で利用する段である
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum VerbForm {
     Godan(String),       // 五段活用
     Yodan(String),       // 四段活用
