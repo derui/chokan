@@ -195,7 +195,6 @@ impl NoteEntry {
             format!("{}{}", self.stem, okuri),
             format!("{}{}", headword, okuri),
         );
-        println!("{} -> {}", &stem_with_okuri, headword_with_okuri);
 
         (
             drop_dictionary_okuri(&stem_with_okuri, &self.speech),
