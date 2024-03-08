@@ -173,7 +173,7 @@ pub mod empties {
 
 /// Labelの集合を表す型
 ///
-/// charからlabelへの変換も実施するが、
+/// charからlabelへの変換を提供する。
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Labels(HashMap<char, u8>);
 

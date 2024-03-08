@@ -5,6 +5,7 @@ use dic::{
     base::{dictionary::Dictionary, io::DictionaryReader, word::Word},
     standard::io::StandardDictionaryReader,
 };
+use postcard::{to_allocvec, to_vec};
 use serde::Serialize;
 
 // 一時的に利用するdictionary
@@ -72,7 +73,6 @@ fn main() {
         ancillary_dic: huzoku.dic,
     };
     let mut output = File::create(output_path).unwrap();
-    let mut serializer = flexbuffers::FlexbufferSerializer::new();
-    dic.serialize(&mut serializer).unwrap();
-    output.write_all(serializer.view()).unwrap();
+    let bin = to_allocvec(&dic).unwrap();
+    output.write_all(&bin).unwrap();
 }
