@@ -8,7 +8,7 @@ use peg::{error::ParseError, str::LineCol};
 
 use crate::base::{
     entry::Entry,
-    speech::{NounVariant, Speech, VerbForm},
+    speech::{AffixVariant, NounVariant, Speech, VerbForm},
 };
 
 peg::parser! {
@@ -50,8 +50,13 @@ peg::parser! {
       rule counter() -> Speech = "助数詞" { Speech::Counter }
       rule verbatim() -> Speech = "感動詞" { Speech::Verbatim }
       rule pre_noun_adjectival() -> Speech = "連体詞" { Speech::PreNounAdjectival }
+      rule affix() -> Speech = s:$("接頭辞" / "接尾辞") {? match s {
+            "接頭辞" => Ok(Speech::Affix(AffixVariant::Prefix)),
+            "接尾辞" => Ok(Speech::Affix(AffixVariant::Suffix)),
+            _ => Err("Invalid affix")
+      } }
       rule speech() -> Speech = "/" n:(
-          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb()
+          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / affix()
       ) "/" {
           n
       }
@@ -131,6 +136,24 @@ mod tests {
                 "ありがとう",
                 "有り難う",
                 Speech::Verbatim
+            )))
+        );
+
+        assert_eq!(
+            parse_entry("ふ\t不\t/接頭辞/"),
+            Ok(Some(Entry::from_jisyo(
+                "ふ",
+                "不",
+                Speech::Affix(AffixVariant::Prefix)
+            )))
+        );
+
+        assert_eq!(
+            parse_entry("じょう\t状\t/接尾辞/"),
+            Ok(Some(Entry::from_jisyo(
+                "じょう",
+                "状",
+                Speech::Affix(AffixVariant::Suffix)
             )))
         );
     }

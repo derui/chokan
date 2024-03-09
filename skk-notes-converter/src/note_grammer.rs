@@ -32,11 +32,45 @@ pub enum NoteSpeech {
     PreNounAdjectival(Option<Okuri>), // 連体詞
 }
 
+impl NoteSpeech {
+    /// 対応する送りをかえす
+    pub(crate) fn okuri(&self) -> Option<&Okuri> {
+        match self {
+            NoteSpeech::Verb(_, o) => o.as_ref(),
+            NoteSpeech::Adjective(o) => o.as_ref(),
+            NoteSpeech::AdjectivalVerb(o) => Some(o),
+            NoteSpeech::Adverb(o) => Some(o),
+            NoteSpeech::Noun(_, o) => o.as_ref(),
+            NoteSpeech::Counter(o) => Some(o),
+            NoteSpeech::Verbatim(o) => Some(o),
+            NoteSpeech::PreNounAdjectival(o) => o.as_ref(),
+        }
+    }
+}
+
 // 送り仮名の情報
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Okuri {
     Fixed(String),     // -いる、-えるなどの固定の送り仮名
     CharClass(String), // []で囲まれたキャラクタクラス
+}
+
+impl Okuri {
+    /// 接頭辞が含まれるかどうか返す
+    pub(crate) fn has_prefix(&self) -> bool {
+        match self {
+            Okuri::Fixed(_) => false,
+            Okuri::CharClass(s) => s.contains('>'),
+        }
+    }
+
+    /// 接尾辞が含まれるかどうか返す
+    pub(crate) fn has_suffix(&self) -> bool {
+        match self {
+            Okuri::Fixed(_) => false,
+            Okuri::CharClass(s) => s.contains('<'),
+        }
+    }
 }
 
 peg::parser! {
@@ -395,5 +429,19 @@ mod tests {
                 ]
             })
         )
+    }
+
+    #[test]
+    fn parse_affix() {
+        let note = note_parser::note("ふ /不;∥副詞[>]/");
+
+        assert!(
+            note.unwrap().entries[0]
+                .speech
+                .okuri()
+                .unwrap()
+                .has_prefix(),
+            "contains prefix"
+        );
     }
 }

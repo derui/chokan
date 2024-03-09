@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use dic::base::speech::{NounVariant, Speech, VerbForm};
+use dic::base::speech::{self, AffixVariant, NounVariant, Speech, VerbForm};
 
 use crate::note_grammer::{Note, NoteEntry, NoteSpeech, Okuri};
 
@@ -203,8 +203,31 @@ impl NoteEntry {
         )
     }
 
+    /// 可能なら接辞を返す
+    fn to_affix_if_possible(&self, headword: &str) -> Option<ConvertedEntry> {
+        self.speech
+            .okuri()
+            .and_then(|o| {
+                if o.has_prefix() {
+                    Some(Speech::Affix(AffixVariant::Prefix))
+                } else if o.has_suffix() {
+                    Some(Speech::Affix(AffixVariant::Suffix))
+                } else {
+                    None
+                }
+            })
+            .and_then(|speech| {
+                let (stem, headword) = self.get_dictionary_form(headword);
+                Some(ConvertedEntry {
+                    headword,
+                    word: stem,
+                    speech,
+                })
+            })
+    }
+
     /// NoteEntry自体を単独の[Entry]に変換する
-    fn to_entry(&self, headword: &str) -> ConvertedEntry {
+    fn to_entries(&self, headword: &str) -> Vec<ConvertedEntry> {
         let speech = match &self.speech {
             NoteSpeech::Verb(form, _) => Speech::Verb(form.clone()),
             NoteSpeech::Adjective(_) => Speech::Adjective,
@@ -219,12 +242,17 @@ impl NoteEntry {
             NoteSpeech::Verbatim(_) => Speech::Verbatim,
             NoteSpeech::PreNounAdjectival(_) => Speech::PreNounAdjectival,
         };
-        let (word, headword) = self.get_dictionary_form(headword);
-        ConvertedEntry {
-            headword,
+        let (word, dic_headword) = self.get_dictionary_form(headword);
+        let base = ConvertedEntry {
+            headword: dic_headword,
             word,
             speech,
-        }
+        };
+
+        vec![Some(base), self.to_affix_if_possible(headword)]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -232,7 +260,11 @@ impl Note {
     /// NoteからbaseにあるEntryの一覧に変換する
     pub fn to_entries(&self) -> Vec<ConvertedEntry> {
         let headword = &self.headword;
-        self.entries.iter().map(|v| v.to_entry(headword)).collect()
+        self.entries
+            .iter()
+            .map(|v| v.to_entries(headword))
+            .flatten()
+            .collect()
     }
 }
 
@@ -250,5 +282,15 @@ mod tests {
 
         assert_eq!(converted.len(), 1);
         assert_eq!(converted[0].to_string(), "おんみつ\t隠密\t/形容動詞/")
+    }
+
+    #[test]
+    fn parse_affix() {
+        let note = parse_note("ふ /不;∥副詞[>]/");
+
+        let converted = note.unwrap().unwrap().to_entries();
+        assert_eq!(converted.len(), 2);
+        assert_eq!(converted[0].to_string(), "ふ\t不\t/副詞/");
+        assert_eq!(converted[1].to_string(), "ふ\t不\t/接頭辞/");
     }
 }
