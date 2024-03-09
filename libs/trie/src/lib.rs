@@ -20,15 +20,16 @@ pub struct Trie {
 
 impl Trie {
     /// 新しいTrieを生成する
-    pub fn from_keys(keys: &Vec<char>) -> Trie {
+    pub fn from_keys(keys: &[char]) -> Trie {
         let labels = Labels::from_chars(keys);
 
-        let mut nodes = Vec::new();
-        // 仕組み上、0のcheckが利用されることはないため、初期化時点では常に1を指しておく
-        nodes.push(Node {
-            base: Base::root(),
-            check: Check::root(),
-        });
+        let nodes = vec![
+            // 仕組み上、0のcheckが利用されることはないため、初期化時点では常に1を指しておく
+            Node {
+                base: Base::root(),
+                check: Check::root(),
+            },
+        ];
 
         Trie { nodes, labels }
     }
@@ -70,9 +71,9 @@ impl Trie {
     ///
     /// # Returns
     /// 返却される値は、すべてのlabelが設定可能と判定されたbaseのindexである
-    fn xcheck(&self, labels: &Vec<Label>) -> Base {
+    fn xcheck(&self, labels: &[Label]) -> Base {
         let ary_size = self.nodes.len() as u32;
-        let mut labels = labels.clone();
+        let mut labels = labels.to_owned();
 
         if labels.is_empty() {
             return Base::new(ary_size);

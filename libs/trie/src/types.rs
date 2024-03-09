@@ -63,7 +63,7 @@ pub mod empties {
     use super::{Base, Check, Empty, Node, NodeIdx};
 
     /// 空配列の集合を返す
-    pub fn as_empties(nodes: &Vec<Node>) -> Vec<Empty> {
+    pub fn as_empties(nodes: &[Node]) -> Vec<Empty> {
         let mut set: HashSet<Empty> = HashSet::new();
 
         let mut root = nodes
@@ -71,17 +71,13 @@ pub mod empties {
             .find(|v| v.check.is_empty())
             .and_then(|v| v.check.next_empty());
 
-        loop {
-            if let Some(rt) = root {
-                if set.contains(&rt) {
-                    break;
-                }
-                set.insert(rt.clone());
-
-                root = nodes[rt.0].check.next_empty()
-            } else {
+        while let Some(rt) = root {
+            if set.contains(&rt) {
                 break;
             }
+            set.insert(rt.clone());
+
+            root = nodes[rt.0].check.next_empty()
         }
 
         let mut vec = set.iter().cloned().collect::<Vec<_>>();
@@ -95,22 +91,19 @@ pub mod empties {
             .iter()
             .position(|p| p.check.next_empty() == Some(Empty::from(*idx)));
 
-        match pos {
-            Some(pos) => {
-                if pos == usize::from(*idx) {
-                    // 自分自身が対象だったら何もしない
-                    return;
-                }
-
-                let check = vec[usize::from(*idx)].check;
-                vec[pos].check = vec[pos].check.unchain(&check);
+        if let Some(pos) = pos {
+            if pos == usize::from(*idx) {
+                // 自分自身が対象だったら何もしない
+                return;
             }
-            None => (),
+
+            let check = vec[usize::from(*idx)].check;
+            vec[pos].check = vec[pos].check.unchain(&check);
         }
     }
 
     /// 対象の位置を未使用に変更する
-    pub fn push_unused(vec: &mut Vec<Node>, idx: NodeIdx) {
+    pub fn push_unused(vec: &mut [Node], idx: NodeIdx) {
         let last_empty = vec.iter().rposition(|v| v.check.is_empty());
 
         if let Some(last_empty_idx) = last_empty {
@@ -173,7 +166,7 @@ impl Labels {
     }
 
     /// labelをキーになる値から生成する
-    pub fn from_chars(keys: &Vec<char>) -> Labels {
+    pub fn from_chars(keys: &[char]) -> Labels {
         assert!(!keys.is_empty(), "can not accept empty keys");
         let mut key_map = HashMap::new();
 
@@ -428,7 +421,7 @@ mod tests {
         #[test]
         fn get_transition_range() {
             // arrange
-            let labels = Labels::from_chars(&vec!['a', 'b']);
+            let labels = Labels::from_chars(&['a', 'b']);
 
             // act
             let base = Base::new(12);
@@ -719,13 +712,13 @@ mod tests {
         #[test]
         #[should_panic]
         fn do_not_allow_empty_labels() {
-            Labels::from_chars(&vec![]);
+            Labels::from_chars(&[]);
         }
 
         #[test]
         fn get_labeled_keys_from_key() {
             // arrange
-            let ls = Labels::from_chars(&vec!['a', 'b', 'c']);
+            let ls = Labels::from_chars(&['a', 'b', 'c']);
 
             // act
             let ret = ls.key_to_labels("aabc");
@@ -745,7 +738,7 @@ mod tests {
         #[test]
         fn should_return_error_if_key_contains_char_that_is_not_contained_labels() {
             // arrange
-            let ls = Labels::from_chars(&vec!['a', 'b', 'c']);
+            let ls = Labels::from_chars(&['a', 'b', 'c']);
 
             // act
             let ret = ls.key_to_labels("adabc");
