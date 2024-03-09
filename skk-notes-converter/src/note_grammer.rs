@@ -30,6 +30,7 @@ pub enum NoteSpeech {
     Counter(Okuri),                // 助数詞
     Verbatim(Okuri),               // 感動詞
     PreNounAdjectival(Option<Okuri>), // 連体詞
+    ConjuctiveParticle(Option<Okuri>), // 接続助詞
 }
 
 impl NoteSpeech {
@@ -44,6 +45,7 @@ impl NoteSpeech {
             NoteSpeech::Counter(o) => Some(o),
             NoteSpeech::Verbatim(o) => Some(o),
             NoteSpeech::PreNounAdjectival(o) => o.as_ref(),
+            NoteSpeech::ConjuctiveParticle(o) => o.as_ref(),
         }
     }
 }
@@ -116,10 +118,11 @@ peg::parser! {
       rule verbatim() -> Option<NoteSpeech> = "感動詞" o:okuri() { Some(NoteSpeech::Verbatim(o)) }
       rule pre_noun_adjectival() -> Option<NoteSpeech> = "連体詞" o:okuri()? { Some(NoteSpeech::PreNounAdjectival(o)) }
       rule subsidiary_verb() -> Option<NoteSpeech> = "補助動詞" o:okuri()? { None }
+      rule conjuctive_particle() -> Option<NoteSpeech> = "接続助詞" o:okuri()? { Some(NoteSpeech::ConjuctiveParticle(o)) }
 
       rule speech_header() = ("<base>" / "(文語)" / "文語" / "(連濁)")?
       rule speech() -> Vec<NoteSpeech> = "∥" speech_header() n:(
-          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / subsidiary_verb()
+          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / subsidiary_verb() / conjuctive_particle()
       ) ** "," note_in_entry()? {
           n.iter().filter(|&v|v.is_some()).cloned().map(|v| v.unwrap()).collect()
       }

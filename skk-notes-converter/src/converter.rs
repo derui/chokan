@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use dic::base::speech::{self, AffixVariant, NounVariant, Speech, VerbForm};
+use dic::base::speech::{AffixVariant, NounVariant, ParticleType, Speech, VerbForm};
 
 use crate::note_grammer::{Note, NoteEntry, NoteSpeech, Okuri};
 
@@ -183,6 +183,10 @@ impl NoteSpeech {
                 .clone()
                 .map(|v| v.to_kana(""))
                 .unwrap_or("".to_string()),
+            NoteSpeech::ConjuctiveParticle(okuri) => okuri
+                .clone()
+                .map(|v| v.to_kana(""))
+                .unwrap_or("".to_string()),
         }
     }
 }
@@ -241,6 +245,7 @@ impl NoteEntry {
             NoteSpeech::Counter(_) => Speech::Counter,
             NoteSpeech::Verbatim(_) => Speech::Verbatim,
             NoteSpeech::PreNounAdjectival(_) => Speech::PreNounAdjectival,
+            NoteSpeech::ConjuctiveParticle(_) => Speech::Particle(ParticleType::Conjunctive),
         };
         let (word, dic_headword) = self.get_dictionary_form(headword);
         let base = ConvertedEntry {
