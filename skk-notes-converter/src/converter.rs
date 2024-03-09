@@ -188,6 +188,10 @@ impl NoteSpeech {
                 .clone()
                 .map(|v| v.to_kana(""))
                 .unwrap_or("".to_string()),
+            NoteSpeech::Conjunction(okuri) => okuri
+                .clone()
+                .map(|v| v.to_kana(""))
+                .unwrap_or("".to_string()),
         }
     }
 }
@@ -247,6 +251,7 @@ impl NoteEntry {
             NoteSpeech::Verbatim(_) => Speech::Verbatim,
             NoteSpeech::PreNounAdjectival(_) => Speech::PreNounAdjectival,
             NoteSpeech::ConjuctiveParticle(_) => Speech::Particle(ParticleType::Conjunctive),
+            NoteSpeech::Conjunction(_) => Speech::Conjunction,
         };
         let (word, dic_headword) = self.get_dictionary_form(headword);
         let base = ConvertedEntry {

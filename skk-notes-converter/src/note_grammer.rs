@@ -31,6 +31,7 @@ pub enum NoteSpeech {
     Verbatim(Okuri),               // 感動詞
     PreNounAdjectival(Option<Okuri>), // 連体詞
     ConjuctiveParticle(Option<Okuri>), // 接続助詞
+    Conjunction(Option<Okuri>),    // 接続詞
 }
 
 impl NoteSpeech {
@@ -46,6 +47,7 @@ impl NoteSpeech {
             NoteSpeech::Verbatim(o) => Some(o),
             NoteSpeech::PreNounAdjectival(o) => o.as_ref(),
             NoteSpeech::ConjuctiveParticle(o) => o.as_ref(),
+            NoteSpeech::Conjunction(o) => o.as_ref(),
         }
     }
 }
@@ -119,10 +121,11 @@ peg::parser! {
       rule pre_noun_adjectival() -> Option<NoteSpeech> = "連体詞" o:okuri()? { Some(NoteSpeech::PreNounAdjectival(o)) }
       rule subsidiary_verb() -> Option<NoteSpeech> = "補助動詞" o:okuri()? { None }
       rule conjuctive_particle() -> Option<NoteSpeech> = "接続助詞" o:okuri()? { Some(NoteSpeech::ConjuctiveParticle(o)) }
+      rule conjunction() -> Option<NoteSpeech> = "接続詞" o:okuri()? { Some(NoteSpeech::Conjunction(o)) }
 
       rule speech_header() = ("<base>" / "(文語)" / "文語" / "(連濁)")?
       rule speech() -> Vec<NoteSpeech> = "∥" speech_header() n:(
-          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / subsidiary_verb() / conjuctive_particle()
+          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / subsidiary_verb() / conjuctive_particle() / conjunction()
       ) ** "," note_in_entry()? {
           n.iter().filter(|&v|v.is_some()).cloned().map(|v| v.unwrap()).collect()
       }
@@ -464,5 +467,20 @@ mod tests {
                 .has_prefix(),
             "contains prefix"
         );
+    }
+
+    #[test]
+    fn conjunction_must_be_readable() {
+        assert_eq!(
+            note_parser::note("ただs /但;∥接続詞(-し)/"),
+            Ok(Note {
+                headword: "ただ".to_string(),
+                okuri: "s".to_string(),
+                entries: vec![NoteEntry {
+                    stem: "但".to_string(),
+                    speech: NoteSpeech::Conjunction(Some(Okuri::Fixed("し".to_string())))
+                }]
+            })
+        )
     }
 }
