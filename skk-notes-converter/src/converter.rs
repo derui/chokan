@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use dic::base::speech::{Speech, VerbForm};
+use dic::base::speech::{NounVariant, Speech, VerbForm};
 
 use crate::note_grammer::{Note, NoteEntry, NoteSpeech, Okuri};
 
@@ -209,7 +209,11 @@ impl NoteEntry {
             NoteSpeech::Adjective(_) => Speech::Adjective,
             NoteSpeech::AdjectivalVerb(_) => Speech::AdjectivalVerb,
             NoteSpeech::Adverb(_) => Speech::Adverb,
-            NoteSpeech::Noun(_, _) => Speech::Noun,
+            NoteSpeech::Noun(typ, _) => match typ.as_str() {
+                // notesではサ変名詞くらいしか区別されていない
+                "サ変名詞" => Speech::Noun(NounVariant::Sahen),
+                _ => Speech::Noun(NounVariant::Common),
+            },
             NoteSpeech::Counter(_) => Speech::Counter,
             NoteSpeech::Verbatim(_) => Speech::Verbatim,
             NoteSpeech::PreNounAdjectival(_) => Speech::PreNounAdjectival,

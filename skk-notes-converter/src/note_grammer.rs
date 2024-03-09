@@ -118,6 +118,8 @@ pub fn parse_note(s: &str) -> Result<Option<Note>, ParseError<LineCol>> {
 
 #[cfg(test)]
 mod tests {
+    use dic::base::speech::NounVariant;
+
     use super::*;
 
     #[test]
@@ -203,6 +205,18 @@ mod tests {
                         "名詞".to_string(),
                         Some(Okuri::Fixed("り".to_string()))
                     )
+                }]
+            })
+        );
+
+        assert_eq!(
+            note_parser::note("かいどく /解読;∥サ変名詞/"),
+            Ok(Note {
+                headword: "かいどく".to_string(),
+                okuri: "".to_string(),
+                entries: vec![NoteEntry {
+                    stem: "解読".to_string(),
+                    speech: NoteSpeech::Noun("サ変名詞".to_string(), None)
                 }]
             })
         );
