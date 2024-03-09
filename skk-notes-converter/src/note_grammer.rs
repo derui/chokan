@@ -95,7 +95,7 @@ peg::parser! {
       rule char_class() -> Okuri = "[" n:$(['a'..='z' | '>' | '<' | '#' | '*' | '-' | '(' | ')' | 'φ' | '.']+) "]" { Okuri::CharClass(n.to_string()) }
       // 複数の送り仮名がある場合は、Fixedを優先する
       rule okuri() -> Okuri = n:(fixed_okuri() / char_class()) (fixed_okuri() / char_class())? { n }
-      rule noun() -> Option<NoteSpeech> = t:$("サ変名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句" / "連句" / "連濁")  o:okuri()? { Some(NoteSpeech::Noun(t.to_string(), o)) }
+      rule noun() -> Option<NoteSpeech> = t:$("サ変名詞" / "代名詞" / "名詞" / "人称代名詞" / "疑問代名詞" / "連語" / "複合語" / "成句" / "連句" / "連濁")  o:okuri()? { Some(NoteSpeech::Noun(t.to_string(), o)) }
       rule verb_form() -> VerbForm = k:katakana() n:$("行五段" / "行四段" / "行上一" / "行下一" /"行上二" / "行下二" / "変" ) {?
           match n {
               "行五段" => Ok(VerbForm::Godan(k)),
@@ -401,6 +401,24 @@ mod tests {
                     speech: NoteSpeech::Verb(
                         VerbForm::KamiIchidan("マ".to_string()),
                         Some(Okuri::CharClass("a-z".to_string()))
+                    )
+                }]
+            })
+        )
+    }
+
+    #[test]
+    fn pronouns_must_be_readable() {
+        assert_eq!(
+            note_parser::note("どr /何;∥代名詞(-れ)/"),
+            Ok(Note {
+                headword: "ど".to_string(),
+                okuri: "r".to_string(),
+                entries: vec![NoteEntry {
+                    stem: "何".to_string(),
+                    speech: NoteSpeech::Noun(
+                        "代名詞".to_string(),
+                        Some(Okuri::Fixed("れ".to_string()))
                     )
                 }]
             })
