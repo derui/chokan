@@ -7,7 +7,7 @@ use dic::base::speech::VerbForm;
 //
 use peg::{error::ParseError, str::LineCol};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Note {
     pub headword: String,
     pub okuri: String,
@@ -118,7 +118,6 @@ pub fn parse_note(s: &str) -> Result<Option<Note>, ParseError<LineCol>> {
 
 #[cfg(test)]
 mod tests {
-    use dic::base::speech::NounVariant;
 
     use super::*;
 

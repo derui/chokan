@@ -157,6 +157,7 @@ fn drop_dictionary_okuri(word: &str, speech: &NoteSpeech) -> String {
             }
         }
         NoteSpeech::Adjective(_) => word[..(word.len() - "い".len())].to_string(),
+        NoteSpeech::AdjectivalVerb(_) => word[..(word.len() - "だ".len())].to_string(),
         _ => word.to_string(),
     }
 }
@@ -232,5 +233,22 @@ impl Note {
     pub fn to_entries(&self) -> Vec<ConvertedEntry> {
         let headword = &self.headword;
         self.entries.iter().map(|v| v.to_entry(headword)).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::note_grammer::parse_note;
+
+    use super::*;
+
+    #[test]
+    fn convert_adjactive_verb() {
+        let note = parse_note("おんみつ /隠密;∥形容動詞[φdn(s)]/");
+
+        let converted = note.unwrap().unwrap().to_entries();
+
+        assert_eq!(converted.len(), 1);
+        assert_eq!(converted[0].to_string(), "おんみつ\t隠密\t/形容動詞/")
     }
 }
