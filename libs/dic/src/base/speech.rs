@@ -305,11 +305,12 @@ impl VerbForm {
                 "ダ" => vec!["で", "づ"],
                 "ナ" => vec!["ぬ", "ね"],
                 "ハ" => vec!["へ", "ふ"],
+                "バ" => vec!["べ", "ぶ"],
                 "マ" => vec!["め", "む"],
                 "ラ" => vec!["れ", "る"],
                 "ヤ" => vec!["え", "ゆ"],
                 "ワ" => vec!["ゑ", "う"],
-                _ => panic!("Can not get okuri for godan verb with {}", row),
+                _ => panic!("Can not get okuri for shimonidan verb with {}", row),
             },
             VerbForm::KamiNidan(row) => match row.as_str() {
                 "カ" => vec!["き", "く"],
@@ -321,7 +322,7 @@ impl VerbForm {
                 "マ" => vec!["み", "む"],
                 "ヤ" => vec!["い", "ゆ"],
                 "ラ" => vec!["り", "る"],
-                _ => panic!("Can not get okuri for godan verb with {}", row),
+                _ => panic!("Can not get okuri for kaminidan verb with {}", row),
             },
             VerbForm::Hen(row) => match row.as_str() {
                 // カ行変格活用では、基本的に語幹自体が無いという考え方がある。
