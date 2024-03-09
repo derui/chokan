@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-analytics-graph = { version = "0.1.0", path = "../libs/analytics-graph" }
+kkc = { version = "0.1.0", path = "../libs/kkc" }
 dic = { version = "0.1.0", path = "../libs/dic" }
 log = "0.4.21"
 postcard = { version = "1.0.8", features = ["alloc"] }

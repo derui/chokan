@@ -3,15 +3,6 @@
 version = 3
 
 [[package]]
-name = "analytics-graph"
-version = "0.1.0"
-dependencies = [
- "dic",
- "serde",
- "trie",
-]
-
-[[package]]
 name = "atomic-polyfill"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -36,8 +27,8 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 name = "chokan-dic"
 version = "0.1.0"
 dependencies = [
- "analytics-graph",
  "dic",
+ "kkc",
  "log",
  "postcard",
  "serde",
@@ -91,6 +82,15 @@ dependencies = [
  "serde",
  "spin",
  "stable_deref_trait",
+]
+
+[[package]]
+name = "kkc"
+version = "0.1.0"
+dependencies = [
+ "dic",
+ "serde",
+ "trie",
 ]
 
 [[package]]

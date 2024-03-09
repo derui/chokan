@@ -3,20 +3,20 @@
 version = 3
 
 [[package]]
-name = "analytics-graph"
-version = "0.1.0"
-dependencies = [
- "dic",
- "serde",
- "trie",
-]
-
-[[package]]
 name = "dic"
 version = "0.1.0"
 dependencies = [
  "peg",
  "serde",
+]
+
+[[package]]
+name = "kkc"
+version = "0.1.0"
+dependencies = [
+ "dic",
+ "serde",
+ "trie",
 ]
 
 [[package]]

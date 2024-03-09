@@ -1,10 +1,10 @@
 use std::{collections::HashMap, env, fs::File, io::Write, path::Path};
 
-use analytics_graph::GraphDictionary;
 use dic::{
     base::{dictionary::Dictionary, io::DictionaryReader, word::Word},
     standard::io::StandardDictionaryReader,
 };
+use kkc::GraphDictionary;
 use log::info;
 use postcard::{to_allocvec, to_vec};
 use serde::Serialize;
