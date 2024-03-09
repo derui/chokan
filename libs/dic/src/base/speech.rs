@@ -16,6 +16,7 @@ pub enum Speech {
     AuxiliaryVerb,          // 助動詞
     PreNounAdjectival,      // 連体詞
     Counter,                // 助数詞
+    Affix(AffixVariant),    // 接辞
 }
 
 impl Speech {
@@ -45,6 +46,7 @@ impl Speech {
             Speech::AuxiliaryVerb => ["".to_string()].iter().cloned().collect(),
             Speech::PreNounAdjectival => ["".to_string()].iter().cloned().collect(),
             Speech::Counter => ["".to_string()].iter().cloned().collect(),
+            Speech::Affix(_) => ["".to_string()].iter().cloned().collect(),
         }
     }
 }
@@ -63,6 +65,23 @@ impl Display for Speech {
             Speech::AuxiliaryVerb => write!(f, "助動詞"),
             Speech::PreNounAdjectival => write!(f, "連体詞"),
             Speech::Counter => write!(f, "助数詞"),
+            Speech::Affix(v) => write!(f, "{}辞", v),
+        }
+    }
+}
+
+/// 接辞の種類
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub enum AffixVariant {
+    Prefix, // 接頭辞
+    Suffix, // 接尾辞
+}
+
+impl Display for AffixVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AffixVariant::Prefix => write!(f, "接頭"),
+            AffixVariant::Suffix => write!(f, "接尾"),
         }
     }
 }
@@ -339,5 +358,11 @@ mod tests {
     fn test_display_verb_form() {
         let form = VerbForm::Godan("カ".to_string());
         assert_eq!(form.to_string(), "カ行五段");
+    }
+
+    #[test]
+    fn test_display_affix() {
+        assert_eq!(Speech::Affix(AffixVariant::Prefix).to_string(), "接頭辞");
+        assert_eq!(Speech::Affix(AffixVariant::Suffix).to_string(), "接尾辞");
     }
 }
