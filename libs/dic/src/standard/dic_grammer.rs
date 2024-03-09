@@ -49,6 +49,7 @@ peg::parser! {
       rule adjectival_verb() -> Speech = "形容動詞" { Speech::AdjectivalVerb }
       rule counter() -> Speech = "助数詞" { Speech::Counter }
       rule verbatim() -> Speech = "感動詞" { Speech::Verbatim }
+      rule conjunction() -> Speech = "接続詞" { Speech::Conjunction }
       rule pre_noun_adjectival() -> Speech = "連体詞" { Speech::PreNounAdjectival }
       rule affix() -> Speech = s:$("接頭辞" / "接尾辞") {? match s {
             "接頭辞" => Ok(Speech::Affix(AffixVariant::Prefix)),
@@ -56,7 +57,7 @@ peg::parser! {
             _ => Err("Invalid affix")
       } }
       rule speech() -> Speech = "/" n:(
-          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / affix()
+          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / affix() / conjunction()
       ) "/" {
           n
       }
@@ -154,6 +155,15 @@ mod tests {
                 "じょう",
                 "状",
                 Speech::Affix(AffixVariant::Suffix)
+            )))
+        );
+
+        assert_eq!(
+            parse_entry("ただし\t但し\t/接続詞/"),
+            Ok(Some(Entry::from_jisyo(
+                "ただし",
+                "但し",
+                Speech::Conjunction
             )))
         );
     }
