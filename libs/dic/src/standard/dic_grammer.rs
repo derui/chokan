@@ -8,7 +8,7 @@ use peg::{error::ParseError, str::LineCol};
 
 use crate::base::{
     entry::Entry,
-    speech::{Speech, VerbForm},
+    speech::{NounVariant, Speech, VerbForm},
 };
 
 peg::parser! {
@@ -21,7 +21,14 @@ peg::parser! {
       rule kana() -> String = n:$(['あ'..='ん' | 'ゐ' | 'ゃ' | 'ゅ' | 'ょ' | 'ぁ' | 'ぃ' | 'ぅ' | 'ぇ' | 'ぉ' | 'っ']) { n.to_string() }
       rule katakana() -> String = n:$(['ア' |'カ'| 'サ' | 'タ' |'ナ' | 'ハ'|'マ'|'ヤ'|'ワ' | 'ラ' | 'ダ' | 'バ' | 'ガ' | 'ザ']) { n.to_string() }
 
-      rule noun() -> Speech = "名詞" { Speech::Noun }
+      rule noun() -> Speech = t:$("一般名詞" / "サ変名詞" / "固有名詞" ) {?
+            match t {
+                "一般名詞" => Ok(Speech::Noun(NounVariant::Common)),
+                "サ変名詞" => Ok(Speech::Noun(NounVariant::Sahen)),
+                "固有名詞" => Ok(Speech::Noun(NounVariant::Proper)),
+                _ => Err("Invalid noun")
+            }
+      }
       rule verb() -> Speech = k:katakana() n:$("行五段" / "行四段" / "行上一" / "行下一" /"行上二" / "行下二" / "行変" ) {?
           let form = match n {
               "行五段" => Ok(VerbForm::Godan(k)),
@@ -65,6 +72,8 @@ pub fn parse_entry(s: &str) -> Result<Option<Entry>, ParseError<LineCol>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::base::speech::NounVariant;
+
     use super::*;
 
     #[test]
@@ -90,11 +99,11 @@ mod tests {
         );
 
         assert_eq!(
-            parse_entry("わせだどおり\t早稲田通り\t/名詞/"),
+            parse_entry("わせだどおり\t早稲田通り\t/一般名詞/"),
             Ok(Some(Entry::from_jisyo(
                 "わせだどおり",
                 "早稲田通り",
-                Speech::Noun
+                Speech::Noun(NounVariant::Common)
             )))
         );
 

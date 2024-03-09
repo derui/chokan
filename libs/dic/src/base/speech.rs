@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 // 単語における品詞
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Speech {
-    Noun,                   // 名詞
+    Noun(NounVariant),      // 名詞
     Verb(VerbForm),         // 動詞。引数は辞書系で利用する活用
     Adjective,              // 形容詞
     Adverb,                 // 副詞
@@ -28,7 +28,7 @@ impl Speech {
     /// 活用が存在しない品詞の場合は、empty stringのみを含むvecを返す
     pub fn to_forms(&self, stem_reading: &str) -> HashSet<String> {
         match self {
-            Speech::Noun => ["".to_string()].iter().cloned().collect(),
+            Speech::Noun(_) => ["".to_string()].iter().cloned().collect(),
             Speech::Verb(form) => form.to_forms(stem_reading),
             Speech::Adjective => ["い", "く", "け", "かっ", "う"]
                 .iter()
@@ -52,7 +52,7 @@ impl Speech {
 impl Display for Speech {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Speech::Noun => write!(f, "名詞"),
+            Speech::Noun(v) => write!(f, "{}名詞", v),
             Speech::Verb(form) => write!(f, "{}", form),
             Speech::Adjective => write!(f, "形容詞"),
             Speech::Adverb => write!(f, "副詞"),
@@ -63,6 +63,24 @@ impl Display for Speech {
             Speech::AuxiliaryVerb => write!(f, "助動詞"),
             Speech::PreNounAdjectival => write!(f, "連体詞"),
             Speech::Counter => write!(f, "助数詞"),
+        }
+    }
+}
+
+/// 名詞の種類
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub enum NounVariant {
+    Sahen,  // サ変名詞
+    Proper, // 固有名詞
+    Common, // 一般名詞
+}
+
+impl Display for NounVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NounVariant::Sahen => write!(f, "サ変"),
+            NounVariant::Proper => write!(f, "固有"),
+            NounVariant::Common => write!(f, "一般"),
         }
     }
 }
