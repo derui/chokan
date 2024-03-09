@@ -8,7 +8,7 @@ use peg::{error::ParseError, str::LineCol};
 
 use crate::base::{
     entry::Entry,
-    speech::{AffixVariant, NounVariant, Speech, VerbForm},
+    speech::{AffixVariant, NounVariant, ParticleType, Speech, VerbForm},
 };
 
 peg::parser! {
@@ -50,6 +50,12 @@ peg::parser! {
       rule counter() -> Speech = "助数詞" { Speech::Counter }
       rule verbatim() -> Speech = "感動詞" { Speech::Verbatim }
       rule conjunction() -> Speech = "接続詞" { Speech::Conjunction }
+      rule particle_case() -> Speech = "格助詞" { Speech::Particle(ParticleType::Case) }
+      rule particle_adverbial() -> Speech = "副助詞" { Speech::Particle(ParticleType::Adverbial) }
+      rule particle_conjunctive() -> Speech = "接続助詞" { Speech::Particle(ParticleType::Conjunctive) }
+      rule particle_sentence_final() -> Speech = "終助詞" { Speech::Particle(ParticleType::SentenceFinal) }
+      rule particle_other() -> Speech = "助詞" { Speech::Particle(ParticleType::Other) }
+      rule auxiliary_verb() -> Speech = "助動詞" { Speech::AuxiliaryVerb }
       rule pre_noun_adjectival() -> Speech = "連体詞" { Speech::PreNounAdjectival }
       rule affix() -> Speech = s:$("接頭辞" / "接尾辞") {? match s {
             "接頭辞" => Ok(Speech::Affix(AffixVariant::Prefix)),
@@ -57,7 +63,7 @@ peg::parser! {
             _ => Err("Invalid affix")
       } }
       rule speech() -> Speech = "/" n:(
-          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / affix() / conjunction()
+          noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / affix() / conjunction() / particle_case() / particle_other() / particle_adverbial() / particle_conjunctive() / particle_sentence_final() / auxiliary_verb()
       ) "/" {
           n
       }
@@ -164,6 +170,54 @@ mod tests {
                 "ただし",
                 "但し",
                 Speech::Conjunction
+            )))
+        );
+    }
+
+    #[test]
+    fn parse_particle() {
+        assert_eq!(
+            parse_entry("で\tで\t/格助詞/"),
+            Ok(Some(Entry::from_jisyo(
+                "で",
+                "で",
+                Speech::Particle(ParticleType::Case)
+            )))
+        );
+
+        assert_eq!(
+            parse_entry("のに\tのに\t/接続助詞/"),
+            Ok(Some(Entry::from_jisyo(
+                "のに",
+                "のに",
+                Speech::Particle(ParticleType::Conjunctive)
+            )))
+        );
+
+        assert_eq!(
+            parse_entry("は\tは\t/副助詞/"),
+            Ok(Some(Entry::from_jisyo(
+                "は",
+                "は",
+                Speech::Particle(ParticleType::Adverbial)
+            )))
+        );
+
+        assert_eq!(
+            parse_entry("か\tか\t/終助詞/"),
+            Ok(Some(Entry::from_jisyo(
+                "か",
+                "か",
+                Speech::Particle(ParticleType::SentenceFinal)
+            )))
+        );
+
+        assert_eq!(
+            parse_entry("らしい\tらしい\t/助動詞/"),
+            Ok(Some(Entry::from_jisyo(
+                "らしい",
+                "らしい",
+                Speech::AuxiliaryVerb
             )))
         );
     }
