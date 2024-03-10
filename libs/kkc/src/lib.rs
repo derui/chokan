@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use dic::base::word::Word;
 use serde::{Deserialize, Serialize};
 
+mod graph;
+
 /// 解析グラフ上で利用する辞書の形式。
 ///
 /// ここで利用される辞書は、 `chokan-dic` プログラムから生成されるものが利用される
