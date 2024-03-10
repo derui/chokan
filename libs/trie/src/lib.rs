@@ -271,6 +271,10 @@ impl Trie {
 
         for label in labels.iter() {
             let node = &self.nodes[usize::from(current)];
+            if node.base.is_empty() {
+                return None;
+            }
+
             let transition = node.base + *label;
             match self.nodes.get(usize::from(transition)) {
                 Some(n) if !n.is_transit(&current) => {
@@ -312,6 +316,18 @@ mod tests {
         let index = trie.search("ab", &|_, _| {});
         // assert
         assert_ne!(index, None);
+    }
+
+    #[test]
+    fn return_not_found_path() {
+        // arrange
+        let mut trie = Trie::from_keys(&labels());
+        let _ = trie.insert("abc");
+
+        // act
+        let index = trie.search("ac", &|_, _| {});
+        // assert
+        assert_eq!(index, None);
     }
 
     #[test]
