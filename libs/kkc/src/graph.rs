@@ -9,21 +9,12 @@ use crate::GraphDictionary;
 
 /// 解析で利用するグラフと、それを入力文字列から構築する処理を提供する
 
-/// 各Nodeにおけるキー
-/// graph内のindexをそのまま指す
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-struct NodeKey(usize);
-
 /// Graphの中で使われるNode
-///
-/// BOS/EOS に相当するNodeも含めている
 #[derive(Debug, PartialEq, Clone)]
 enum Node {
     WordNode(Word),
     /// 仮想Nodeに対応する型である。この型は必ずしも存在するものではない
-    Virtual(String),
-    BOS,
-    EOS,
+    Virtual(usize),
 }
 
 #[derive(Debug)]
@@ -31,7 +22,7 @@ pub struct Graph {
     /// graphの中に含まれるNode
     ///
     /// EOS/BOSも含んでいる
-    /// このNodesは、長さが入力文字 + 2であり、先頭がBOS、最後尾がEOSになる
+    /// このNodesは、長さが入力文字であり、先頭がBOSとなる。BOSは、対応するindexが末尾であればそのまま末尾となる
     nodes: Vec<Vec<Node>>,
 }
 
@@ -46,17 +37,57 @@ impl Graph {
     /// 構築されたグラフ
     pub fn from_input(input: &str, dic: &GraphDictionary) -> Graph {
         let input = input.chars().collect::<Vec<_>>();
-        let mut nodes: Vec<Vec<Node>> = vec![Default::default(); input.len() + 2];
-        nodes[0] = vec![Node::BOS];
-        nodes[input.len() + 1] = vec![Node::EOS];
+        let nodes: Vec<Vec<Node>> = vec![Default::default(); input.len()];
         let mut graph = Graph { nodes };
 
         // まず付属語を検索し、nodesに追加する
         graph.find_ancillary(&input, dic);
         // 先頭から始まりうる単語をnodesに追加する
         graph.find_word_only_first(&input, dic);
+        graph.remove_unconnected_nodes();
 
         graph
+    }
+
+    /// 指定したindexにあるnodeのうち、現時点でつながるものがないnodeを排除する
+    ///
+    /// # Arguments
+    /// * `input` - 解析対象の文字列
+    /// * `index` - 探索するindex
+    ///
+    /// # Returns
+    /// 不要なものが削除されたnodeのリスト
+    fn get_filter_unconnected_nodes(&self, index: usize) -> Vec<Node> {
+        // 0が終点になる単語は存在しない。
+        self.nodes[index]
+            .iter()
+            .filter(|v| {
+                if let Node::WordNode(word) = v {
+                    let prev_node_idx = index + word.reading.len();
+
+                    // 先頭を指している場合は対象にしておく
+                    if prev_node_idx == 0 {
+                        true
+                    } else {
+                        self.nodes
+                            .get(prev_node_idx)
+                            .map(|v| v.is_empty())
+                            .unwrap_or(false)
+                    }
+                } else {
+                    false
+                }
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    }
+
+    /// 先頭からつながらないnodeを削除する
+    fn remove_unconnected_nodes(&mut self) {
+        // 0が終点になる単語は存在しない。
+        for i in (1..self.nodes.len()).rev() {
+            self.nodes[i] = self.get_filter_unconnected_nodes(i);
+        }
     }
 
     /// 先頭から始まりうる単語をnodesに追加する
