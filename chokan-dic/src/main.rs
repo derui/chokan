@@ -6,8 +6,7 @@ use dic::{
 };
 use kkc::GraphDictionary;
 use log::info;
-use postcard::{to_allocvec, to_vec};
-use serde::Serialize;
+use postcard::to_allocvec;
 
 // 一時的に利用するdictionary
 struct ReadDictionary {

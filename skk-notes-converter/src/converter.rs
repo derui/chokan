@@ -283,8 +283,6 @@ impl Note {
 mod tests {
     use crate::note_grammer::parse_note;
 
-    use super::*;
-
     #[test]
     fn convert_adjactive_verb() {
         let note = parse_note("おんみつ /隠密;∥形容動詞[φdn(s)]/");
