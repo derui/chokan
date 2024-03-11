@@ -111,7 +111,6 @@ pub enum ParticleType {
     Adverbial,     // 副助詞
     Conjunctive,   // 接続助詞
     SentenceFinal, // 終助詞
-    Quotation,     // 引用助詞
     Other,         // その他
 }
 
@@ -122,7 +121,6 @@ impl Display for ParticleType {
             ParticleType::Adverbial => write!(f, "副"),
             ParticleType::Conjunctive => write!(f, "接続"),
             ParticleType::SentenceFinal => write!(f, "終"),
-            ParticleType::Quotation => write!(f, "引用"),
             ParticleType::Other => write!(f, ""),
         }
     }
