@@ -44,8 +44,9 @@ fn read_and_make_dictionary(dic_path: &Path) -> Result<ReadDictionary, std::io::
             if count % 1000 == 0 {
                 info!("Words: {} processed...", count);
             }
-            let _ = trie.insert(&word.reading);
-            let v = dic_map.entry(word.reading.clone()).or_insert(Vec::new());
+            let reading = word.reading.iter().collect::<String>();
+            let _ = trie.insert(&reading);
+            let v = dic_map.entry(reading).or_insert(Vec::new());
             v.push(word);
         }
     }

@@ -7,8 +7,8 @@ use super::speech::{AffixVariant, ParticleType, Speech};
 // entryは辞書としては利用しやすいのだが、検索などではこの形に展開されている方が都合が良い。
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone)]
 pub struct Word {
-    pub word: String,
-    pub reading: String,
+    pub word: Vec<char>,
+    pub reading: Vec<char>,
     pub speech: Speech,
 }
 
@@ -16,8 +16,8 @@ impl Word {
     // 新しいWordを生成する
     pub fn new(word: &str, reading: &str, speech: Speech) -> Word {
         Word {
-            word: word.to_string(),
-            reading: reading.to_string(),
+            word: word.chars().collect(),
+            reading: reading.chars().collect(),
             speech,
         }
     }

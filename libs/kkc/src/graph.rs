@@ -17,6 +17,23 @@ enum Node {
     Virtual(usize),
 }
 
+impl Node {
+    /// このノードの末尾から、最初のindexを返す
+    ///
+    /// # Arguments
+    /// * `end_at` - 末尾のindex。0 origin
+    ///
+    /// # Returns
+    /// このノードの先頭のindex。あれば、一つ前のnodeのend_at + 1となる
+    #[inline]
+    fn start_at(&self, end_at: usize) -> usize {
+        match self {
+            Node::WordNode(word) => end_at - (word.reading.len() - 1),
+            Node::Virtual(s) => end_at - (s - 1),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Graph {
     /// graphの中に含まれるNode
@@ -41,52 +58,58 @@ impl Graph {
         let mut graph = Graph { nodes };
 
         // まず付属語を検索し、nodesに追加する
-        graph.find_ancillary(&input, dic);
+        let ancillaries = graph.find_ancillary(&input, dic);
         // 先頭から始まりうる単語をnodesに追加する
         graph.find_word_only_first(&input, dic);
-        graph.remove_unconnected_nodes();
+        // 付属語を追加する
+        graph.merge_ancillaries(&ancillaries);
+        // 仮想ノードを追加する
+        graph.complete_virtual_nodes(&input);
 
         graph
     }
 
-    /// 指定したindexにあるnodeのうち、現時点でつながるものがないnodeを排除する
+    /// 付属語の一覧から、単語間で接続しうるものをnodesに追加する
+    ///
+    /// sa
     ///
     /// # Arguments
-    /// * `input` - 解析対象の文字列
-    /// * `index` - 探索するindex
-    ///
-    /// # Returns
-    /// 不要なものが削除されたnodeのリスト
-    fn get_filter_unconnected_nodes(&self, index: usize) -> Vec<Node> {
-        // 0が終点になる単語は存在しない。
-        self.nodes[index]
-            .iter()
-            .filter(|v| {
-                if let Node::WordNode(word) = v {
-                    let prev_node_idx = index + word.reading.len();
+    /// * `ancillaries` - 付属語の一覧
+    fn merge_ancillaries(&mut self, ancillaries: &[Vec<Node>]) {
+        // 付属語が設定されているindexは、その付属語の末尾のindexであるため、
+        // start_atの位置に単語がある場合のみをmerge対象にする
+        for (i, ancillary) in ancillaries.iter().enumerate() {
+            for node in ancillary {
+                let start_at = node.start_at(i);
 
-                    // 先頭を指している場合は対象にしておく
-                    if prev_node_idx == 0 {
-                        true
-                    } else {
-                        self.nodes
-                            .get(prev_node_idx)
-                            .map(|v| v.is_empty())
-                            .unwrap_or(false)
+                match self.nodes.get(start_at) {
+                    Some(v) if !v.is_empty() => {
+                        self.nodes[i].push(node.clone());
+                        continue;
                     }
-                } else {
-                    false
+                    _ => {}
                 }
-            })
-            .cloned()
-            .collect::<Vec<_>>()
+            }
+        }
     }
 
-    /// 先頭からつながらないnodeを削除する
-    fn remove_unconnected_nodes(&mut self) {
-        // 0が終点になる単語は存在しない。
-        for i in (1..self.nodes.len()).rev() {
-            self.nodes[i] = self.get_filter_unconnected_nodes(i);
+    /// 仮想ノードを補完する
+    ///
+    /// 補完する仮想ノードは、対象となる単語の末尾に対して設定する。呼び出し時点で、
+    /// 単語はつながっているしか存在していないため、単語の存在するindex + 1文字目から
+    /// 末尾までを仮想ノードとして設定する
+    fn complete_virtual_nodes(&mut self, input: &[char]) {
+        let end_of_input = input.len() - 1;
+
+        // 末尾に到達している単語には設定する必要がないので無視する
+        for i in (1..(input.len() - 1)).rev() {
+            match self.nodes.get(i) {
+                Some(v) if !v.is_empty() => {
+                    let virtual_node = Node::Virtual(end_of_input - i);
+                    self.nodes[end_of_input - 1].push(virtual_node);
+                }
+                _ => {}
+            }
         }
     }
 
@@ -94,11 +117,15 @@ impl Graph {
     ///
     /// ここでは、あくまで先頭から発見可能である単語に限って検索する。但し、該当する単語が接頭語である場合には
     /// その後ろから再度検索を実施する場合がある。
-    fn find_word_only_first(&mut self, input: &[char], dic: &GraphDictionary) {
+    ///
+    /// # Returns
+    /// 発見した単語の末尾indexの集合
+    fn find_word_only_first(&mut self, input: &[char], dic: &GraphDictionary) -> HashSet<usize> {
         let mut need_re_search_indices: HashSet<usize> = HashSet::new();
+        let mut found_indices: HashSet<usize> = HashSet::new();
 
         for i in 1..input.len() {
-            let key = input[0..i].iter().collect::<String>();
+            let key = input[0..=i].iter().collect::<String>();
 
             let words = dic
                 .standard_trie
@@ -109,7 +136,9 @@ impl Graph {
                 for word in words {
                     // 接頭語が見つかった場合は、続く単語も検索する
                     if word.speech == Speech::Affix(AffixVariant::Prefix) {
-                        need_re_search_indices.insert(i + key.len());
+                        need_re_search_indices.insert(i);
+                    } else {
+                        found_indices.insert(i);
                     }
                     self.nodes[i].push(Node::WordNode(word.clone()));
                 }
@@ -129,21 +158,29 @@ impl Graph {
                 if let Some(words) = words {
                     for word in words {
                         self.nodes[i].push(Node::WordNode(word.clone()));
+                        found_indices.insert(i);
                     }
                 }
             }
         }
+
+        found_indices
     }
 
     /// 付属語を検索して graph のnodeに追加する
     ///
     /// この段階では、仮想ノードへの追加なども実施はせずに、単純にあり得る付属語を検索して追加するのみである
-    fn find_ancillary(&mut self, input: &[char], dic: &GraphDictionary) {
+    ///
+    /// # Returns
+    /// 付属語が設定されたnodes
+    fn find_ancillary(&self, input: &[char], dic: &GraphDictionary) -> Vec<Vec<Node>> {
+        let mut nodes: Vec<Vec<Node>> = vec![Default::default(); input.len()];
+
         for i in 0..input.len() {
             let mut j = i;
 
             while j < input.len() {
-                let key = input[i..j].iter().collect::<String>();
+                let key = input[i..=j].iter().collect::<String>();
 
                 let words = dic
                     .ancillary_trie
@@ -152,13 +189,15 @@ impl Graph {
 
                 if let Some(words) = words {
                     for word in words {
-                        self.nodes[i + key.len()].push(Node::WordNode(word.clone()));
+                        nodes[j].push(Node::WordNode(word.clone()));
                     }
                 }
 
                 j += 1
             }
         }
+
+        nodes
     }
 }
 
@@ -197,19 +236,18 @@ mod tests {
                 ),
                 (
                     "くる".to_string(),
-                    vec![Word::new(
-                        "くる",
-                        "来る",
-                        Speech::Verb(VerbForm::Hen("カ".to_string())),
-                    )],
-                ),
-                (
-                    "くる".to_string(),
-                    vec![Word::new(
-                        "くる",
-                        "繰る",
-                        Speech::Verb(VerbForm::Godan("ラ".to_string())),
-                    )],
+                    vec![
+                        Word::new(
+                            "くる",
+                            "来る",
+                            Speech::Verb(VerbForm::Hen("カ".to_string())),
+                        ),
+                        Word::new(
+                            "くる",
+                            "繰る",
+                            Speech::Verb(VerbForm::Godan("ラ".to_string())),
+                        ),
+                    ],
                 ),
             ]),
             ancillary_trie,
@@ -236,7 +274,7 @@ mod tests {
         let dic = dic();
 
         // act
-        let graph = Graph::from_input("くるまではしらかった", &dic);
+        let graph = Graph::from_input("くるまではしらなかった", &dic);
 
         // assert
     }
