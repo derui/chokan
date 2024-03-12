@@ -10,7 +10,7 @@ use crate::GraphDictionary;
 /// 解析で利用するグラフと、それを入力文字列から構築する処理を提供する
 
 /// Graphの中で使われるNode
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 enum Node {
     WordNode(Word),
     /// 仮想Nodeに対応する型である。この型は必ずしも存在するものではない
@@ -106,7 +106,7 @@ impl Graph {
             match self.nodes.get(i) {
                 Some(v) if !v.is_empty() => {
                     let virtual_node = Node::Virtual(end_of_input - i);
-                    self.nodes[end_of_input - 1].push(virtual_node);
+                    self.nodes[end_of_input].push(virtual_node);
                 }
                 _ => {}
             }
@@ -269,7 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn name() {
+    fn should_be_able_to_construct() {
         // arrange
         let dic = dic();
 
@@ -277,5 +277,59 @@ mod tests {
         let graph = Graph::from_input("くるまではしらなかった", &dic);
 
         // assert
+        assert_eq!(graph.nodes.len(), 11);
+        assert_eq!(graph.nodes[1].len(), 2);
+        assert_eq!(graph.nodes[2].len(), 1);
+        assert_eq!(graph.nodes[3].len(), 2);
+        assert_eq!(graph.nodes[10].len(), 3);
+    }
+
+    #[test]
+    fn contains_virtual_nodes() {
+        // arrange
+        let dic = dic();
+
+        // act
+        let graph = Graph::from_input("くるまではしらなかった", &dic);
+
+        // assert
+        assert_eq!(
+            graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from([
+                Node::WordNode(Word::new(
+                    "くる",
+                    "来る",
+                    Speech::Verb(VerbForm::Hen("カ".to_string()))
+                )),
+                Node::WordNode(Word::new(
+                    "くる",
+                    "繰る",
+                    Speech::Verb(VerbForm::Godan("ラ".to_string()))
+                ))
+            ])
+        );
+        assert_eq!(
+            graph.nodes[2].iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from([Node::WordNode(Word::new(
+                "くるま",
+                "車",
+                Speech::Noun(NounVariant::Common)
+            ))])
+        );
+        assert_eq!(
+            graph.nodes[3].iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from([
+                Node::WordNode(Word::new(
+                    "まで",
+                    "まで",
+                    Speech::Particle(ParticleType::Adverbial)
+                )),
+                Node::WordNode(Word::new("で", "で", Speech::Particle(ParticleType::Case)))
+            ])
+        );
+        assert_eq!(
+            graph.nodes[10].iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from([Node::Virtual(7), Node::Virtual(8), Node::Virtual(9),])
+        );
     }
 }
