@@ -9,12 +9,30 @@ use crate::GraphDictionary;
 
 /// 解析で利用するグラフと、それを入力文字列から構築する処理を提供する
 
+/// 各Nodeに対して設定されるconst
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+struct NodeCost {
+    // startからこのnodeまでのコスト
+    cost_from_start: u32,
+    // このノードから末尾までのコスト
+    cost_to_end: u32,
+}
+
+impl Default for NodeCost {
+    fn default() -> Self {
+        NodeCost {
+            cost_from_start: 0,
+            cost_to_end: 0,
+        }
+    }
+}
+
 /// Graphの中で使われるNode
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 enum Node {
-    WordNode(Word),
+    WordNode(Word, NodeCost),
     /// 仮想Nodeに対応する型である。この型は必ずしも存在するものではない
-    Virtual(usize),
+    Virtual(usize, NodeCost),
 }
 
 impl Node {
@@ -28,8 +46,8 @@ impl Node {
     #[inline]
     fn start_at(&self, end_at: usize) -> usize {
         match self {
-            Node::WordNode(word) => end_at - (word.reading.len() - 1),
-            Node::Virtual(s) => end_at - (s - 1),
+            Node::WordNode(word, _) => end_at - (word.reading.len() - 1),
+            Node::Virtual(s, _) => end_at - (s - 1),
         }
     }
 }
@@ -105,7 +123,7 @@ impl Graph {
         for i in (1..(input.len() - 1)).rev() {
             match self.nodes.get(i) {
                 Some(v) if !v.is_empty() => {
-                    let virtual_node = Node::Virtual(end_of_input - i);
+                    let virtual_node = Node::Virtual(end_of_input - i, Default::default());
                     self.nodes[end_of_input].push(virtual_node);
                 }
                 _ => {}
@@ -140,7 +158,7 @@ impl Graph {
                     } else {
                         found_indices.insert(i);
                     }
-                    self.nodes[i].push(Node::WordNode(word.clone()));
+                    self.nodes[i].push(Node::WordNode(word.clone(), Default::default()));
                 }
             }
         }
@@ -157,7 +175,7 @@ impl Graph {
 
                 if let Some(words) = words {
                     for word in words {
-                        self.nodes[i].push(Node::WordNode(word.clone()));
+                        self.nodes[i].push(Node::WordNode(word.clone(), Default::default()));
                         found_indices.insert(i);
                     }
                 }
@@ -189,7 +207,7 @@ impl Graph {
 
                 if let Some(words) = words {
                     for word in words {
-                        nodes[j].push(Node::WordNode(word.clone()));
+                        nodes[j].push(Node::WordNode(word.clone(), Default::default()));
                     }
                 }
 
@@ -296,40 +314,51 @@ mod tests {
         assert_eq!(
             graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([
-                Node::WordNode(Word::new(
-                    "くる",
-                    "来る",
-                    Speech::Verb(VerbForm::Hen("カ".to_string()))
-                )),
-                Node::WordNode(Word::new(
-                    "くる",
-                    "繰る",
-                    Speech::Verb(VerbForm::Godan("ラ".to_string()))
-                ))
+                Node::WordNode(
+                    Word::new(
+                        "くる",
+                        "来る",
+                        Speech::Verb(VerbForm::Hen("カ".to_string()))
+                    ),
+                    Default::default()
+                ),
+                Node::WordNode(
+                    Word::new(
+                        "くる",
+                        "繰る",
+                        Speech::Verb(VerbForm::Godan("ラ".to_string()))
+                    ),
+                    Default::default()
+                )
             ])
         );
         assert_eq!(
             graph.nodes[2].iter().cloned().collect::<HashSet<_>>(),
-            HashSet::from([Node::WordNode(Word::new(
-                "くるま",
-                "車",
-                Speech::Noun(NounVariant::Common)
-            ))])
+            HashSet::from([Node::WordNode(
+                Word::new("くるま", "車", Speech::Noun(NounVariant::Common)),
+                Default::default()
+            )])
         );
         assert_eq!(
             graph.nodes[3].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([
-                Node::WordNode(Word::new(
-                    "まで",
-                    "まで",
-                    Speech::Particle(ParticleType::Adverbial)
-                )),
-                Node::WordNode(Word::new("で", "で", Speech::Particle(ParticleType::Case)))
+                Node::WordNode(
+                    Word::new("まで", "まで", Speech::Particle(ParticleType::Adverbial)),
+                    Default::default()
+                ),
+                Node::WordNode(
+                    Word::new("で", "で", Speech::Particle(ParticleType::Case)),
+                    Default::default()
+                )
             ])
         );
         assert_eq!(
             graph.nodes[10].iter().cloned().collect::<HashSet<_>>(),
-            HashSet::from([Node::Virtual(7), Node::Virtual(8), Node::Virtual(9),])
+            HashSet::from([
+                Node::Virtual(7, Default::default()),
+                Node::Virtual(8, Default::default()),
+                Node::Virtual(9, Default::default()),
+            ])
         );
     }
 }
