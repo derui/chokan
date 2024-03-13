@@ -11,7 +11,7 @@ use crate::GraphDictionary;
 
 /// 各Nodeに対して設定されるconst
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
-struct NodeCost {
+pub struct NodeCost {
     // startからこのnodeまでのコスト
     cost_from_start: u32,
     // このノードから末尾までのコスト
