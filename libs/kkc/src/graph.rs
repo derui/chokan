@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 
 use dic::base::{
     speech::{AffixVariant, Speech},
@@ -29,7 +29,7 @@ impl Default for NodeCost {
 
 /// Graphの中で使われるNode
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
-enum Node {
+pub enum Node {
     WordNode(Word, NodeCost),
     /// 仮想Nodeに対応する型である。この型は必ずしも存在するものではない
     Virtual(usize, NodeCost),

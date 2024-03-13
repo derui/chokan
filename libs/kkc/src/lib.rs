@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use dic::base::word::Word;
 use serde::{Deserialize, Serialize};
 
+mod context;
 mod graph;
+mod score;
 
 /// 解析グラフ上で利用する辞書の形式。
 ///
