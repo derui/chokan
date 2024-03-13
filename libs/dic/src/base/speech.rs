@@ -391,20 +391,17 @@ mod tests {
 
         // assert
         // 一通りの品詞をcheckする
-        assert_eq!(Speech::Noun(NounVariant::Common).is_ancillary(), false);
-        assert_eq!(
-            Speech::Verb(VerbForm::Godan("カ".to_string())).is_ancillary(),
-            false
-        );
-        assert_eq!(Speech::Adjective.is_ancillary(), false);
-        assert_eq!(Speech::Adverb.is_ancillary(), false);
-        assert_eq!(Speech::AdjectivalVerb.is_ancillary(), false);
-        assert_eq!(Speech::Verbatim.is_ancillary(), false);
-        assert_eq!(Speech::Conjunction.is_ancillary(), false);
-        assert_eq!(Speech::Particle(ParticleType::Other).is_ancillary(), true);
-        assert_eq!(Speech::AuxiliaryVerb.is_ancillary(), true);
-        assert_eq!(Speech::PreNounAdjectival.is_ancillary(), false);
-        assert_eq!(Speech::Counter.is_ancillary(), false);
-        assert_eq!(Speech::Affix(AffixVariant::Prefix).is_ancillary(), true);
+        assert!(!Speech::Noun(NounVariant::Common).is_ancillary());
+        assert!(!Speech::Verb(VerbForm::Godan("カ".to_string())).is_ancillary());
+        assert!(!Speech::Adjective.is_ancillary());
+        assert!(!Speech::Adverb.is_ancillary());
+        assert!(!Speech::AdjectivalVerb.is_ancillary());
+        assert!(!Speech::Verbatim.is_ancillary());
+        assert!(!Speech::Conjunction.is_ancillary());
+        assert!(Speech::Particle(ParticleType::Other).is_ancillary());
+        assert!(Speech::AuxiliaryVerb.is_ancillary());
+        assert!(!Speech::PreNounAdjectival.is_ancillary());
+        assert!(!Speech::Counter.is_ancillary());
+        assert!(Speech::Affix(AffixVariant::Prefix).is_ancillary());
     }
 }
