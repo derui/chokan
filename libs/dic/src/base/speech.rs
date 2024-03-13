@@ -49,6 +49,24 @@ impl Speech {
             Speech::Affix(_) => ["".to_string()].iter().cloned().collect(),
         }
     }
+
+    /// 該当の品詞が、付属語かどうかを返す
+    pub fn is_ancillary(&self) -> bool {
+        match self {
+            Speech::Noun(_) => false,
+            Speech::Verb(_) => false,
+            Speech::Adjective => false,
+            Speech::Adverb => false,
+            Speech::AdjectivalVerb => false,
+            Speech::Verbatim => false,
+            Speech::Conjunction => false,
+            Speech::Particle(_) => true,
+            Speech::AuxiliaryVerb => true,
+            Speech::PreNounAdjectival => false,
+            Speech::Counter => false,
+            Speech::Affix(_) => true,
+        }
+    }
 }
 
 impl Display for Speech {
@@ -363,5 +381,30 @@ mod tests {
     fn test_display_affix() {
         assert_eq!(Speech::Affix(AffixVariant::Prefix).to_string(), "接頭辞");
         assert_eq!(Speech::Affix(AffixVariant::Suffix).to_string(), "接尾辞");
+    }
+
+    #[test]
+    fn test_ancillary_check() {
+        // arrange
+
+        // act
+
+        // assert
+        // 一通りの品詞をcheckする
+        assert_eq!(Speech::Noun(NounVariant::Common).is_ancillary(), false);
+        assert_eq!(
+            Speech::Verb(VerbForm::Godan("カ".to_string())).is_ancillary(),
+            false
+        );
+        assert_eq!(Speech::Adjective.is_ancillary(), false);
+        assert_eq!(Speech::Adverb.is_ancillary(), false);
+        assert_eq!(Speech::AdjectivalVerb.is_ancillary(), false);
+        assert_eq!(Speech::Verbatim.is_ancillary(), false);
+        assert_eq!(Speech::Conjunction.is_ancillary(), false);
+        assert_eq!(Speech::Particle(ParticleType::Other).is_ancillary(), true);
+        assert_eq!(Speech::AuxiliaryVerb.is_ancillary(), true);
+        assert_eq!(Speech::PreNounAdjectival.is_ancillary(), false);
+        assert_eq!(Speech::Counter.is_ancillary(), false);
+        assert_eq!(Speech::Affix(AffixVariant::Prefix).is_ancillary(), true);
     }
 }
