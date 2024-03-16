@@ -23,8 +23,10 @@ node自体のscoreと、2node間 = edgeのscoreを計算する関数を定義す
 pub fn get_node_score(_context: &Context, current: &Node) -> i32 {
     // 読みが長い方が選択される可能性は高いものの、score自体はある程度の影響しかしないようにしておく
     match current {
-        Node::WordNode(w, _) => (w.reading.len() / 2) as i32,
-        Node::Virtual(_, _) => 0,
+        Node::WordNode(_, w, _) => (w.reading.len() / 2) as i32,
+        Node::Virtual(_, _, _) => 0,
+        Node::BOS => 0,
+        Node::EOS => 0,
     }
 }
 
@@ -39,21 +41,22 @@ pub fn get_node_score(_context: &Context, current: &Node) -> i32 {
 ///
 /// # Returns
 /// edgeに対するscore
-pub fn get_edge_score(context: &Context, prev: &Option<Node>, current: &Node) -> i32 {
+pub fn get_edge_score(context: &Context, prev: &Node, current: &Node) -> i32 {
     match prev {
-        Some(prev) => get_edge_score_impl(context, prev, current),
-        None => 0,
+        Node::BOS => 0,
+        _ => get_edge_score_impl(context, prev, current),
     }
 }
 
 fn get_edge_score_impl(context: &Context, prev: &Node, current: &Node) -> i32 {
     match (prev, current) {
-        (Node::WordNode(prev, _), Node::WordNode(current, _)) => {
+        (Node::WordNode(_, prev, _), Node::WordNode(_, current, _)) => {
             get_edge_score_between_words(context, prev, current)
         }
-        (Node::WordNode(prev, _), Node::Virtual(_, _)) => {
+        (Node::WordNode(_, prev, _), Node::Virtual(_, _, _)) => {
             get_edge_score_allow_virtual_word(context, prev)
         }
+        // BOS/EOSとの接続関係は影響しない
         _ => 0,
     }
 }

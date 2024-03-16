@@ -10,29 +10,47 @@ use crate::GraphDictionary;
 /// 解析で利用するグラフと、それを入力文字列から構築する処理を提供する
 
 /// 各Nodeに対して設定されるconst
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
-pub struct NodeCost {
+#[derive(Debug, PartialEq, Clone, Eq, Hash, Default)]
+pub struct NodeScore {
     // startからこのnodeまでのコスト
-    cost_from_start: u32,
-    // このノードから末尾までのコスト
-    cost_to_end: u32,
+    cost_from_start: i32,
 }
 
-impl Default for NodeCost {
-    fn default() -> Self {
-        NodeCost {
-            cost_from_start: 0,
-            cost_to_end: 0,
-        }
+impl From<NodeScore> for i32 {
+    fn from(value: NodeScore) -> Self {
+        value.cost_from_start
+    }
+}
+
+/// 構築が完了したgraphにおいて、安全なアクセスを提供するnew type
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub struct NodePointer(usize, usize);
+
+impl NodePointer {
+    ///
+    /// # Arguments
+    /// * `index_at_input` - 入力文字列におけるindex
+    /// * `index_at_words` - 指定された位置内のindex
+    ///
+    /// # Returns
+    /// 新しいNodePointer
+    fn new(index_at_input: usize, index_at_words: usize) -> NodePointer {
+        NodePointer(index_at_input, index_at_words)
     }
 }
 
 /// Graphの中で使われるNode
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Node {
-    WordNode(Word, NodeCost),
-    /// 仮想Nodeに対応する型である。この型は必ずしも存在するものではない
-    Virtual(usize, NodeCost),
+    WordNode(NodePointer, Word, NodeScore),
+    /// 仮想Nodeに対応する型である。構築したグラフ内に存在しない場合もある
+    Virtual(NodePointer, usize, NodeScore),
+
+    // 開始地点を表すnode
+    BOS,
+
+    // 終了地点を表すnode
+    EOS,
 }
 
 impl Node {
@@ -44,10 +62,53 @@ impl Node {
     /// # Returns
     /// このノードの先頭のindex。あれば、一つ前のnodeのend_at + 1となる
     #[inline]
-    fn start_at(&self, end_at: usize) -> usize {
+    fn start_at(&self) -> usize {
         match self {
-            Node::WordNode(word, _) => end_at - (word.reading.len() - 1),
-            Node::Virtual(s, _) => end_at - (s - 1),
+            Node::WordNode(NodePointer(end_at, _), word, _) => end_at - (word.reading.len() - 1),
+            Node::Virtual(NodePointer(end_at, _), s, _) => end_at - (s - 1),
+            // EOS/BOSは固定された位置にあるので、定義しない
+            Node::EOS => 0,
+            Node::BOS => 0,
+        }
+    }
+
+    /// Nodeにおける現時点のscoreを返す
+    ///
+    /// EOS/BOSのついてはスコアという概念はないので、あくまで
+    pub(crate) fn get_score(&self) -> NodeScore {
+        match self {
+            Node::WordNode(_, _, score) => score.clone(),
+            Node::Virtual(_, _, score) => score.clone(),
+            Node::EOS => Default::default(),
+            Node::BOS => Default::default(),
+        }
+    }
+
+    /// Nodeに対してscoreを設定する
+    ///
+    /// # Arguments
+    /// * `score` - 設定するscore
+    pub(crate) fn set_score(&mut self, score: i32) {
+        match self {
+            Node::WordNode(_, _, s) => s.cost_from_start = score,
+            Node::Virtual(_, _, s) => s.cost_from_start = score,
+            // EOSとBOSはscoreがどうか？という判定自体しない
+            Node::EOS => {}
+            Node::BOS => {}
+        }
+    }
+
+    /// Nodeに対してscoreを設定する
+    ///
+    /// # Arguments
+    /// * `score` - 設定するscore
+    fn clone_with(&self, pointer: NodePointer) -> Self {
+        match self {
+            Self::WordNode(_, w, s) => Self::WordNode(pointer, w.clone(), s.clone()),
+            Self::Virtual(_, w, s) => Self::Virtual(pointer, *w, s.clone()),
+            // EOSとBOSはscoreがどうか？という判定自体しない
+            Self::EOS => Self::EOS,
+            Self::BOS => Self::BOS,
         }
     }
 }
@@ -87,6 +148,57 @@ impl Graph {
         graph
     }
 
+    /// 指定した位置で終わるnodeの一覧を返す
+    ///
+    /// # Arguments
+    /// * `index` - 0 origin。inputにおける **文字単位** でのindex指定となる。0は常にBOSのみが含まれる
+    ///
+    /// # Returns
+    /// 指定した位置にあるnodeの一覧。
+    pub fn nodes_at(&mut self, index: usize) -> Vec<Node> {
+        self.nodes[index].to_vec()
+    }
+
+    /// 指定したnodeの前のnodeを返す
+    ///
+    /// # Arguments
+    /// * `node` - 取得するnode
+    ///
+    /// # Returns
+    /// nodeの前のnodeの一覧
+    pub fn previsous_nodes(&self, node: &Node) -> Vec<Node> {
+        let index = match node {
+            Node::WordNode(NodePointer(i, _), w, _) => Some(*i - w.reading.len()),
+            Node::Virtual(NodePointer(i, _), size, _) => Some(*i - size),
+            Node::EOS => Some(self.nodes.len() - 1),
+            Node::BOS => None,
+        };
+
+        match index {
+            None => vec![],
+            Some(i) => self.nodes[i].to_vec(),
+        }
+    }
+
+    /// 指定したNodeに対するmutableな参照を返す
+    ///
+    /// # Arguments
+    /// * `node` - 取得するNode
+    ///
+    /// # Returns
+    /// mutableなNode
+    ///
+    /// # Panics
+    /// 指定されたNodeが存在しない場合にはpanicする
+    pub fn get_node_mut(&mut self, node: &Node) -> Option<&mut Node> {
+        match node {
+            Node::WordNode(NodePointer(i, j), _, _) => Some(&mut self.nodes[*i][*j]),
+            Node::Virtual(NodePointer(i, j), _, _) => Some(&mut self.nodes[*i][*j]),
+            Node::EOS => None,
+            Node::BOS => None,
+        }
+    }
+
     /// 付属語の一覧から、単語間で接続しうるものをnodesに追加する
     ///
     /// sa
@@ -98,11 +210,12 @@ impl Graph {
         // start_atの位置に単語がある場合のみをmerge対象にする
         for (i, ancillary) in ancillaries.iter().enumerate() {
             for node in ancillary {
-                let start_at = node.start_at(i);
+                let start_at = node.start_at();
 
                 match self.nodes.get(start_at) {
                     Some(v) if !v.is_empty() => {
-                        self.nodes[i].push(node.clone());
+                        let pointer = NodePointer(i, self.nodes[i].len());
+                        self.nodes[i].push(node.clone_with(pointer));
                         continue;
                     }
                     _ => {}
@@ -123,7 +236,13 @@ impl Graph {
         for i in (1..(input.len() - 1)).rev() {
             match self.nodes.get(i) {
                 Some(v) if !v.is_empty() => {
-                    let virtual_node = Node::Virtual(end_of_input - i, Default::default());
+                    let current_node_size = self.nodes[end_of_input].len();
+                    // ここから末尾に追加するので、indexとしてはcurrent_node_sizeのままでよい
+                    let virtual_node = Node::Virtual(
+                        NodePointer(end_of_input, current_node_size),
+                        end_of_input - i,
+                        Default::default(),
+                    );
                     self.nodes[end_of_input].push(virtual_node);
                 }
                 _ => {}
@@ -158,7 +277,8 @@ impl Graph {
                     } else {
                         found_indices.insert(i);
                     }
-                    self.nodes[i].push(Node::WordNode(word.clone(), Default::default()));
+                    let pointer = NodePointer(i, self.nodes[i].len());
+                    self.nodes[i].push(Node::WordNode(pointer, word.clone(), Default::default()));
                 }
             }
         }
@@ -175,7 +295,13 @@ impl Graph {
 
                 if let Some(words) = words {
                     for word in words {
-                        self.nodes[i].push(Node::WordNode(word.clone(), Default::default()));
+                        let pointer = NodePointer(i, self.nodes[i].len());
+
+                        self.nodes[i].push(Node::WordNode(
+                            pointer,
+                            word.clone(),
+                            Default::default(),
+                        ));
                         found_indices.insert(i);
                     }
                 }
@@ -207,7 +333,8 @@ impl Graph {
 
                 if let Some(words) = words {
                     for word in words {
-                        nodes[j].push(Node::WordNode(word.clone(), Default::default()));
+                        let pointer = NodePointer(j, nodes[j].len());
+                        nodes[j].push(Node::WordNode(pointer, word.clone(), Default::default()));
                     }
                 }
 
@@ -315,6 +442,7 @@ mod tests {
             graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([
                 Node::WordNode(
+                    NodePointer(1, 0),
                     Word::new(
                         "くる",
                         "来る",
@@ -323,6 +451,7 @@ mod tests {
                     Default::default()
                 ),
                 Node::WordNode(
+                    NodePointer(1, 1),
                     Word::new(
                         "くる",
                         "繰る",
@@ -335,6 +464,7 @@ mod tests {
         assert_eq!(
             graph.nodes[2].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([Node::WordNode(
+                NodePointer(2, 0),
                 Word::new("くるま", "車", Speech::Noun(NounVariant::Common)),
                 Default::default()
             )])
@@ -343,10 +473,12 @@ mod tests {
             graph.nodes[3].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([
                 Node::WordNode(
+                    NodePointer(3, 0),
                     Word::new("まで", "まで", Speech::Particle(ParticleType::Adverbial)),
                     Default::default()
                 ),
                 Node::WordNode(
+                    NodePointer(3, 1),
                     Word::new("で", "で", Speech::Particle(ParticleType::Case)),
                     Default::default()
                 )
@@ -355,9 +487,9 @@ mod tests {
         assert_eq!(
             graph.nodes[10].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([
-                Node::Virtual(7, Default::default()),
-                Node::Virtual(8, Default::default()),
-                Node::Virtual(9, Default::default()),
+                Node::Virtual(NodePointer(10, 0), 7, Default::default()),
+                Node::Virtual(NodePointer(10, 1), 8, Default::default()),
+                Node::Virtual(NodePointer(10, 2), 9, Default::default()),
             ])
         );
     }
