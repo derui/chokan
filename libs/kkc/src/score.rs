@@ -23,7 +23,7 @@ node自体のscoreと、2node間 = edgeのscoreを計算する関数を定義す
 pub fn get_node_score(_context: &Context, current: &Node) -> i32 {
     // 読みが長い方が選択される可能性は高いものの、score自体はある程度の影響しかしないようにしておく
     match current {
-        Node::WordNode(_, w, _) => (w.reading.len() / 2) as i32,
+        Node::WordNode(_, w, _) => w.reading.len() as i32,
         Node::Virtual(_, _, _) => 0,
         Node::BOS => 0,
         Node::EOS => 0,

@@ -44,13 +44,24 @@ impl NodePointer {
 pub enum Node {
     WordNode(NodePointer, Word, NodeScore),
     /// 仮想Nodeに対応する型である。構築したグラフ内に存在しない場合もある
-    Virtual(NodePointer, usize, NodeScore),
+    Virtual(NodePointer, Vec<char>, NodeScore),
 
     // 開始地点を表すnode
     BOS,
 
     // 終了地点を表すnode
     EOS,
+}
+
+impl ToString for Node {
+    fn to_string(&self) -> String {
+        match self {
+            Node::WordNode(_, w, _) => w.word.iter().collect::<String>(),
+            Node::Virtual(_, v, _) => v.iter().collect::<String>(),
+            Node::BOS => String::new(),
+            Node::EOS => String::new(),
+        }
+    }
 }
 
 impl Node {
@@ -65,7 +76,7 @@ impl Node {
     fn start_at(&self) -> usize {
         match self {
             Node::WordNode(NodePointer(end_at, _), word, _) => end_at - (word.reading.len() - 1),
-            Node::Virtual(NodePointer(end_at, _), s, _) => end_at - (s - 1),
+            Node::Virtual(NodePointer(end_at, _), s, _) => end_at - (s.len() - 1),
             // EOS/BOSは固定された位置にあるので、定義しない
             Node::EOS => 0,
             Node::BOS => 0,
@@ -105,7 +116,7 @@ impl Node {
     fn clone_with(&self, pointer: NodePointer) -> Self {
         match self {
             Self::WordNode(_, w, s) => Self::WordNode(pointer, w.clone(), s.clone()),
-            Self::Virtual(_, w, s) => Self::Virtual(pointer, *w, s.clone()),
+            Self::Virtual(_, w, s) => Self::Virtual(pointer, w.clone(), s.clone()),
             // EOSとBOSはscoreがどうか？という判定自体しない
             Self::EOS => Self::EOS,
             Self::BOS => Self::BOS,
@@ -168,15 +179,16 @@ impl Graph {
     /// nodeの前のnodeの一覧
     pub fn previsous_nodes(&self, node: &Node) -> Vec<Node> {
         let index = match node {
-            Node::WordNode(NodePointer(i, _), w, _) => Some(*i - w.reading.len()),
-            Node::Virtual(NodePointer(i, _), size, _) => Some(*i - size),
-            Node::EOS => Some(self.nodes.len() - 1),
+            Node::WordNode(NodePointer(i, _), w, _) => Some(*i as i32 - w.reading.len() as i32),
+            Node::Virtual(NodePointer(i, _), w, _) => Some(*i as i32 - w.len() as i32),
+            Node::EOS => Some(self.nodes.len() as i32 - 1 as i32),
             Node::BOS => None,
         };
 
         match index {
             None => vec![],
-            Some(i) => self.nodes[i].to_vec(),
+            Some(i) if i <= 0 => vec![Node::BOS],
+            Some(i) => self.nodes[i as usize].to_vec(),
         }
     }
 
@@ -237,10 +249,14 @@ impl Graph {
             match self.nodes.get(i) {
                 Some(v) if !v.is_empty() => {
                     let current_node_size = self.nodes[end_of_input].len();
+
                     // ここから末尾に追加するので、indexとしてはcurrent_node_sizeのままでよい
                     let virtual_node = Node::Virtual(
                         NodePointer(end_of_input, current_node_size),
-                        end_of_input - i,
+                        input[(i + 1)..=end_of_input]
+                            .iter()
+                            .cloned()
+                            .collect::<Vec<_>>(),
                         Default::default(),
                     );
                     self.nodes[end_of_input].push(virtual_node);
@@ -352,71 +368,14 @@ mod tests {
 
     use dic::base::speech::{NounVariant, ParticleType, VerbForm};
 
+    use crate::test_dic;
+
     use super::*;
-
-    // テスト用の辞書
-    fn dic() -> GraphDictionary {
-        let keys = vec![
-            'あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ', 'さ', 'し', 'す', 'せ',
-            'そ', 'た', 'ち', 'つ', 'て', 'と', 'な', 'に', 'ぬ', 'ね', 'の', 'は', 'ひ', 'ふ',
-            'へ', 'ほ', 'ま', 'み', 'む', 'め', 'も', 'や', 'ゆ', 'よ', 'ら', 'り', 'る', 'れ',
-            'ろ', 'わ', 'を', 'ん', 'が', 'ぎ', 'ぐ', 'げ', 'ご', 'ざ', 'じ', 'ず', 'ぜ', 'ぞ',
-            'だ', 'ぢ', 'づ', 'で', 'ど', 'ば', 'び', 'ぶ', 'べ', 'ぼ', 'ぱ', 'ぴ', 'ぷ', 'ぺ',
-            'ぽ', 'っ',
-        ];
-        let mut standard_trie = trie::Trie::from_keys(&keys);
-        let mut ancillary_trie = trie::Trie::from_keys(&keys);
-
-        standard_trie.insert("くるま").unwrap();
-        standard_trie.insert("くる").unwrap();
-        ancillary_trie.insert("まで").unwrap();
-        ancillary_trie.insert("で").unwrap();
-
-        GraphDictionary {
-            standard_trie,
-            standard_dic: HashMap::from([
-                (
-                    "くるま".to_string(),
-                    vec![Word::new("くるま", "車", Speech::Noun(NounVariant::Common))],
-                ),
-                (
-                    "くる".to_string(),
-                    vec![
-                        Word::new(
-                            "くる",
-                            "来る",
-                            Speech::Verb(VerbForm::Hen("カ".to_string())),
-                        ),
-                        Word::new(
-                            "くる",
-                            "繰る",
-                            Speech::Verb(VerbForm::Godan("ラ".to_string())),
-                        ),
-                    ],
-                ),
-            ]),
-            ancillary_trie,
-            ancillary_dic: HashMap::from([
-                (
-                    "まで".to_string(),
-                    vec![Word::new(
-                        "まで",
-                        "まで",
-                        Speech::Particle(ParticleType::Adverbial),
-                    )],
-                ),
-                (
-                    "で".to_string(),
-                    vec![Word::new("で", "で", Speech::Particle(ParticleType::Case))],
-                ),
-            ]),
-        }
-    }
 
     #[test]
     fn should_be_able_to_construct() {
         // arrange
-        let dic = dic();
+        let dic = test_dic::new_dic();
 
         // act
         let graph = Graph::from_input("くるまではしらなかった", &dic);
@@ -432,7 +391,7 @@ mod tests {
     #[test]
     fn contains_virtual_nodes() {
         // arrange
-        let dic = dic();
+        let dic = test_dic::new_dic();
 
         // act
         let graph = Graph::from_input("くるまではしらなかった", &dic);
@@ -444,8 +403,8 @@ mod tests {
                 Node::WordNode(
                     NodePointer(1, 0),
                     Word::new(
-                        "くる",
                         "来る",
+                        "くる",
                         Speech::Verb(VerbForm::Hen("カ".to_string()))
                     ),
                     Default::default()
@@ -453,8 +412,8 @@ mod tests {
                 Node::WordNode(
                     NodePointer(1, 1),
                     Word::new(
-                        "くる",
                         "繰る",
+                        "くる",
                         Speech::Verb(VerbForm::Godan("ラ".to_string()))
                     ),
                     Default::default()
@@ -465,7 +424,7 @@ mod tests {
             graph.nodes[2].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([Node::WordNode(
                 NodePointer(2, 0),
-                Word::new("くるま", "車", Speech::Noun(NounVariant::Common)),
+                Word::new("車", "くるま", Speech::Noun(NounVariant::Common)),
                 Default::default()
             )])
         );
@@ -485,11 +444,20 @@ mod tests {
             ])
         );
         assert_eq!(
-            graph.nodes[10].iter().cloned().collect::<HashSet<_>>(),
+            graph.nodes[10]
+                .iter()
+                .cloned()
+                .filter_map(|v| {
+                    match v {
+                        Node::Virtual(_, w, _) => Some(w.iter().collect::<String>()),
+                        _ => None,
+                    }
+                })
+                .collect::<HashSet<_>>(),
             HashSet::from([
-                Node::Virtual(NodePointer(10, 0), 7, Default::default()),
-                Node::Virtual(NodePointer(10, 1), 8, Default::default()),
-                Node::Virtual(NodePointer(10, 2), 9, Default::default()),
+                "ではしらなかった".to_string(),
+                "まではしらなかった".to_string(),
+                "はしらなかった".to_string()
             ])
         );
     }
