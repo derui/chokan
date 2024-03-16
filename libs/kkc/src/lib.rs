@@ -144,9 +144,9 @@ fn get_n_best_candidates(
         }
 
         // 各ノードについて、その一つ前のノードからの遷移scoreと、現在のnodeからゴールまでのコストを設定する。
-        for prev_node in graph.previsous_nodes(&current_node) {
-            let edge_score = score::get_edge_score(context, &prev_node, &current_node);
-            let node_score = score::get_node_score(context, &current_node);
+        for prev_node in graph.previsous_nodes(current_node) {
+            let edge_score = score::get_edge_score(context, &prev_node, current_node);
+            let node_score = score::get_node_score(context, current_node);
             let next_score = edge_score + node_score + *score;
 
             queue.push(Candidate {
@@ -186,7 +186,7 @@ pub fn get_candidates(
 mod tests {
     use std::collections::HashSet;
 
-    use crate::{context::Context, graph::Graph};
+    use crate::context::Context;
 
     use super::*;
 

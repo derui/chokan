@@ -181,7 +181,7 @@ impl Graph {
         let index = match node {
             Node::WordNode(NodePointer(i, _), w, _) => Some(*i as i32 - w.reading.len() as i32),
             Node::Virtual(NodePointer(i, _), w, _) => Some(*i as i32 - w.len() as i32),
-            Node::EOS => Some(self.nodes.len() as i32 - 1 as i32),
+            Node::EOS => Some(self.nodes.len() as i32 - 1_i32),
             Node::BOS => None,
         };
 
@@ -253,10 +253,7 @@ impl Graph {
                     // ここから末尾に追加するので、indexとしてはcurrent_node_sizeのままでよい
                     let virtual_node = Node::Virtual(
                         NodePointer(end_of_input, current_node_size),
-                        input[(i + 1)..=end_of_input]
-                            .iter()
-                            .cloned()
-                            .collect::<Vec<_>>(),
+                        input[(i + 1)..=end_of_input].to_vec(),
                         Default::default(),
                     );
                     self.nodes[end_of_input].push(virtual_node);
@@ -364,7 +361,6 @@ impl Graph {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
 
     use dic::base::speech::{NounVariant, ParticleType, VerbForm};
 
