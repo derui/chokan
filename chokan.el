@@ -251,7 +251,6 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
 "
   :keymap chokan-mode-map
   :after-hook (progn
-                (message "current mode: %s" chokan-mode)
                 (make-variable-buffer-local 'after-change-functions)
                 (add-to-list 'after-change-functions #'chokan--after-change)
                 (if chokan-mode
