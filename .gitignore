@@ -1,3 +1,7 @@
+.task/
 target/
 
 skk-notes-converter/dic/
+
+# ignore compiled elisp
+*.elc
