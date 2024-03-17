@@ -35,6 +35,13 @@
 You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
  ")
 
+(defvar chokan-ascii-mode-map (make-sparse-keymap)
+  "Keymap for `chokan-ascii-mode'.
+ ")
+
+(defvar chokan-ja-mode-map (make-sparse-keymap)
+  "Keymap for `chokan-ja-mode'. ")
+
 ;; buffer-local variable
 
 (defvar chokan--internal-mode 'hiragana
@@ -167,14 +174,36 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 (defun chokan-ascii ()
   "chokanをasciiモードに変更する"
   (interactive)
-  (setq chokan--internal-mode 'ascii))
+  (chokan-ja-mode -1)
+  (chokan-ascii-mode +1))
 
 (defun chokan-ja ()
   "chokanを日本語入力モードに変更する"
   (interactive)
-  (setq chokan--internal-mode 'hiragana))
+  (chokan-ascii-mode -1)
+  (chokan-ja-mode +1))
 
 ;; mode definition
+
+(define-minor-mode chokan-ascii-mode
+  "Toggle minor mode to enable Input Method `chokan' in this buffer.
+
+This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-ja-mode'.
+"
+  :keymap chokan-ascii-mode-map
+  :after-hook (progn
+                (setq chokan--internal-mode 'ascii)
+                ))
+
+(define-minor-mode chokan-ja-mode
+  "Toggle minor mode to enable Input Method `chokan' in this buffer.
+
+This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-ascii-mode'.
+"
+  :keymap chokan-ja-mode-map
+  :after-hook (progn
+                (setq chokan--internal-mode 'hiragana)
+                ))
 
 (define-minor-mode chokan-mode
   "Toggle minor mode to enable Input Method `chokan' in this buffer.
@@ -183,10 +212,15 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
 When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `chokan-mode' if ARG is positive, and disable it otherwise.
 "
+  :keymap chokan-mode-map
   :after-hook (progn
                 (make-variable-buffer-local 'after-change-functions)
                 (add-to-list 'after-change-functions #'chokan--after-change)
-                )
+                (chokan-ascii-mode))
   )
+
+;; setup initial keymap
+(define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
+(define-key chokan-ja-mode-map (kbd "M-c") #'chokan-ascii)
 
 (provide 'chokan)
