@@ -303,10 +303,17 @@
       (if (= 1 (length input))
           '(not-found)
         (let* ((first-char (substring input 0 1))
-               (second-char (substring input 1 2)))
+               (second-char (substring input 1 2))
+               (rest (substring input 1))
+               (rest-result (chokan-roman-table-roman-to-kana rest))
+               )
           (if (string= first-char second-char)
-              (cons 'found (cons "っ" (substring input 1)))
-            '(not-found)))))
+              (cons 'found (cons "っ" (cond
+                                       ((eq (car rest-result) 'found) (cdar rest-result))
+                                       (t rest))))
+            (cond
+             ((eq (car rest-result) 'found) (cdar rest-result))
+             (t '(not-found)))))))
      
      ((= 1 (length result))
       (let* ((kana (cdr (car result)))

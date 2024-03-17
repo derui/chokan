@@ -26,6 +26,8 @@
                  (chokan-roman-table-roman-to-kana "z")))
   (should (equal '(found . ("あ" . ""))
                  (chokan-roman-table-roman-to-kana "a")))
+  (should (equal '(found . ("い" . ""))
+                 (chokan-roman-table-roman-to-kana "qi")))
   )
 
 (ert-deftest sokuon-to-kana ()

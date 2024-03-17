@@ -70,7 +70,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 ")
 
 (defvar chokan--default-cursor-color nil
-  "chokanが終了したときに戻すためのcursorの色")
+  "chokanが終了したときに戻すためのcursorの色。この変数はバッファローカルである")
 
 ;; faces
 
