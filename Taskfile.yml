@@ -1,0 +1,26 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  EMACS_BATCH: emacs -Q --batch -L .
+
+tasks:
+   
+  build:
+    sources:
+      - './*.el'
+
+    generates:
+      - './*.elc'
+    cmds:
+      - for: sources
+        cmd: '{{ .EMACS_BATCH }} -f batch-byte-compile {{ .ITEM }}'
+
+  test:
+    deps: [build]
+    cmds:
+      - '{{ .EMACS_BATCH }} -l chokan-tests.el -l ert --eval "(ert-run-tests-batch-and-exit)"'
+  clean:
+    cmds:
+      - find . -type f -name "*.elc" | xargs rm
