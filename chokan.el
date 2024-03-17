@@ -28,6 +28,21 @@
   :group 'input-method
   :prefix "chokan-")
 
+(defcustom chokan-katakana-cursor-color "RoyalBlue"
+  "カタカナ入力モードの際のカーソルの色。"
+  :type 'color
+  :group 'chokan)
+
+(defcustom chokan-ascii-cursor-color "gray"
+  "asciiモードの際のカーソルの色。"
+  :type 'color
+  :group 'chokan)
+
+(defcustom chokan-ja-cursor-color "DarkOrange"
+  "日本語入力モードの際のカーソルの色。"
+  :type 'color
+  :group 'chokan)
+
 ;; global variable
 
 (defvar chokan-mode-map (make-sparse-keymap)
@@ -54,8 +69,8 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 - 'katakana' : カタカナを入力する。変換を起動することはできない
 ")
 
-(defvar chokan--roman-not-finalized-char-positions nil
-  "chokanのローマ字変換において、確定できていない文字の位置を記録するための変数。")
+(defvar chokan--default-cursor-color nil
+  "chokanが終了したときに戻すためのcursorの色")
 
 ;; faces
 
@@ -74,6 +89,10 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   "現在chokanが日本語入力モードであるかどうかを返す"
   (and chokan-mode (not (eq chokan--internal-mode 'ascii))))
 
+(defsubst chokan--ja-katakana-p ()
+  "現在chokanがカタカナ入力モードであるかどうかを返す"
+  (and (chokan--ja-p) (eq chokan--internal-mode 'katakana)))
+
 (defun chokan--roman-to-kana (alphabet mode)
   "modeに従って `alphabet' をかなに変換する。
 
@@ -90,7 +109,12 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
     (cond
      ((eq 'not-found (car kana)) nil)
      ((eq 'ambiguous (car kana)) alphabet)
-     ((eq 'found (car kana)) (cdr kana))
+     ((eq 'found (car kana))
+      (let ((kana (cadr kana))
+            (rest (cddr kana)))
+        (if (eq mode 'hiragana)
+            (cons kana rest)
+          (cons (chokan-roman-table-hira-to-kata kana) rest))))
      )
     )
   )
@@ -175,13 +199,26 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   "chokanをasciiモードに変更する"
   (interactive)
   (chokan-ja-mode -1)
-  (chokan-ascii-mode +1))
+  (chokan-ascii-mode +1)
+  (set-cursor-color chokan-ascii-cursor-color))
 
 (defun chokan-ja ()
   "chokanを日本語入力モードに変更する"
   (interactive)
   (chokan-ascii-mode -1)
-  (chokan-ja-mode +1))
+  (chokan-ja-mode +1)
+  (set-cursor-color chokan-ja-cursor-color))
+
+(defun chokan-toggle-katakana ()
+  "chokanの内部モードをカタカナ入力に変更する"
+  (interactive)
+  (when (chokan--ja-p)
+    (if (not (chokan--ja-katakana-p))
+        (progn 
+          (setq chokan--internal-mode 'katakana)
+          (set-cursor-color chokan-katakana-cursor-color))
+      (setq chokan--internal-mode 'hiragana)
+      (set-cursor-color chokan-ja-cursor-color))))
 
 ;; mode definition
 
@@ -214,13 +251,21 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
 "
   :keymap chokan-mode-map
   :after-hook (progn
+                (message "current mode: %s" chokan-mode)
                 (make-variable-buffer-local 'after-change-functions)
                 (add-to-list 'after-change-functions #'chokan--after-change)
-                (chokan-ascii-mode))
+                (if chokan-mode
+                    (progn
+                      (setq-local chokan--default-cursor-color (frame-parameter nil 'cursor-color))
+                      (chokan-ascii-mode))
+                  (set-cursor-color chokan--default-cursor-color)
+                  (chokan-ja-mode -1)
+                  (chokan-ascii-mode -1)))
   )
 
 ;; setup initial keymap
 (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
 (define-key chokan-ja-mode-map (kbd "M-c") #'chokan-ascii)
+(define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
 
 (provide 'chokan)
