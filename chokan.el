@@ -71,12 +71,21 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   "modeに従って `alphabet' をかなに変換する。
 
 'alphabet' はローマ字のalphabetであることを前提としている。 'mode' は 'hiragana' または 'katakana' のいずれかである。
+
+返却される値は、以下のいずれかである。
+
+* '(<かな> . <rest of input>)' : 変換に成功した場合。rest of inputは、再度変換対象として利用する必要がある
+* <input string> : 将来的に変換可能な組み合わせが存在するが、確定できない場合
+* nil : 対応する組み合わせがない場合
 "
 
-  (let ((kana (chokan-table-roman-to-kana alphabet)))
-    (if (eq mode 'katakana)
-        (chokan-table-hiragana-to-katakana kana)
-      kana))
+  (let* ((kana (chokan-roman-table-roman-to-kana alphabet)))
+    (cond
+     ((eq 'not-found (car kana)) nil)
+     ((eq 'ambiguous (car kana)) alphabet)
+     ((eq 'found (car kana)) (cdr kana))
+     )
+    )
   )
 
 (defun chokan--insert-kana-if-possible (start end mode)
@@ -86,20 +95,25 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
 対象の文字かどうかの判断は、text-propertyにある `chokan-alphabet' が `t' であるかどうかで行われる。
 "
-  (let (start-candidate)
-    (setq start-candidate (or (save-excursion
-                                (let ((prop (text-property-search-backward 'chokan-alphabet t t t)))
-                                  (if prop (prop-match-beginning prop) nil)))
-                              start)
-          )
-    (let ((str (buffer-substring-no-properties start-candidate end)))
-      (if-let ((kana (chokan--roman-to-kana str mode)))
-          (progn
+  (let ((start-candidate (or (save-excursion
+                               (let ((prop (text-property-search-backward 'chokan-alphabet t t)))
+                                 (if prop (prop-match-beginning prop) nil)))
+                             start)))
+    ;; 開始地点は、現時点を含んで同じpropertyを持つ領域全体である
+    (let* ((target-string (buffer-substring-no-properties start-candidate end))
+           (ret (chokan--roman-to-kana target-string mode)))
+      (cond
+       ((null ret) (delete-region start-candidate (1- end)))
+       ((stringp ret) nil)
+       (t (progn
             (delete-region start-candidate end)
-            (insert kana))
-        )
-      )
-    ))
+            (insert (car ret))
+            (insert (cdr ret))
+            (let* (
+                   (start (- (point) (length (cdr ret))))
+                   (end (point)))
+              (put-text-property start end 'face 'chokan-kana-roman)
+              (put-text-property start end 'chokan-alphabet t))))))))
 
 (defun chokan--ja-self-insert (start end str)
   "日本語入力モードでのself-insertの処理をおこなう"
@@ -136,13 +150,18 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 "
   (when chokan-mode
     (let ((cmd this-command))
-      (cond
-       ((and (eq cmd 'self-insert-command)) (chokan--self-insert start end length))
-       (t
-        ;; self-insert-commandではない変更が行われた場合は、確定できていない文字を削除する
-        ;; 変換中の文字は、あくまで途中の文字でしか無いので、確定しない限りは、self-insert以外では削除する
-        (message "do not touch in %s %d" cmd length)))))
-  )
+      (condition-case-unless-debug nil
+          (cond
+           ((and (eq cmd 'self-insert-command)) (chokan--self-insert start end length))
+           (t
+            ;; self-insert-commandではない変更が行われた場合は、確定できていない文字を削除する
+            ;; 変換中の文字は、あくまで途中の文字でしか無いので、確定しない限りは、self-insert以外では削除する
+            (let ((prop (text-property-search-backward 'chokan-alphabet t t)))
+              (if prop
+                  (delete-region (prop-match-beginning prop) (prop-match-end prop))
+                nil))
+            (message "do not touch in %s %d" cmd length)))
+        (error nil)))))
 
 ;; command definition
 (defun chokan-ascii ()
