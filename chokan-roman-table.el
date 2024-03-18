@@ -204,7 +204,7 @@
 "
   )
 
-(defvar chokan-talbe--katakana-table
+(defvar chokan-table--katakana-table
   '(
     ("あ" . "ア")
     ("い" . "イ")
@@ -328,10 +328,12 @@
      )))
 
 (defun chokan-roman-table-hira-to-kata (hira)
-  "ひらがなをカタカナに変換する。変換できない場合は `nil' を返す"
-  (let ((result (assoc hira chokan-talbe--katakana-table)))
-    (if result
-        (cdr result)
-      nil)))
+  "ひらがなをカタカナに変換する。変換できない文字はそのままで返す"
+  (let ((result '()))
+    (seq-doseq (c hira)
+      (if-let ((kata (assoc (string c) chokan-table--katakana-table)))
+          (push (cdr kata) result)
+        (push (string c) result)))
+    (string-join (seq-reverse result) "")))
 
 (provide 'chokan-roman-table)

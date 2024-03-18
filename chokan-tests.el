@@ -36,3 +36,8 @@
   (should (string-equal "っs"
                         (chokan-roman-table-roman-to-kana "ss")))
   )
+
+(ert-deftest hira-to-kata ()
+  (should (equal "カ" (chokan-roman-table-hira-to-kata "か")))
+  (should (equal "ッt" (chokan-roman-table-hira-to-kata "っt")))
+  )
