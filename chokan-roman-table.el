@@ -317,8 +317,9 @@
 - '(ambiguous . (list of candidates))' : 対応する候補が複数見つかり、確定できない場合
 - '文字列' : 対応する候補が一つ見つかり、確定できる場合。
 "
-  (let ((result (seq-filter (lambda (v) (string-prefix-p input (car v)))
-                            chokan--roman-table)))
+  (let* ((input (downcase input))
+         (result (seq-filter (lambda (v) (string-prefix-p input (car v)))
+                             chokan--roman-table)))
     (cond
      ;; 全体の組み合わせで見つからない場合はnil
      ((null result) nil)
