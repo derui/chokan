@@ -209,7 +209,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 4. 下線部の設定（ 'underscore' が non-nil である場合）
 5. 自己挿入し、必要ならローマ字かな変換を行う
 "
-  (this-command-keys)
+  (insert (this-command-keys))
   )
 
 ;; command definition
@@ -237,6 +237,11 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
           (setq cursor-type chokan-katakana-cursor-type))
       (setq chokan--internal-mode 'hiragana)
       (setq cursor-type chokan-ja-cursor-type))))
+
+(defun chokan-insert-normal-alphabet ()
+  "変換起動をしないで文字を入力する"
+  (interactive)
+  (chokan--insert nil nil))
 
 ;; mode definition
 
@@ -284,5 +289,8 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
 (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
 (define-key chokan-ja-mode-map (kbd "M-c") #'chokan-ascii)
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
+
+(dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
+  (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 
 (provide 'chokan)
