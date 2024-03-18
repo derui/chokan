@@ -20,19 +20,19 @@
 ;; define tests
 
 (ert-deftest alphabet-to-kana ()
-  (should (equal '(not-found) (chokan-roman-table-roman-to-kana "lx")))
-  (should (equal '(not-found) (chokan-roman-table-roman-to-kana "l")))
-  (should (equal '(ambiguous . ("ざ" "じ" "ず" "ぜ" "ぞ"))
+  (should (equal nil (chokan-roman-table-roman-to-kana "lx")))
+  (should (equal nil (chokan-roman-table-roman-to-kana "l")))
+  (should (equal '(ambiguous . ("ざ" "じ" "ず" "ぜ" "ぞ" "っz"))
                  (chokan-roman-table-roman-to-kana "z")))
-  (should (equal '(found . ("あ" . ""))
-                 (chokan-roman-table-roman-to-kana "a")))
-  (should (equal '(found . ("い" . ""))
-                 (chokan-roman-table-roman-to-kana "qi")))
+  (should (string-equal "あ"
+                        (chokan-roman-table-roman-to-kana "a")))
+  (should (string-equal nil
+                        (chokan-roman-table-roman-to-kana "qi")))
   )
 
 (ert-deftest sokuon-to-kana ()
-  (should (equal '(found . ("っ" . "t"))
-                 (chokan-roman-table-roman-to-kana "tt")))
-  (should (equal '(found . ("っ" . "s"))
-                 (chokan-roman-table-roman-to-kana "ss")))
+  (should (string-equal "っt"
+                        (chokan-roman-table-roman-to-kana "tt")))
+  (should (string-equal "っs"
+                        (chokan-roman-table-roman-to-kana "ss")))
   )

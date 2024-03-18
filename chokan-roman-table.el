@@ -162,6 +162,23 @@
     ("pyu" . "ぴゅ")
     ("pyo" . "ぴょ")
 
+    ;; 促音
+    ("tt" . "っt")
+    ("bb" . "っb")
+    ("jj" . "っj")
+    ("ff" . "っf")
+    ("hh" . "っh")
+    ("ss" . "っs")
+    ("ww" . "っw")
+    ("rr" . "っr")
+    ("yy" . "っy")
+    ("pp" . "っp")
+    ("kk" . "っk")
+    ("gg" . "っg")
+    ("zz" . "っz")
+    ("cc" . "っc")
+    ("vv" . "っv")
+
     ;; 外来語
     ("fa" . "ふぁ")
     ("fi" . "ふぃ")
@@ -296,38 +313,16 @@
 
 変換結果によって、以下のいずれかの結果を返す。
 
-- '(not-found)' : 対応する候補が見つからない場合
+- 'nil' : 対応する候補が見つからない場合
 - '(ambiguous . (list of candidates))' : 対応する候補が複数見つかり、確定できない場合
-- '(found . (<kana> <rest of input>)' : 対応する候補が一つ見つかり、確定できる場合。
-                                        inputを全部消費しない場合、残りのinputを返す
+- '文字列' : 対応する候補が一つ見つかり、確定できる場合。
 "
   (let ((result (seq-filter (lambda (v) (string-prefix-p input (car v)))
                             chokan--roman-table)))
     (cond
-     ;; 全体の組み合わせで見つからない場合は促音の可能性を考慮しつつ、not foundを返す
-     ((null result)
-      (if (= 1 (length input))
-          '(not-found)
-        (let* ((first-char (substring input 0 1))
-               (second-char (substring input 1 2))
-               (rest (substring input 1))
-               (rest-result (chokan-roman-table-roman-to-kana rest))
-               )
-          (if (string= first-char second-char)
-              (cons 'found (cons "っ" (cond
-                                       ((eq (car rest-result) 'found) (cdar rest-result))
-                                       (t rest))))
-            (cond
-             ((eq (car rest-result) 'found) rest-result)
-             (t '(not-found)))))))
-     
-     ((= 1 (length result))
-      (let* ((kana (cdr (car result)))
-             (rest (substring input (length (car (car result))))))
-        (if (string= rest "")
-            (cons 'found (cons kana ""))
-          (const 'found (cons kana rest))))
-      )
+     ;; 全体の組み合わせで見つからない場合はnil
+     ((null result) nil)
+     ((= 1 (length result)) (cdr (car result)))
      (t `(ambiguous . ,(mapcar (lambda (v) (cdr v)) result)))
      )))
 

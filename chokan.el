@@ -194,6 +194,24 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
             (message "do not touch in %s %d" cmd length)))
         (error nil)))))
 
+
+(defun chokan--insert (convert-launchable underscore)
+  "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
+
+'convert-launchable' が 'non-nil' の場合、起動したコマンドのキーが変換起動可能であることを表す。
+'underscore' が 'non-nil' の場合、入力した文字が下線部になる。
+
+この関数では以下を実行する。
+
+1. 現在のmodeがカタカナであるかどうか
+2. 反転部の確定（ 'convert-launchable' が non-nil である場合）
+3. 下線部のかな漢字変換起動（ 'convert-launchable' が non-nil である場合）
+4. 下線部の設定（ 'underscore' が non-nil である場合）
+5. 自己挿入し、必要ならローマ字かな変換を行う
+"
+  (this-command-keys)
+  )
+
 ;; command definition
 (defun chokan-ascii ()
   "chokanをasciiモードに変更する"
