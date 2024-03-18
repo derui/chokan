@@ -28,19 +28,19 @@
   :group 'input-method
   :prefix "chokan-")
 
-(defcustom chokan-katakana-cursor-color "RoyalBlue"
-  "カタカナ入力モードの際のカーソルの色。"
-  :type 'color
+(defcustom chokan-katakana-cursor-type 'hollow
+  "カタカナ入力モードの際のカーソルの形状。デフォルトでは下線"
+  :type 'symbol
   :group 'chokan)
 
-(defcustom chokan-ascii-cursor-color "gray"
-  "asciiモードの際のカーソルの色。"
-  :type 'color
+(defcustom chokan-ascii-cursor-type 'bar
+  "asciiモードの際のカーソルの形状。デフォルトではbar"
+  :type 'symbol
   :group 'chokan)
 
-(defcustom chokan-ja-cursor-color "DarkOrange"
-  "日本語入力モードの際のカーソルの色。"
-  :type 'color
+(defcustom chokan-ja-cursor-type '(hbar . 2)
+  "日本語入力モードの際のカーソルの形状。デフォルトではhollow box"
+  :type 'symbol
   :group 'chokan)
 
 ;; global variable
@@ -69,8 +69,8 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 - 'katakana' : カタカナを入力する。変換を起動することはできない
 ")
 
-(defvar chokan--default-cursor-color nil
-  "chokanが終了したときに戻すためのcursorの色。この変数はバッファローカルである")
+(defvar chokan--default-cursor-type nil
+  "chokanが終了したときに戻すためのcursorの形状。この変数はバッファローカルである")
 
 ;; faces
 
@@ -200,14 +200,14 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   (interactive)
   (chokan-ja-mode -1)
   (chokan-ascii-mode +1)
-  (set-cursor-color chokan-ascii-cursor-color))
+  (setq cursor-type chokan-ascii-cursor-type))
 
 (defun chokan-ja ()
   "chokanを日本語入力モードに変更する"
   (interactive)
   (chokan-ascii-mode -1)
   (chokan-ja-mode +1)
-  (set-cursor-color chokan-ja-cursor-color))
+  (setq cursor-type chokan-ja-cursor-type))
 
 (defun chokan-toggle-katakana ()
   "chokanの内部モードをカタカナ入力に変更する"
@@ -216,9 +216,9 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
     (if (not (chokan--ja-katakana-p))
         (progn 
           (setq chokan--internal-mode 'katakana)
-          (set-cursor-color chokan-katakana-cursor-color))
+          (setq cursor-type chokan-katakana-cursor-type))
       (setq chokan--internal-mode 'hiragana)
-      (set-cursor-color chokan-ja-cursor-color))))
+      (setq cursor-type chokan-ja-cursor-type))))
 
 ;; mode definition
 
@@ -255,9 +255,9 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
                 (add-to-list 'after-change-functions #'chokan--after-change)
                 (if chokan-mode
                     (progn
-                      (setq-local chokan--default-cursor-color (frame-parameter nil 'cursor-color))
+                      (setq-local chokan--default-cursor-type cursor-type)
                       (chokan-ascii-mode))
-                  (set-cursor-color chokan--default-cursor-color)
+                  (setq cursor-type chokan--default-cursor-type)
                   (chokan-ja-mode -1)
                   (chokan-ascii-mode -1)))
   )

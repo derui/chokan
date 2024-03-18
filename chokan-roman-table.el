@@ -22,7 +22,7 @@
     ("u" . "う")
     ("e" . "え")
     ("o" . "お")
-    ("o" . "お")
+    
     ("ka" . "か")
     ("ki" . "き")
     ("ku" . "く")
@@ -119,10 +119,16 @@
     ("sha" . "しゃ")
     ("shu" . "しゅ")
     ("sho" . "しょ")
+    ("sya" . "しゃ")
+    ("syu" . "しゅ")
+    ("syo" . "しょ")
 
     ("cha" . "ちゃ")
     ("chu" . "ちゅ")
     ("cho" . "ちょ")
+    ("tya" . "ちゃ")
+    ("tyu" . "ちゅ")
+    ("tyo" . "ちょ")
 
     ("nya" . "にゃ")
     ("nyu" . "にゅ")
@@ -312,7 +318,7 @@
                                        ((eq (car rest-result) 'found) (cdar rest-result))
                                        (t rest))))
             (cond
-             ((eq (car rest-result) 'found) (cdar rest-result))
+             ((eq (car rest-result) 'found) rest-result)
              (t '(not-found)))))))
      
      ((= 1 (length result))
