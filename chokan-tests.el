@@ -22,6 +22,7 @@
 (ert-deftest alphabet-to-kana ()
   (should (equal nil (chokan-roman-table-roman-to-kana "lx")))
   (should (equal nil (chokan-roman-table-roman-to-kana "l")))
+  (should (equal '("し" . "") (chokan-roman-table-roman-to-kana "si")))
   (should (equal "z"
                  (chokan-roman-table-roman-to-kana "z")))
   (should (equal '("あ" . "")
