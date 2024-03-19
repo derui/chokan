@@ -22,19 +22,19 @@
 (ert-deftest alphabet-to-kana ()
   (should (equal nil (chokan-roman-table-roman-to-kana "lx")))
   (should (equal nil (chokan-roman-table-roman-to-kana "l")))
-  (should (equal '(ambiguous . ("ざ" "じ" "ず" "ぜ" "ぞ" "っz"))
+  (should (equal "z"
                  (chokan-roman-table-roman-to-kana "z")))
-  (should (string-equal "あ"
-                        (chokan-roman-table-roman-to-kana "a")))
-  (should (string-equal nil
-                        (chokan-roman-table-roman-to-kana "qi")))
+  (should (equal '("あ" . "")
+                 (chokan-roman-table-roman-to-kana "a")))
+  (should (equal nil
+                 (chokan-roman-table-roman-to-kana "qi")))
   )
 
 (ert-deftest sokuon-to-kana ()
-  (should (string-equal "っt"
-                        (chokan-roman-table-roman-to-kana "tt")))
-  (should (string-equal "っs"
-                        (chokan-roman-table-roman-to-kana "ss")))
+  (should (equal '("っ" . "t")
+                 (chokan-roman-table-roman-to-kana "tt")))
+  (should (equal '("っ" . "s")
+                 (chokan-roman-table-roman-to-kana "ss")))
   )
 
 (ert-deftest hira-to-kata ()

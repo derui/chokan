@@ -163,21 +163,21 @@
     ("pyo" . "ぴょ")
 
     ;; 促音
-    ("tt" . "っt")
-    ("bb" . "っb")
-    ("jj" . "っj")
-    ("ff" . "っf")
-    ("hh" . "っh")
-    ("ss" . "っs")
-    ("ww" . "っw")
-    ("rr" . "っr")
-    ("yy" . "っy")
-    ("pp" . "っp")
-    ("kk" . "っk")
-    ("gg" . "っg")
-    ("zz" . "っz")
-    ("cc" . "っc")
-    ("vv" . "っv")
+    ("tt" . ("っ" . "t"))
+    ("bb" . ("っ" . "b"))
+    ("jj" . ("っ" . "j"))
+    ("ff" . ("っ" . "f"))
+    ("hh" . ("っ" . "h"))
+    ("ss" . ("っ" . "s"))
+    ("ww" . ("っ" . "w"))
+    ("rr" . ("っ" . "r"))
+    ("yy" . ("っ" . "y"))
+    ("pp" . ("っ" . "p"))
+    ("kk" . ("っ" . "k"))
+    ("gg" . ("っ" . "g"))
+    ("zz" . ("っ" . "z"))
+    ("cc" . ("っ" . "c"))
+    ("vv" . ("っ" . "v"))
 
     ;; 外来語
     ("fa" . "ふぁ")
@@ -314,18 +314,21 @@
 変換結果によって、以下のいずれかの結果を返す。
 
 - 'nil' : 対応する候補が見つからない場合
-- '(ambiguous . (list of candidates))' : 対応する候補が複数見つかり、確定できない場合
-- '文字列' : 対応する候補が一つ見つかり、確定できる場合。
+- '\"result\"' : 対応する候補が複数見つかり、確定できない場合
+- (\"v\" . \"rest\") : 対応する候補が一つ見つかり、確定できる場合。
 "
   (let* ((input (downcase input))
-         (result (seq-filter (lambda (v) (string-prefix-p input (car v)))
-                             chokan--roman-table)))
-    (cond
-     ;; 全体の組み合わせで見つからない場合はnil
-     ((null result) nil)
-     ((= 1 (length result)) (cdr (car result)))
-     (t `(ambiguous . ,(mapcar (lambda (v) (cdr v)) result)))
-     )))
+         (result (seq-map #'cdr (seq-filter (lambda (v) (string-prefix-p input (car v)))
+                                            chokan--roman-table))))
+    (pcase result
+      ;; 全体の組み合わせで見つからない場合はnil
+      (`() nil)
+      ;; 一つだけ見つかる場合は、その値を返す
+      (`(,(and ret (pred stringp))) (cons ret ""))
+      ;; 一つだけ見つかったけどリストだった場合はドット対で返す
+      (`((,ret . ,rest)) (cons ret rest))
+      ;; 複数ある場合はなにもしない
+      (_ input))))
 
 (defun chokan-roman-table-hira-to-kata (hira)
   "ひらがなをカタカナに変換する。変換できない文字はそのままで返す"
