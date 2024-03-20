@@ -146,10 +146,19 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
 仕様上、未確定領域は現在のポイントから前にしか存在しない。"
   (save-excursion
-    (let ((prop (text-property-search-backward 'chokan-alphabet t t)))
-      (if prop
-          (cons (prop-match-beginning prop) (prop-match-end prop))
-        nil))))
+    (if-let* ((prop (text-property-search-backward 'chokan-alphabet t t)))
+        (cons (prop-match-beginning prop) (prop-match-end prop))
+      nil)))
+
+(defun chokan--get-inverse-region ()
+  "現在のpointを含む反転部の領域を取得する。
+反転部がない場合は 'NIL' を返す。
+
+仕様上、未確定領域は現在のポイントから前にしか存在しない。"
+  (save-excursion
+    (if-let* ((prop (text-property-search-backward 'chokan-inverse t t nil)))
+        (cons (prop-match-beginning prop) (prop-match-end prop))
+      nil)))
 
 (defun chokan--convert-roman-to-kana-if-possible (region)
   "chokanのローマ字変換において、確定できていない文字がある場合に、それを変換する。 'REGION'として指定した領域のみで判定する。
@@ -273,17 +282,26 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   (when convert-launchable
     (let ((current (point)))
       (chokan-conversion-launch (lambda (start end candidate)
-                                  (save-excursion
-                                    (delete-region start end)
-                                    (goto-char start)
-                                    (insert candidate)
-                                    (add-text-properties start (+ start (length candidate))
-                                                         `(face (:foreground ,(face-attribute 'default :background)
-                                                                             :background ,(face-attribute 'default :foreground))
-                                                                chokan-inverse t)))
-                                  (when (= end current)
-                                    (goto-char (+ 1 start (length candidate))))
+                                  (when candidate
+                                    (save-excursion
+                                      (delete-region start end)
+                                      (goto-char start)
+                                      (insert candidate)
+                                      (add-text-properties start (+ start (length candidate))
+                                                           `(face (:foreground ,(face-attribute 'default :background)
+                                                                               :background ,(face-attribute 'default :foreground))
+                                                                  chokan-inverse t)))
+                                    (when (= end current)
+                                      (goto-char (+ 1 start (length candidate)))))
                                   )))))
+
+(defun chokan--finalize-inverse-if-possible (finalizable)
+  "反転部を確定できる場合は確定する"
+
+  (when-let* (finalizable
+              (region (chokan--get-inverse-region)))
+    (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil))))
+
 
 (defun chokan--insert (convert-launchable underscore char-type)
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
@@ -301,6 +319,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 5. 自己挿入し、必要ならローマ字かな変換を行う
 "
   (let* ((key (this-command-keys)))
+    (chokan--finalize-inverse-if-possible convert-launchable)
     (chokan--launch-conversion-if-possible convert-launchable)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
                                          (conversion-start . ,convert-launchable)
