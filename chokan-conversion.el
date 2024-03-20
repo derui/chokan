@@ -35,14 +35,14 @@ contextが存在しない場合はnilを渡す。
   "[a-zA-Z0-9あ-ん]+"
   "変換対象とする文字を検索するための正規表現")
 
-(defun chokan-conversion--get-roman-region ()
+(defun chokan-conversion--get-conversion-region ()
   "現在の下線部があれば、その周辺で変換対象のregionを取得する。
 下線部が存在しない場合は 'NIL' を返す。
 "
   (let* ((current (point)))
     (save-excursion
       (when-let* ((prop-match (text-property-search-backward 'chokan-conversion-start t t nil))
-                  (region (const (prop-match-beginning prop-match) (prop-match-endprop-match)))
+                  (region (cons (prop-match-beginning prop-match) (prop-match-end prop-match)))
                   ;; ひらがな・アルファベット・数字以外、またはカーソル位置を対象にする
                   (end (re-search-forward chokan-conversion--target-character-regexp current t)))
         (cons (car region) end)))))
@@ -50,20 +50,23 @@ contextが存在しない場合はnilを渡す。
 (defun chokan-conversion-launch (callback)
   "現在のポイントから変換起動を試みる。変換起動が出来ない場合は、何も行わない。
 
-変換起動が出来た場合は、'CALLBACK'に対象のregionと、最初の変換候補を渡して実行する。変換候補がない場合は、変換候補をnilが設定される。
+変換起動が出来た場合は、'CALLBACK'に対象のregionの開始位置と終了位置、最初の変換候補を渡して実行する。変換候補がない場合は、変換候補をnilが設定される。
 "
 
-  (when-let* ((region (chokan-conversion--get-roman-region))
+  (when-let* ((region (chokan-conversion--get-conversion-region))
               (start (car region))
               (end (cdr region))
               (str (buffer-substring-no-properties start end)))
-    (when chokan-conversion-function
-      (setq chokan-conversion--candidate-pos 0)
-      (setq chokan-conversion--candidates (funcall chokan-conversion-function str nil))
+    (if chokan-conversion-function
+        (progn
+          (setq chokan-conversion--candidate-pos 0)
+          (setq chokan-conversion--candidates (funcall chokan-conversion-function str nil))
 
-      (let* ((candidate (and chokan-conversion--candidates
-                             (car chokan-conversion--candidates))))
-        (funcall callback start end candidate)))))
+          (let* ((candidate (and chokan-conversion--candidates
+                                 (car chokan-conversion--candidates))))
+            (funcall callback start end candidate)))
+      (funcall callback start end nil)))
+  )
 
 (defun chokan-conversion-next-candidate ()
   "次の候補があれば取得する。存在していなければnilを返す"

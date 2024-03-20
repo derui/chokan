@@ -22,6 +22,7 @@
 ;;; Code:
 
 (require 'chokan-roman-table)
+(require 'chokan-conversion)
 
 (defgroup chokan nil
   "chokan - cho-tto Kanzen"
@@ -266,6 +267,24 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
    ((eq char-type 'symbols)
     (insert key))))
 
+(defun chokan--launch-conversion-if-possible (convert-launchable)
+  "必要なら変換処理を起動し、反転部を作成する。 "
+
+  (when convert-launchable
+    (let ((current (point)))
+      (chokan-conversion-launch (lambda (start end candidate)
+                                  (save-excursion
+                                    (delete-region start end)
+                                    (goto-char start)
+                                    (insert candidate)
+                                    (add-text-properties start (+ start (length candidate))
+                                                         `(face (:foreground ,(face-attribute 'default :background)
+                                                                             :background ,(face-attribute 'default :foreground))
+                                                                chokan-inverse t)))
+                                  (when (= end current)
+                                    (goto-char (+ 1 start (length candidate))))
+                                  )))))
+
 (defun chokan--insert (convert-launchable underscore char-type)
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
 
@@ -282,6 +301,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 5. 自己挿入し、必要ならローマ字かな変換を行う
 "
   (let* ((key (this-command-keys)))
+    (chokan--launch-conversion-if-possible convert-launchable)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
                                          (conversion-start . ,convert-launchable)
                                          (inverse . nil)))))
