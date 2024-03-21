@@ -276,24 +276,29 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
    ((eq char-type 'symbols)
     (insert key))))
 
+(defun chokan--insert-candidate (region candidate)
+  "指定されたregionに対して 'CANDIDATE'を挿入し、反転部とする。 "
+  (let* ((start (car region))
+         (end (cdr region))
+         (current (point)))
+    (save-excursion
+      (delete-region start end)
+      (goto-char start)
+      (insert candidate)
+      (add-text-properties start (+ start (length candidate))
+                           `(face (:foreground ,(face-attribute 'default :background)
+                                               :background ,(face-attribute 'default :foreground))
+                                  chokan-inverse t)))
+    (when (= end current)
+      (goto-char (+ 1 start (length candidate))))))
+
 (defun chokan--launch-conversion-if-possible (convert-launchable)
   "必要なら変換処理を起動し、反転部を作成する。 "
 
   (when convert-launchable
-    (let ((current (point)))
-      (chokan-conversion-launch (lambda (start end candidate)
-                                  (when candidate
-                                    (save-excursion
-                                      (delete-region start end)
-                                      (goto-char start)
-                                      (insert candidate)
-                                      (add-text-properties start (+ start (length candidate))
-                                                           `(face (:foreground ,(face-attribute 'default :background)
-                                                                               :background ,(face-attribute 'default :foreground))
-                                                                  chokan-inverse t)))
-                                    (when (= end current)
-                                      (goto-char (+ 1 start (length candidate)))))
-                                  )))))
+    (chokan-conversion-launch (lambda (start end candidate)
+                                (when candidate
+                                  (chokan--insert-candidate (cons start end) candidate))))))
 
 (defun chokan--finalize-inverse-if-possible (finalizable)
   "反転部を確定できる場合は確定する"
@@ -361,6 +366,32 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   (interactive)
   (chokan--insert t t 'alphabet))
 
+(defun chokan-next-candidate ()
+  "現在の反転部に対する次の候補を表示する
+
+反転部がない場合は、もともとのキーバインドにフォールバックする。"
+  (interactive)
+  (let ((current-key (this-command-keys)))
+    (if-let* ((region (chokan--get-inverse-region)))
+        (when-let* ((candidate (chokan-conversion-next-candidate)))
+          (chokan--insert-candidate region candidate))
+      (let* ((chokan-ja-mode nil)
+             (old-func (key-binding current-key)))
+        (call-interactively old-func)))))
+
+(defun chokan-previous-candidate ()
+  "現在の反転部に対する前の候補を表示する
+
+反転部がない場合は、もともとのキーバインドにフォールバックする。"
+  (interactive)
+  (let ((current-key (this-command-keys)))
+    (if-let* ((region (chokan--get-inverse-region)))
+        (when-let ((candidate (chokan-conversion-previous-candidate)))
+          (chokan--insert-candidate region candidate))
+      (let* ((chokan-ja-mode nil)
+             (old-func (key-binding current-key)))
+        (call-interactively old-func)))))
+
 ;; mode definition
 
 (define-minor-mode chokan-ascii-mode
@@ -415,6 +446,8 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
 (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
 (define-key chokan-ja-mode-map (kbd "M-c") #'chokan-ascii)
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
+(define-key chokan-ja-mode-map (kbd "C-h") #'chokan-next-candidate)
+(define-key chokan-ja-mode-map (kbd "C-g") #'chokan-previous-candidate)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
