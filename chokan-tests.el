@@ -15,7 +15,7 @@
 (require 'cl-lib)
 (require 'ert)
 (require 'chokan-roman-table)
-(require 'chokan)
+(require 'chokan-symbol)
 
 ;; define tests
 
@@ -44,3 +44,8 @@
   (should (equal "カ" (chokan-roman-table-hira-to-kata "か")))
   (should (equal "ッt" (chokan-roman-table-hira-to-kata "っt")))
   )
+
+(ert-deftest en-symbol-to-ja-symbol ()
+  (should (equal "。" (chokan-symbol-convert-to-ja ".")))
+  (should (equal "、" (chokan-symbol-convert-to-ja ",")))
+  (should (equal "ー" (chokan-symbol-convert-to-ja "-"))))
