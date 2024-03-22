@@ -392,6 +392,12 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
              (old-func (key-binding current-key)))
         (call-interactively old-func)))))
 
+(defun chokan-force-finalize ()
+  "強制的に反転部を確定させる"
+  (interactive)
+  (chokan--finalize-inverse-if-possible t)
+  (chokan--launch-conversion-if-possible t))
+
 ;; mode definition
 
 (define-minor-mode chokan-ascii-mode
@@ -444,6 +450,7 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
 
 ;; setup initial keymap
 (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
+(define-key chokan-ja-mode-map (kbd "C-j") #'chokan-force-finalize)
 (define-key chokan-ja-mode-map (kbd "M-c") #'chokan-ascii)
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
 (define-key chokan-ja-mode-map (kbd "C-h") #'chokan-next-candidate)
