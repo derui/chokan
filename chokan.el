@@ -23,6 +23,7 @@
 
 (require 'chokan-roman-table)
 (require 'chokan-conversion)
+(require 'chokan-symbol)
 
 (defgroup chokan nil
   "chokan - cho-tto Kanzen"
@@ -119,7 +120,8 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
       (condition-case-unless-debug nil
           (cond
            ((or (eq cmd 'chokan-insert-normal-alphabet)
-                (eq cmd 'chokan-insert-conversion-start-key)) nil)
+                (eq cmd 'chokan-insert-conversion-start-key)
+                (eq cmd 'chokan-insert-symbol-key)) nil)
            (t
             ;; self-insert-commandではない変更が行われた場合は、確定できていない文字を削除する
             ;; 変換中の文字は、あくまで途中の文字でしか無いので、確定しない限りは、self-insert以外では削除する
@@ -274,7 +276,8 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
           (goto-char (car region))
           (insert propertized)))))
    ((eq char-type 'symbols)
-    (insert key))))
+    (let ((key (or (chokan-symbol-convert-to-ja key) key)))
+      (chokan--insert-with-type key char-props)))))
 
 (defun chokan--insert-candidate (region candidate)
   "指定されたregionに対して 'CANDIDATE'を挿入し、反転部とする。 "
@@ -327,7 +330,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
     (chokan--finalize-inverse-if-possible convert-launchable)
     (chokan--launch-conversion-if-possible convert-launchable)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
-                                         (conversion-start . ,convert-launchable)
+                                         (conversion-start . ,underscore)
                                          (inverse . nil)))))
 
 ;; command definition
@@ -365,6 +368,11 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   "変換起動をして文字を入力する"
   (interactive)
   (chokan--insert t t 'alphabet))
+
+(defun chokan-insert-symbol-key ()
+  "各種記号を入力する。記号は原則として変換起動するが、自分自身は下線部ではない。"
+  (interactive)
+  (chokan--insert t nil 'symbols))
 
 (defun chokan-next-candidate ()
   "現在の反転部に対する次の候補を表示する
@@ -460,5 +468,8 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
+(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "'" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">"))
+  (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
+
 
 (provide 'chokan)
