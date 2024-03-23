@@ -121,7 +121,8 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
           (cond
            ((or (eq cmd 'chokan-insert-normal-alphabet)
                 (eq cmd 'chokan-insert-conversion-start-key)
-                (eq cmd 'chokan-insert-symbol-key)) nil)
+                (eq cmd 'chokan-insert-symbol-key)
+                (eq cmd 'chokan-force-finalize)) nil)
            (t
             ;; self-insert-commandではない変更が行われた場合は、確定できていない文字を削除する
             ;; 変換中の文字は、あくまで途中の文字でしか無いので、確定しない限りは、self-insert以外では削除する
@@ -129,7 +130,13 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
               (if prop
                   (delete-region (prop-match-beginning prop) (prop-match-end prop))
                 nil))
-            (message "do not touch in %s" cmd)))
+
+            ;; 反転部が存在する場合に、カーソルの位置に応じて反転部の確定を実行する
+            (when-let* ((region (chokan--get-inverse-region))
+                        (start (car region))
+                        (end (cdr region)))
+              (when (<= start (point) end)
+                (chokan--finalize-inverse-if-possible t region)))))
         (error nil)))))
 
 (defun chokan--roman-to-kana (alphabet)
@@ -158,8 +165,9 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
 仕様上、未確定領域は現在のポイントから前にしか存在しない。"
   (save-excursion
-    (if-let* ((prop (text-property-search-backward 'chokan-inverse t t nil)))
-        (cons (prop-match-beginning prop) (prop-match-end prop))
+    (if-let* ((backward-prop (text-property-search-backward 'chokan-inverse t t))
+              (forward-prop (text-property-search-forward 'chokan-inverse t t)))
+        (cons (prop-match-beginning backward-prop) (prop-match-end forward-prop))
       nil)))
 
 (defun chokan--convert-roman-to-kana-if-possible (region)
@@ -303,13 +311,15 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
                                 (when candidate
                                   (chokan--insert-candidate (cons start end) candidate))))))
 
-(defun chokan--finalize-inverse-if-possible (finalizable)
-  "反転部を確定できる場合は確定する"
+(defun chokan--finalize-inverse-if-possible (finalizable &optional inverted-region)
+  "反転部を確定できる場合は確定する。
+
+'INVERTED-REGION' にconsが渡されている場合はそれが利用される"
 
   (when-let* (finalizable
-              (region (chokan--get-inverse-region)))
+              (region (or (and (consp inverted-region) inverted-region)
+                          (chokan--get-inverse-region))))
     (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil))))
-
 
 (defun chokan--insert (convert-launchable underscore char-type)
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
@@ -434,8 +444,9 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   (set-face-attribute 'chokan-inverse nil :foreground (face-attribute 'default :background))
   (set-face-attribute 'chokan-inverse nil :background (face-attribute 'default :foreground))
 
-  (setq-local chokan--default-cursor-type cursor-type)
-  (chokan-ascii-mode)
+  (chokan-conversion--setup)
+  (setq-local chokan--default-cursor-type cursor-type)  
+  (chokan-ja-mode)
   )
 
 (define-minor-mode chokan-mode

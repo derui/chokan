@@ -47,6 +47,8 @@ contextが存在しない場合はnilを渡す。
                   (end (re-search-forward chokan-conversion--target-character-regexp current t)))
         (cons (car region) end)))))
 
+;; public functions
+
 (defun chokan-conversion-launch (callback)
   "現在のポイントから変換起動を試みる。変換起動が出来ない場合は、何も行わない。
 
@@ -81,5 +83,13 @@ contextが存在しない場合はnilを渡す。
     (when-let* ((prev (nth (1- chokan-conversion--candidate-pos) chokan-conversion--candidates)))
       (setq chokan-conversion--candidate-pos (1- chokan-conversion--candidate-pos))
       prev)))
+
+;; package private functions
+(defun chokan-conversion--setup ()
+  "変換に関する処理を行うためのセットアップを行う。
+
+ここでは変数のバッファローカル化を行う。"
+  (setq-local chokan-conversion--candidates nil)
+  (setq-local chokan-conversion--candidate-pos 0))
 
 (provide 'chokan-conversion)
