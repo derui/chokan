@@ -3,7 +3,7 @@ use std::collections::{BinaryHeap, HashMap};
 use dic::base::word::Word;
 use serde::{Deserialize, Serialize};
 
-mod context;
+pub mod context;
 mod graph;
 mod score;
 
