@@ -24,40 +24,7 @@
 (require 'chokan-roman-table)
 (require 'chokan-conversion)
 (require 'chokan-symbol)
-
-(defgroup chokan nil
-  "chokan - cho-tto Kanzen"
-  :group 'input-method
-  :prefix "chokan-")
-
-(defcustom chokan-katakana-cursor-type 'hollow
-  "カタカナ入力モードの際のカーソルの形状。デフォルトでは下線"
-  :type 'symbol
-  :group 'chokan)
-
-(defcustom chokan-ascii-cursor-type 'bar
-  "asciiモードの際のカーソルの形状。デフォルトではbar"
-  :type 'symbol
-  :group 'chokan)
-
-(defcustom chokan-ja-cursor-type '(hbar . 2)
-  "日本語入力モードの際のカーソルの形状。デフォルトではhollow box"
-  :type 'symbol
-  :group 'chokan)
-
-;; global variable
-
-(defvar chokan-mode-map (make-sparse-keymap)
-  "Keymap for `chokan-mode'. This keymap is empty by default.
-You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
- ")
-
-(defvar chokan-ascii-mode-map (make-sparse-keymap)
-  "Keymap for `chokan-ascii-mode'.
- ")
-
-(defvar chokan-ja-mode-map (make-sparse-keymap)
-  "Keymap for `chokan-ja-mode'. ")
+(require 'chokan-variable)
 
 ;; buffer-local variable
 
@@ -308,7 +275,8 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
   (when convert-launchable
     (chokan-conversion-launch (lambda (start end candidate)
-                                (when candidate
+                                (when-let* (candidate
+                                            (candidate (cdr candidate)))
                                   (chokan--insert-candidate (cons start end) candidate))))))
 
 (defun chokan--finalize-inverse-if-possible (finalizable &optional inverted-region)

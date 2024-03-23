@@ -6,7 +6,7 @@
 ;; URL: 
 ;; Version: 0.1.0
 ;; Created: 2024
-;; Package-Requires: ((emacs "27.1"))
+;; Package-Requires: ((emacs "27.1") (websocket))
 ;; Keywords: ime
 
 ;;; Commentary:
@@ -15,8 +15,13 @@
 
 ;;; Code:
 
+(require 'url-parse)
+(require 'jsonrpc)
+(require 'chokan-variable)
+(require 'websocket)
+
 (defvar chokan-conversion-function
-  nil
+  #'chokan-conversion--get-candidates
   "変換起動した文字列から、実際に候補を取得する関数。
 
 関数は、引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
@@ -27,9 +32,17 @@ contextが存在しない場合はnilを渡す。
 ")
 
 (defvar chokan-conversion--candidates nil
-  "変換候補のリスト。変換起動が行われるたびに初期化される。")
+  "変換候補のリスト。変換起動が行われるたびに初期化される。
+
+candidateは、それぞれ '(id . candidate)' というconsで保持される。idは、候補の識別子であり、candidateは、候補の文字列である。
+")
 (defvar chokan-conversion--candidate-pos 0
   "現在選択している候補の位置を 0オリジンで保持する。")
+
+(defvar chokan-conversion--connection-cache nil
+  "変換サーバーへのconnectionを保持する。全バッファで共有される。")
+(defvar chokan-conversion--websocket nil
+  "変換サーバーへのwebsocket connectionを保持する。全バッファで共有される。")
 
 (defconst chokan-conversion--target-character-regexp
   "[a-zA-Z0-9あ-ん]+"
@@ -46,6 +59,89 @@ contextが存在しない場合はnilを渡す。
                   ;; ひらがな・アルファベット・数字以外、またはカーソル位置を対象にする
                   (end (re-search-forward chokan-conversion--target-character-regexp current t)))
         (cons (car region) end)))))
+
+;; websocket用のjsonrpc-connectionを定義する
+(defclass chokan-conversion--connection (jsonrpc-connection)
+  ((-websocket
+    :initarg :socket :accessor chokan-conversion--websocket
+    :documentation "The websocket process."))
+  :documentation "JSON-RPC connection over websocket")
+
+(cl-defmethod jsonrpc-connection-send ((conn chokan-conversion--connection)
+                                       &rest args
+                                       &key
+                                       _id
+                                       method
+                                       _params
+                                       _result
+                                       _error
+                                       _partial)
+  "Send a JSON-RPC REQUEST over the websocket connection."
+  (when method
+    (plist-put args :method
+               (cond ((keywordp method) (substring (symbol-name method) 1))
+                     ((and method (symbolp method)) (symbol-name method)))))
+  (let* ((message `(;; CDP isn't technically JSONRPC, so don't send
+                    ;; the `:jsonrpc' "2.0" version identifier which
+                    ;; trips up node's server, for example.
+                    :jsonrpc "2.0"
+                    ,@args))
+         (json (jsonrpc--json-encode message)))
+    (with-slots (-websocket) conn
+      (websocket-send-text -websocket json))))
+
+(cl-defmethod jsonrpc-running-p ((conn chokan-conversion--connection))
+  "websocketコネクションが生存しているかどうかを返す"
+  (with-slots (-websocket) conn
+    (and -websocket
+         (websocket-openp -websocket)))
+  )
+
+(cl-defmethod jsonrpc-shutdown ((conn chokan-conversion--connection))
+  "websocketコネクションをシャットダウンする"
+  (with-slots (-websocket) conn
+    (when (websocket-openp -websocket)
+      (websocket-close -websocket))))
+
+(defun chokan-conversion--on-websocket-message (ws frame)
+  "websocketからのmessageを、JSON RPCとして解釈する。"
+  (jsonrpc-connection-receive
+   ;; client自体のデータとしてconnectionが入っている。
+   (websocket-client-data ws)
+   (json-parse-string
+    (websocket-frame-text frame)
+    :object-type 'plist
+    :null-object nil
+    :false-object :json-false)))
+
+(defun chokan-conversion--current-connection ()
+  "JSON RPCで利用するconnection objectを返す。
+
+実行時にconnection objectが存在していない場合は作成を試みる"
+  (or chokan-conversion--connection-cache
+      (progn
+        (setq chokan-conversion--websocket (websocket-open
+                                            (format "ws://%s:%s" chokan-server-address chokan-server-port)
+                                            :on-message 'chokan-conversion--on-websocket-message
+                                            :on-close (lambda (_)
+                                                        (setq chokan-conversion--connection-cache nil))
+                                            :on-error (lambda (_)
+                                                        (setq chokan-conversion--connection-cache nil))))
+        (setq chokan-conversion--connection-cache
+              (make-instance 'chokan-conversion--connection
+                             :socket chokan-conversion--websocket))
+        (setf (websocket-client-data chokan-conversion--websocket) chokan-conversion--connection-cache)
+        chokan-conversion--connection-cache)))
+
+(defun chokan-conversion--get-candidates (input ctx)
+  "変換候補を取得する。
+
+事前に対応するserverが起動している必要がある。サーバーのアドレスは `chokan-server-address' で設定する。"
+  (let* ((conn (chokan-conversion--current-connection))
+         (res (jsonrpc-request conn :GetCandidates `(:input ,input)))
+         (candidates (plist-get res :candidates))
+         (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
+    candidates))
 
 ;; public functions
 
