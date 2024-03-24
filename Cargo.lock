@@ -199,6 +199,7 @@ name = "chokan-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chokan-dic",
  "clap",
  "jsonrpsee",
  "kkc",

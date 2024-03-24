@@ -6,6 +6,7 @@ use std::{
     path::Path,
 };
 
+use chokan_dic::ChokanDictionary;
 use clap::Parser;
 use jsonrpsee::{
     server::{RpcServiceBuilder, Server},
@@ -61,7 +62,7 @@ RPCモジュールを定義する。
 # Returns
 定義したRPCモジュール
 */
-fn define_module(dictionary: GraphDictionary) -> anyhow::Result<RpcModule<GraphDictionary>> {
+fn define_module(dictionary: ChokanDictionary) -> anyhow::Result<RpcModule<ChokanDictionary>> {
     let mut module = RpcModule::new(dictionary);
 
     method::make_get_candidates_method(&mut module)?;
@@ -72,7 +73,7 @@ fn define_module(dictionary: GraphDictionary) -> anyhow::Result<RpcModule<GraphD
 /**
 サーバーを起動する。ここで起動したサーバーは、基本的にsighupを受け取るまで停止しない。
  */
-async fn run_server(port: u16, rpc_module: RpcModule<GraphDictionary>) -> anyhow::Result<()> {
+async fn run_server(port: u16, rpc_module: RpcModule<ChokanDictionary>) -> anyhow::Result<()> {
     let addr = format!("127.0.0.1:{}", port).parse::<SocketAddr>()?;
     let rpc_middleware = RpcServiceBuilder::new().rpc_logger(1024);
     let server = Server::builder()
@@ -100,11 +101,11 @@ async fn run_server(port: u16, rpc_module: RpcModule<GraphDictionary>) -> anyhow
 # Returns
 読み込んだ辞書
 */
-fn read_dictionary_from(path: &String) -> anyhow::Result<GraphDictionary> {
+fn read_dictionary_from(path: &String) -> anyhow::Result<ChokanDictionary> {
     let mut input = File::open(fs::canonicalize(Path::new(path))?)?;
     let mut buf = Vec::new();
     input.read_to_end(&mut buf)?;
-    let data = from_bytes::<GraphDictionary>(&buf)?;
+    let data = from_bytes::<ChokanDictionary>(&buf)?;
 
     tracing::info!("Loading dictionary from {}...finished", path);
 

@@ -24,3 +24,17 @@ tasks:
   clean:
     cmds:
       - find . -type f -name "*.elc" | xargs rm
+
+  make-notes-dic:
+    dir: skk-notes-converter
+    cmds:
+      - sh make-jisyo.sh
+  make-tankan-dic:
+    dir: skk-tankan-converter
+    cmds:
+      - sh make-jisyo.sh
+  make-dic:
+    deps: [make-notes-dic, make-tankan-dic]
+    dir: chokan-dic
+    cmds:
+      - cargo run --bin chokan-dic -- ../skk-notes-converter/dic/chokan.notes.dic ./dict/huzoku.dic ../skk-tankan-converter/dic/chokan.tankan.dic dictionary.dat

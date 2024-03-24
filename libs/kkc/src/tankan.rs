@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
 use dic::base::word::Word;
+use serde::{Deserialize, Serialize};
 
 /**
 単漢字変換用の辞書
 */
+#[derive(Serialize, Deserialize)]
 pub struct TankanDictionary {
     pub kanji_map: HashMap<String, Vec<Word>>,
 }

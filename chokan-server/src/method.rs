@@ -1,3 +1,4 @@
+use chokan_dic::ChokanDictionary;
 use jsonrpsee::{core::RpcResult, RpcModule};
 use kkc::{get_candidates, GraphDictionary};
 use serde::{Deserialize, Serialize};
@@ -47,12 +48,12 @@ struct GetCandidatesResponse {
 /// # Arguments
 /// * `module` - 登録するmodule
 pub(crate) fn make_get_candidates_method(
-    module: &mut RpcModule<GraphDictionary>,
+    module: &mut RpcModule<ChokanDictionary>,
 ) -> anyhow::Result<()> {
     module.register_method("GetCandidates", |params, dictionary| {
         let params = params.parse::<GetCandidatesRequest>()?;
         let context = kkc::context::new();
-        let candidates = get_candidates(&params.input, dictionary, &context, 10);
+        let candidates = get_candidates(&params.input, &dictionary.graph, &context, 10);
 
         let candidates = candidates
             .into_iter()
