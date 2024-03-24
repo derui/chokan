@@ -55,6 +55,7 @@ fn read_and_make_dictionary(dic_path: &Path) -> Result<ReadDictionary, std::io::
 }
 
 fn main() {
+    env_logger::init();
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 4 {
