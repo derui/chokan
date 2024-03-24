@@ -104,7 +104,9 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
            ((or (eq cmd 'chokan-insert-normal-alphabet)
                 (eq cmd 'chokan-insert-conversion-start-key)
                 (eq cmd 'chokan-insert-symbol-key)
-                (eq cmd 'chokan-force-finalize)) nil)
+                (eq cmd 'chokan-insert-tankan-start-key)
+                (eq cmd 'chokan-force-finalize))
+            nil)
            (t
             ;; self-insert-commandではない変更が行われた場合は、確定できていない文字を削除する
             ;; 変換中の文字は、あくまで途中の文字でしか無いので、確定しない限りは、self-insert以外では削除する
@@ -174,7 +176,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
 ここではあくまでtext propertyの設定のみであり、faceは設定しない。
 
-'char-props' は以下のassocである。いずれも `nil' または 't' を取る。
+'char-props' は以下のassocである。いずれも `nil' または固有の値または `t' である。
 
 `((roman . nil)
   (conversion-start . nil)
@@ -182,7 +184,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 '
 
 - 'roman' :: ローマ字変換の対象
-- 'conversion-start' :: 変換の起点。下線部表記になる
+- 'conversion-start' :: 変換の起点。下線部表記になる。 'normal' `'tankan'のいずれかを設定する
 - 'inverse' :: 反転部。かな漢字変換をしている場所になる
 "
   (insert str)
@@ -197,12 +199,14 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
       (`(t nil ,_)
        (put-text-property start end 'chokan-alphabet t))
       ;; 大文字のアルファベットのとき
-      (`(t t ,_)
+      (`(t ,(pred (not (null))) ,_)
        (put-text-property start end 'chokan-alphabet t)
-       (put-text-property start end 'chokan-conversion-start t))
+       (put-text-property start end 'chokan-conversion-start t)
+       (put-text-property start end 'chokan-conversion-detail conversion-start))
       ;; 下線部
-      (`(nil t ,_)
-       (put-text-property start end 'chokan-conversion-start t))
+      (`(nil ,(pred (not (null))) ,_)
+       (put-text-property start end 'chokan-conversion-start t)
+       (put-text-property start end 'chokan-conversion-detail conversion-start))
       ;; 反転部
       (`(nil nil t)
        (put-text-property start end 'chokan-inverse t)))))
@@ -240,6 +244,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
                                                     ;; 決定された場合はpropertyを設定しない
                                                     'chokan-alphabet (plist-get props 'chokan-alphabet)
                                                     'chokan-conversion-start (plist-get props 'chokan-conversion-start)
+                                                    'chokan-conversion-detail (plist-get props 'chokan-conversion-detail)
                                                     'chokan-inverse (plist-get props 'chokan-inverse))))
                   (cl-incf current-point)))
               converted))
@@ -267,7 +272,10 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
           (insert propertized)))))
    ((eq char-type 'symbols)
     (let ((key (or (chokan-symbol-convert-to-ja key) key)))
-      (chokan--insert-with-type key char-props)))))
+      (chokan--insert-with-type key char-props)
+      ;; 対象の部分に下線部が追加されたりするのでその対応をする
+      (let* ((props (text-properties-at (- (point) (length key)))))
+        (put-text-property (- (point) (length key)) (point) 'face (chokan--get-face props)))))))
 
 (defun chokan--insert-candidate (region candidate)
   "指定されたregionに対して 'CANDIDATE'を挿入し、反転部とする。 "
@@ -307,7 +315,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
 
 'CONVERT-LAUNCHABLE' が 'non-nil' の場合、起動したコマンドのキーが変換起動可能であることを表す。
-'UNDERSCORE' が 'non-nil' の場合、入力した文字が下線部になる。
+'UNDERSCORE' が 'non-nil' の場合、入力した文字が下線部になる。指定したsymbolに対応する特殊変換がトグルされる
 'CHAR-TYPE' は、 'alphabet' 'symbols' のいずれかのsymbolである。
 
 この関数では以下を実行する。
@@ -319,6 +327,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 5. 自己挿入し、必要ならローマ字かな変換を行う
 "
   (let* ((key (this-command-keys)))
+    (message "key: %s" key)
     (chokan--finalize-inverse-if-possible convert-launchable)
     (chokan--launch-conversion-if-possible convert-launchable)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
@@ -356,18 +365,23 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 (defun chokan-insert-normal-alphabet ()
   "変換起動をしないで文字を入力する"
   (interactive)
-  (let ((conversion-start (chokan--sticky-p)))
-    (chokan--insert conversion-start conversion-start 'alphabet)))
+  (let ((conversion-start (and (chokan--sticky-p) 'normal)))
+    (chokan--insert (not (null conversion-start)) conversion-start 'alphabet)))
 
 (defun chokan-insert-conversion-start-key ()
   "変換起動をして文字を入力する"
   (interactive)
-  (chokan--insert t t 'alphabet))
+  (chokan--insert t 'normal 'alphabet))
 
 (defun chokan-insert-symbol-key ()
   "各種記号を入力する。記号は原則として変換起動するが、自分自身は下線部ではない。"
   (interactive)
   (chokan--insert t nil 'symbols))
+
+(defun chokan-insert-tankan-start-key ()
+  "単漢字変換を起動して文字を入力する"
+  (interactive)
+  (chokan--insert t 'tankan 'symbols))
 
 (defun chokan-next-candidate ()
   "現在の反転部に対する次の候補を表示する
@@ -466,13 +480,13 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
 (define-key chokan-ja-mode-map (kbd "C-h") #'chokan-next-candidate)
 (define-key chokan-ja-mode-map (kbd "C-g") #'chokan-previous-candidate)
 (define-key chokan-ja-mode-map (kbd "'") #'chokan-sticky)
+(define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
-(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">"))
+(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" " " "<return>"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
-
 
 (provide 'chokan)

@@ -20,9 +20,17 @@
 (require 'chokan-variable)
 (require 'websocket)
 
-(defvar chokan-conversion-function
-  #'chokan-conversion--get-candidates
-  "変換起動した文字列から、実際に候補を取得する関数。
+(defvar chokan-conversion-functions
+  (list
+   '(normal . chokan-conversion--get-candidates)
+   '(tankan . chokan-conversion--get-tankan-candidates)
+   )
+  "変換起動した文字列から、実際に候補を取得する関数のマッピング。
+
+マッピングのキーとしては、次が利用可能である。
+
+- 'normal' : 通常の変換を行う場合の関数
+- 'tankan' : 単漢字変換を行う場合
 
 関数は、引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
 contextが存在しない場合はnilを渡す。
@@ -49,7 +57,7 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
   "変換対象とする文字を検索するための正規表現")
 
 (defun chokan-conversion--get-conversion-region ()
-  "現在の下線部があれば、その周辺で変換対象のregionを取得する。
+  "現在の下線部があれば、その周辺で変換対象のregionと種別を取得する。
 下線部が存在しない場合は 'NIL' を返す。
 "
   (let* ((current (point)))
@@ -57,8 +65,9 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
       (when-let* ((prop-match (text-property-search-backward 'chokan-conversion-start t t nil))
                   (region (cons (prop-match-beginning prop-match) (prop-match-end prop-match)))
                   ;; ひらがな・アルファベット・数字以外、またはカーソル位置を対象にする
-                  (end (re-search-forward chokan-conversion--target-character-regexp current t)))
-        (cons (car region) end)))))
+                  (end (re-search-forward chokan-conversion--target-character-regexp current t))
+                  (detail (get-text-property (prop-match-beginning prop-match) 'chokan-conversion-detail)))
+        (list (car region) end detail)))))
 
 ;; websocket用のjsonrpc-connectionを定義する
 (defclass chokan-conversion--connection (jsonrpc-connection)
@@ -143,6 +152,17 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
          (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
     candidates))
 
+(defun chokan-conversion--get-tankan-candidates (input ctx)
+  "単漢字変換の変換候補を取得する。
+
+事前に対応するserverが起動している必要がある。サーバーのアドレスは `chokan-server-address' で設定する。"
+  (let* ((input (substring input 1))
+         (conn (chokan-conversion--current-connection))
+         (res (jsonrpc-request conn :GetTankanCandidates `(:input ,input)))
+         (candidates (plist-get res :candidates))
+         (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
+    candidates))
+
 ;; public functions
 
 (defun chokan-conversion-launch (callback)
@@ -153,18 +173,19 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
 
   (when-let* ((region (chokan-conversion--get-conversion-region))
               (start (car region))
-              (end (cdr region))
+              (end (cadr region))
+              (type (caddr region))
               (str (buffer-substring-no-properties start end)))
-    (if chokan-conversion-function
-        (progn
-          (setq chokan-conversion--candidate-pos 0)
-          (setq chokan-conversion--candidates (funcall chokan-conversion-function str nil))
+    (let ((func (assoc type chokan-conversion-functions)))
+      (if func
+          (progn
+            (setq chokan-conversion--candidate-pos 0)
+            (setq chokan-conversion--candidates (funcall (cdr func) str nil))
 
-          (let* ((candidate (and chokan-conversion--candidates
-                                 (car chokan-conversion--candidates))))
-            (funcall callback start end candidate)))
-      (funcall callback start end nil)))
-  )
+            (let* ((candidate (and chokan-conversion--candidates
+                                   (car chokan-conversion--candidates))))
+              (funcall callback start end candidate)))
+        (funcall callback start end nil)))))
 
 (defun chokan-conversion-next-candidate ()
   "次の候補があれば取得する。存在していなければnilを返す"
