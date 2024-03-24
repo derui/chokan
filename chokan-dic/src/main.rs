@@ -35,20 +35,24 @@ fn read_and_make_dictionary(dic_path: &Path) -> Result<ReadDictionary, std::io::
     let mut trie = trie::Trie::from_keys(&label_keys());
     let mut dic_map = HashMap::new();
     let mut count = 0u64;
+    let mut words: Vec<Word> = dic
+        .entries()
+        .iter()
+        .cloned()
+        .map(|v| -> Vec<Word> { v.into() })
+        .flatten()
+        .collect();
+    words.sort_by(|v1, v2| v1.reading.cmp(&v2.reading));
 
-    for entry in dic.entries_ref() {
-        let words: Vec<Word> = entry.clone().into();
-
-        for word in words {
-            count += 1;
-            if count % 1000 == 0 {
-                info!("Words: {} processed...", count);
-            }
-            let reading = word.reading.iter().collect::<String>();
-            let _ = trie.insert(&reading);
-            let v = dic_map.entry(reading).or_insert(Vec::new());
-            v.push(word);
+    for word in words {
+        count += 1;
+        if count % 1000 == 0 {
+            info!("Words: {} processed...", count);
         }
+        let reading = word.reading.iter().collect::<String>();
+        let _ = trie.insert(&reading);
+        let v = dic_map.entry(reading).or_insert(Vec::new());
+        v.push(word);
     }
 
     Ok(ReadDictionary { trie, dic: dic_map })
@@ -64,19 +68,23 @@ fn read_and_make_tankan_dictionary(dic_path: &Path) -> Result<TankanDictionary, 
 
     let mut dic_map = HashMap::new();
     let mut count = 0u64;
+    let mut words: Vec<Word> = dic
+        .entries()
+        .iter()
+        .cloned()
+        .map(|v| -> Vec<Word> { v.into() })
+        .flatten()
+        .collect();
+    words.sort_by(|v1, v2| v1.reading.cmp(&v2.reading));
 
-    for entry in dic.entries_ref() {
-        let words: Vec<Word> = entry.clone().into();
-
-        for word in words {
-            count += 1;
-            if count % 1000 == 0 {
-                info!("Words: {} processed...", count);
-            }
-            let reading = word.reading.iter().collect::<String>();
-            let v = dic_map.entry(reading).or_insert(Vec::new());
-            v.push(word);
+    for word in words {
+        count += 1;
+        if count % 1000 == 0 {
+            info!("Words: {} processed...", count);
         }
+        let reading = word.reading.iter().collect::<String>();
+        let v = dic_map.entry(reading).or_insert(Vec::new());
+        v.push(word);
     }
 
     Ok(TankanDictionary { kanji_map: dic_map })
