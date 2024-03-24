@@ -1172,6 +1172,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "skk-tankan-converter"
+version = "0.1.0"
+dependencies = [
+ "dic",
+ "encoding_rs",
+ "encoding_rs_io",
+ "peg",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
