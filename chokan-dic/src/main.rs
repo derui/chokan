@@ -1,3 +1,5 @@
+mod lib;
+
 use std::{collections::HashMap, env, fs::File, io::Write, path::Path};
 
 use dic::{

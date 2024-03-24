@@ -7,6 +7,7 @@ pub mod context;
 mod graph;
 mod score;
 
+mod tankan;
 #[cfg(test)]
 mod test_dic;
 
@@ -180,6 +181,21 @@ pub fn get_candidates(
     let mut graph = graph::Graph::from_input(input, dic);
     forward_dp(input, &mut graph, context);
     get_n_best_candidates(context, &graph, n)
+}
+
+// re-export tankan
+pub use tankan::TankanDictionary;
+
+/// 指定した文字列に対する単漢字の候補を取得する
+///
+/// # Arguments
+/// * `input` - 変換対象の文字列
+/// * `dic` - 変換に利用する辞書
+///
+/// # Returns
+/// 変換候補のリスト
+pub fn get_tankan_candidates(input: &str, dic: &TankanDictionary) -> Vec<String> {
+    dic.get_candidates(input)
 }
 
 #[cfg(test)]
