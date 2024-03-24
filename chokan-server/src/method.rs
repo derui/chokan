@@ -53,7 +53,7 @@ pub(crate) fn make_get_candidates_method(
     module.register_method("GetCandidates", |params, dictionary| {
         let params = params.parse::<GetCandidatesRequest>()?;
         let context = kkc::context::new();
-        let candidates = get_candidates(&params.input, &dictionary.graph, &context, 10);
+        let candidates = get_candidates(&params.input, &dictionary.graph, &context, 100);
 
         let candidates = candidates
             .into_iter()
