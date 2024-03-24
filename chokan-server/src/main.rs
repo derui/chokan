@@ -35,7 +35,7 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let filter = tracing_subscriber::filter::EnvFilter::try_from_default_env()?
+    let filter = tracing_subscriber::filter::EnvFilter::from_default_env()
         .add_directive("jsonrpsee[method_call{name = \"say_hello\"}]=trace".parse()?);
     tracing_subscriber::FmtSubscriber::builder()
         .with_env_filter(filter)

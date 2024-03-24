@@ -15,7 +15,7 @@ struct ReadDictionary {
 }
 
 // trie用のキー
-const JP_KEYS: &str = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ";
+const JP_KEYS: &str = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽっぁぃぅぇぉゃゅょ";
 const EN_KEYS: &str = "abcdefghijklmnopqrstuvwxyz";
 
 fn label_keys() -> Vec<char> {
