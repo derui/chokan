@@ -41,6 +41,9 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 (defvar chokan--default-cursor-type nil
   "chokanが終了したときに戻すためのcursorの形状。この変数はバッファローカルである")
 
+(defvar chokan--sticky nil
+  "次に入力するキーを下線部が対応するものにする。対象のキーはalphabetのみである")
+
 ;; faces
 
 (defface chokan-kana-roman
@@ -76,6 +79,18 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 (defsubst chokan--ja-katakana-p ()
   "現在chokanがカタカナ入力モードであるかどうかを返す"
   (and (chokan--ja-p) (eq chokan--internal-mode 'katakana)))
+
+(defsubst chokan--sticky-p ()
+  "sticky 状態かどうかを返す"
+  chokan--sticky)
+
+(defsubst chokan--sticky-activate ()
+  "sticky 状態にする"
+  (setq chokan--sticky t))
+
+(defsubst chokan--sticky-deactivate ()
+  "sticky 状態を解除する"
+  (setq chokan--sticky nil))
 
 (defun chokan--post-command ()
   "chokanに関する入力を判定するための処理。
@@ -309,7 +324,9 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
     (chokan--launch-conversion-if-possible convert-launchable)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
                                          (conversion-start . ,underscore)
-                                         (inverse . nil)))))
+                                         (inverse . nil)))
+    ;; stickyはあらゆる入力で解除される
+    (chokan--sticky-deactivate)))
 
 ;; command definition
 (defun chokan-ascii ()
@@ -340,7 +357,8 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 (defun chokan-insert-normal-alphabet ()
   "変換起動をしないで文字を入力する"
   (interactive)
-  (chokan--insert nil nil 'alphabet))
+  (let ((conversion-start (chokan--sticky-p)))
+    (chokan--insert conversion-start conversion-start 'alphabet)))
 
 (defun chokan-insert-conversion-start-key ()
   "変換起動をして文字を入力する"
@@ -384,6 +402,11 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   (chokan--finalize-inverse-if-possible t)
   (chokan--launch-conversion-if-possible t))
 
+(defun chokan-sticky ()
+  "次に入力するアルファベットを、大文字のアルファベットと同等にする"
+  (interactive)
+  (chokan--sticky-activate))
+
 ;; mode definition
 
 (define-minor-mode chokan-ascii-mode
@@ -413,7 +436,8 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   (set-face-attribute 'chokan-inverse nil :background (face-attribute 'default :foreground))
 
   (chokan-conversion--setup)
-  (setq-local chokan--default-cursor-type cursor-type)  
+  (setq-local chokan--default-cursor-type cursor-type)
+  (setq-local chokan--sticky nil)
   (chokan-ja-mode)
   )
 
@@ -442,6 +466,7 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
 (define-key chokan-ja-mode-map (kbd "C-h") #'chokan-next-candidate)
 (define-key chokan-ja-mode-map (kbd "C-g") #'chokan-previous-candidate)
+(define-key chokan-ja-mode-map (kbd "'") #'chokan-sticky)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
