@@ -12,7 +12,6 @@ use jsonrpsee::{
     server::{RpcServiceBuilder, Server},
     RpcModule,
 };
-use kkc::GraphDictionary;
 use postcard::from_bytes;
 
 use tracing_subscriber::util::SubscriberInitExt;
@@ -66,6 +65,7 @@ fn define_module(dictionary: ChokanDictionary) -> anyhow::Result<RpcModule<Choka
     let mut module = RpcModule::new(dictionary);
 
     method::make_get_candidates_method(&mut module)?;
+    method::make_get_tankan_candidates_method(&mut module)?;
 
     Ok(module)
 }

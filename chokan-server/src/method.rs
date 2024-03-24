@@ -1,6 +1,6 @@
 use chokan_dic::ChokanDictionary;
 use jsonrpsee::{core::RpcResult, RpcModule};
-use kkc::{get_candidates, GraphDictionary};
+use kkc::{get_candidates, get_tankan_candidates, GraphDictionary};
 use serde::{Deserialize, Serialize};
 
 /**
@@ -54,6 +54,36 @@ pub(crate) fn make_get_candidates_method(
         let params = params.parse::<GetCandidatesRequest>()?;
         let context = kkc::context::new();
         let candidates = get_candidates(&params.input, &dictionary.graph, &context, 100);
+
+        let candidates = candidates
+            .into_iter()
+            .enumerate()
+            .map(|(idx, candidate)| CandidateResponse {
+                id: idx.to_string(),
+                candidate: candidate.to_string(),
+            })
+            .collect();
+
+        RpcResult::Ok(GetCandidatesResponse {
+            session_id: "dummy".to_string(),
+            candidates,
+        })
+    })?;
+
+    Ok(())
+}
+
+/// GetTankanCandidates の実装を登録する
+///
+/// # Arguments
+/// * `module` - 登録するmodule
+pub(crate) fn make_get_tankan_candidates_method(
+    module: &mut RpcModule<ChokanDictionary>,
+) -> anyhow::Result<()> {
+    module.register_method("GetTankanCandidates", |params, dictionary| {
+        let params = params.parse::<GetCandidatesRequest>()?;
+        let context = kkc::context::new();
+        let candidates = get_tankan_candidates(&params.input, &dictionary.tankan);
 
         let candidates = candidates
             .into_iter()
