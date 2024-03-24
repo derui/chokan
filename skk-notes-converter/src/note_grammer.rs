@@ -83,14 +83,14 @@ peg::parser! {
       rule eof() = ![_]
       rule any() = [_]
       rule space() = [' ' | '\t' ]
-      rule kana() -> String = n:$(['あ'..='ん' | 'ゐ' | 'ゃ' | 'ゅ' | 'ょ' | 'ぁ' | 'ぃ' | 'ぅ' | 'ぇ' | 'ぉ' | 'っ']) { n.to_string() }
-      rule katakana() -> String = n:$(['ア' |'カ'| 'サ' | 'タ' |'ナ' | 'ハ'|'マ'|'ヤ'|'ワ' | 'ラ' | 'ダ' | 'バ' | 'ガ' | 'ザ']) { n.to_string() }
+      rule kana() -> String = n:$(['あ'..='ん' | 'ゐ' | 'ゃ' | 'ゅ' | 'ょ' | 'ぁ' | 'ぃ' | 'ぅ' | 'ぇ' | 'ぉ' | 'っ' | 'ー']) { n.to_string() }
+      rule katakana() -> String = n:$(['ア' |'カ'| 'サ' | 'タ' |'ナ' | 'ハ' | 'マ' | 'ヤ' |'ワ' | 'ラ' | 'ダ' | 'バ' | 'ガ' | 'ザ']) { n.to_string() }
 
     pub rule headword() -> String
       = n:kana()+ { n.concat() }
 
       pub rule okuri_alpha() -> String = n:$(['a'..='z']) { n.to_string() }
-      // 語幹の漢字部分
+      // 語幹の部分
       pub rule stem() -> String = n:$([^ ';' | '/']+) { n.to_string() }
       // 品詞部分
       rule fixed_okuri() -> Okuri = "(" n:$("-" (kana()+)) ** "," ")" { Okuri::Fixed(n.first().unwrap()[1..].to_string()) }
@@ -282,6 +282,18 @@ mod tests {
                 okuri: "".to_string(),
                 entries: vec![NoteEntry {
                     stem: "円強".to_string(),
+                    speech: NoteSpeech::Counter(Okuri::CharClass("#".to_string()))
+                }]
+            })
+        );
+
+        assert_eq!(
+            note_parser::note("りーる /リール;∥助数詞[#]/"),
+            Ok(Note {
+                headword: "りーる".to_string(),
+                okuri: "".to_string(),
+                entries: vec![NoteEntry {
+                    stem: "リール".to_string(),
                     speech: NoteSpeech::Counter(Okuri::CharClass("#".to_string()))
                 }]
             })
