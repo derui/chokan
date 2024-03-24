@@ -290,8 +290,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
   (when convert-launchable
     (chokan-conversion-launch (lambda (start end candidate)
-                                (when-let* (candidate
-                                            (candidate (cdr candidate)))
+                                (let* ((candidate (or (cdr candidate) (buffer-substring-no-properties start end))))
                                   (chokan--insert-candidate (cons start end) candidate))))))
 
 (defun chokan--finalize-inverse-if-possible (finalizable &optional inverted-region)
@@ -378,7 +377,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   (let ((current-key (this-command-keys)))
     (if-let* ((region (chokan--get-inverse-region)))
         (when-let* ((candidate (chokan-conversion-next-candidate)))
-          (chokan--insert-candidate region candidate))
+          (chokan--insert-candidate region (cdr candidate)))
       (let* ((chokan-ja-mode nil)
              (old-func (key-binding current-key)))
         (call-interactively old-func)))))
@@ -391,7 +390,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   (let ((current-key (this-command-keys)))
     (if-let* ((region (chokan--get-inverse-region)))
         (when-let ((candidate (chokan-conversion-previous-candidate)))
-          (chokan--insert-candidate region candidate))
+          (chokan--insert-candidate region (cdr candidate)))
       (let* ((chokan-ja-mode nil)
              (old-func (key-binding current-key)))
         (call-interactively old-func)))))
@@ -472,7 +471,7 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
-(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "'" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">"))
+(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
 
 
