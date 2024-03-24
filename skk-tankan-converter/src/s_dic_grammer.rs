@@ -1,6 +1,6 @@
 use dic::base::{
     entry::Entry,
-    speech::{NounVariant, Speech, VerbForm},
+    speech::{NounVariant, Speech},
 };
 // SKKの辞書におけるnotesの一行分の文法を定義する
 //
@@ -58,8 +58,8 @@ pub fn parse_tankan(s: &str) -> Result<Option<Tankan>, ParseError<LineCol>> {
         let entries = tankan
             .entries
             .iter()
+            .filter(|&v| v.chars().collect::<Vec<char>>().len() == 1)
             .cloned()
-            .filter(|v| v.chars().collect::<Vec<char>>().len() == 1)
             .collect::<Vec<_>>();
 
         if entries.is_empty() {

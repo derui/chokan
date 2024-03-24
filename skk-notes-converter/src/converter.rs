@@ -225,13 +225,13 @@ impl NoteEntry {
                     None
                 }
             })
-            .and_then(|speech| {
+            .map(|speech| {
                 let (stem, headword) = self.get_dictionary_form(headword);
-                Some(ConvertedEntry {
+                ConvertedEntry {
                     headword,
                     word: stem,
                     speech,
-                })
+                }
             })
     }
 
@@ -273,8 +273,7 @@ impl Note {
         let headword = &self.headword;
         self.entries
             .iter()
-            .map(|v| v.to_entries(headword))
-            .flatten()
+            .flat_map(|v| v.to_entries(headword))
             .collect()
     }
 }

@@ -6,17 +6,14 @@ use std::{
     path::Path,
 };
 
-use clap::{CommandFactory, Parser};
+use clap::Parser;
 use jsonrpsee::{
-    core::RpcResult,
     server::{RpcServiceBuilder, Server},
-    tracing::debug,
-    Methods, RpcModule,
+    RpcModule,
 };
 use kkc::GraphDictionary;
 use postcard::from_bytes;
 
-use tokio::task::futures;
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod method;
