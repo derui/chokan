@@ -362,9 +362,11 @@ impl Graph {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use dic::base::speech::{NounVariant, ParticleType, VerbForm};
 
-    use crate::test_dic;
+    use crate::test_dic::{self, LABELS};
 
     use super::*;
 
@@ -455,6 +457,44 @@ mod tests {
                 "まではしらなかった".to_string(),
                 "はしらなかった".to_string()
             ])
+        );
+    }
+
+    #[test]
+    fn virtual_node_with_1_node() {
+        // arrange
+        let keys = LABELS.iter().cloned().collect::<Vec<_>>();
+        let mut standard_trie = trie::Trie::from_keys(&keys);
+        let mut ancillary_trie = trie::Trie::from_keys(&keys);
+
+        standard_trie.insert("これ").unwrap();
+
+        let dic = GraphDictionary {
+            standard_trie,
+            standard_dic: HashMap::from([(
+                "これ".to_string(),
+                vec![Word::new("此れ", "これ", Speech::Noun(NounVariant::Common))],
+            )]),
+            ancillary_trie,
+            ancillary_dic: HashMap::from([]),
+        };
+
+        // act
+        let graph = Graph::from_input("これでいける", &dic);
+
+        // assert
+        assert_eq!(
+            graph.nodes[5]
+                .iter()
+                .cloned()
+                .filter_map(|v| {
+                    match v {
+                        Node::Virtual(_, w, _) => Some(w.iter().collect::<String>()),
+                        _ => None,
+                    }
+                })
+                .collect::<HashSet<_>>(),
+            HashSet::from(["でいける".to_string(),])
         );
     }
 }
