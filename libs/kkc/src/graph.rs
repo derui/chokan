@@ -245,7 +245,7 @@ impl Graph {
         let end_of_input = input.len() - 1;
 
         // 末尾に到達している単語には設定する必要がないので無視する
-        for i in (1..(input.len() - 1)).rev() {
+        for i in (0..(input.len() - 1)).rev() {
             match self.nodes.get(i) {
                 Some(v) if !v.is_empty() => {
                     let current_node_size = self.nodes[end_of_input].len();
@@ -274,7 +274,7 @@ impl Graph {
         let mut need_re_search_indices: HashSet<usize> = HashSet::new();
         let mut found_indices: HashSet<usize> = HashSet::new();
 
-        for i in 1..input.len() {
+        for i in 0..input.len() {
             let key = input[0..=i].iter().collect::<String>();
 
             let words = dic
@@ -464,16 +464,20 @@ mod tests {
     fn virtual_node_with_1_node() {
         // arrange
         let keys = LABELS.iter().cloned().collect::<Vec<_>>();
+        let ancillary_trie = trie::Trie::from_keys(&keys);
         let mut standard_trie = trie::Trie::from_keys(&keys);
-        let mut ancillary_trie = trie::Trie::from_keys(&keys);
 
-        standard_trie.insert("これ").unwrap();
+        standard_trie.insert("こ").unwrap();
 
         let dic = GraphDictionary {
             standard_trie,
             standard_dic: HashMap::from([(
-                "これ".to_string(),
-                vec![Word::new("此れ", "これ", Speech::Noun(NounVariant::Common))],
+                "こ".to_string(),
+                vec![Word::new(
+                    "来",
+                    "こ",
+                    Speech::Verb(VerbForm::Hen("カ".to_string())),
+                )],
             )]),
             ancillary_trie,
             ancillary_dic: HashMap::from([]),
@@ -483,6 +487,7 @@ mod tests {
         let graph = Graph::from_input("これでいける", &dic);
 
         // assert
+        println!("{:?}", graph);
         assert_eq!(
             graph.nodes[5]
                 .iter()
@@ -494,7 +499,7 @@ mod tests {
                     }
                 })
                 .collect::<HashSet<_>>(),
-            HashSet::from(["でいける".to_string(),])
+            HashSet::from(["れでいける".to_string(),])
         );
     }
 }

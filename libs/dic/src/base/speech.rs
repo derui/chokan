@@ -27,26 +27,55 @@ impl Speech {
     /// - `stem_reading` - 語幹の読み
     ///
     /// 活用が存在しない品詞の場合は、empty stringのみを含むvecを返す
-    pub fn to_forms(&self, stem_reading: &str) -> HashSet<String> {
+    /// # Returns
+    /// `(stem, stem_reading)` となるような活用形の一覧
+    pub fn to_forms(&self, stem: &str, stem_reading: &str) -> HashSet<(String, String)> {
         match self {
-            Speech::Noun(_) => ["".to_string()].iter().cloned().collect(),
-            Speech::Verb(form) => form.to_forms(stem_reading),
+            Speech::Noun(_) => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+            Speech::Verb(form) => form.to_forms(stem, stem_reading),
             Speech::Adjective => ["い", "く", "け", "かっ", "う"]
                 .iter()
-                .map(|v| v.to_string())
+                .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
                 .collect(),
-            Speech::Adverb => ["".to_string()].iter().cloned().collect(),
+            Speech::Adverb => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
             Speech::AdjectivalVerb => ["だ", "だっ", "な", "なら", "で", "に"]
                 .iter()
-                .map(|v| v.to_string())
+                .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
                 .collect(),
-            Speech::Verbatim => ["".to_string()].iter().cloned().collect(),
-            Speech::Conjunction => ["".to_string()].iter().cloned().collect(),
-            Speech::Particle(_) => ["".to_string()].iter().cloned().collect(),
-            Speech::AuxiliaryVerb => ["".to_string()].iter().cloned().collect(),
-            Speech::PreNounAdjectival => ["".to_string()].iter().cloned().collect(),
-            Speech::Counter => ["".to_string()].iter().cloned().collect(),
-            Speech::Affix(_) => ["".to_string()].iter().cloned().collect(),
+            Speech::Verbatim => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+            Speech::Conjunction => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+            Speech::Particle(_) => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+            Speech::AuxiliaryVerb => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+            Speech::PreNounAdjectival => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+            Speech::Counter => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+            Speech::Affix(_) => [(stem.to_string(), stem_reading.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
         }
     }
 
@@ -165,7 +194,10 @@ impl VerbForm {
     /// - `stem_reading` - 語幹の読み
     ///
     /// 活用形は、語幹の読みによって変化するケースがあるため、それらを含めて対応をする。
-    pub fn to_forms(&self, stem_reading: &str) -> HashSet<String> {
+    ///
+    /// # Returns
+    /// `(stem, stem_reading)` となるような活用形の一覧。stem/stem_readingはそれぞれ語幹に活用形を含めたものである
+    pub fn to_forms(&self, stem: &str, stem_reading: &str) -> HashSet<(String, String)> {
         let vec = match self {
             VerbForm::Godan(row) => match row.as_str() {
                 "カ" => match stem_reading
@@ -188,7 +220,10 @@ impl VerbForm {
                 "ラ" => vec!["る", "ら", "ろ", "り", "れ", "っ"],
                 "ワ" => vec!["う", "わ", "い", "え", "お", "っ"],
                 _ => panic!("Can not get okuri for godan verb with {}", row),
-            },
+            }
+            .iter()
+            .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+            .collect::<Vec<_>>(),
 
             VerbForm::Yodan(row) => match row.as_str() {
                 "カ" => vec!["く", "か", "き", "け"],
@@ -202,7 +237,10 @@ impl VerbForm {
                 "マ" => vec!["む", "ま", "み", "め"],
                 "ラ" => vec!["る", "ら", "り", "れ"],
                 _ => panic!("Can not get okuri for yodan verb with {}", row),
-            },
+            }
+            .iter()
+            .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+            .collect::<Vec<_>>(),
             VerbForm::SimoIchidan(row) => match row.as_str() {
                 "ア" => {
                     if stem_reading.len() == 1 {
@@ -241,7 +279,10 @@ impl VerbForm {
                 }
                 "ラ" => vec!["れ"],
                 _ => panic!("Can not get okuri for shimoichidan verb with {}", row),
-            },
+            }
+            .iter()
+            .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+            .collect::<Vec<_>>(),
             VerbForm::KamiIchidan(row) => match row.as_str() {
                 "ア" => {
                     if stem_reading.len() == 1 {
@@ -309,7 +350,10 @@ impl VerbForm {
                     }
                 }
                 _ => panic!("Can not get okuri for kamiichidan verb with {}", row),
-            },
+            }
+            .iter()
+            .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+            .collect::<Vec<_>>(),
             VerbForm::SimoNidan(row) => match row.as_str() {
                 // ア行下二は、「得る」のみ
                 "ア" => vec!["え", "う"],
@@ -327,7 +371,10 @@ impl VerbForm {
                 "ヤ" => vec!["え", "ゆ"],
                 "ワ" => vec!["ゑ", "う"],
                 _ => panic!("Can not get okuri for shimonidan verb with {}", row),
-            },
+            }
+            .iter()
+            .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+            .collect::<Vec<_>>(),
             VerbForm::KamiNidan(row) => match row.as_str() {
                 "カ" => vec!["き", "く"],
                 "ガ" => vec!["ぎ", "ぐ"],
@@ -339,17 +386,38 @@ impl VerbForm {
                 "ヤ" => vec!["い", "ゆ"],
                 "ラ" => vec!["り", "る"],
                 _ => panic!("Can not get okuri for kaminidan verb with {}", row),
-            },
+            }
+            .iter()
+            .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+            .collect::<Vec<_>>(),
             VerbForm::Hen(row) => match row.as_str() {
                 // カ行変格活用では、基本的に語幹自体が無いという考え方がある。
-                "カ" => vec!["こ", "き", "く"],
-                "サ" => vec!["さ", "せ", "し", "す"],
-                "ラ" => vec!["ら", "れ", "り", "る"],
-                "ナ" => vec!["な", "ね", "に", "ぬ"],
+                "カ" => vec!["こ", "き", "くる", "こい", "くれ"]
+                    .iter()
+                    .cloned()
+                    .map(|v| {
+                        (
+                            format!("{}{}", stem, v.chars().skip(1).collect::<String>()),
+                            v.to_string(),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+                "サ" => vec!["さ", "せ", "し", "す"]
+                    .iter()
+                    .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+                    .collect::<Vec<_>>(),
+                "ラ" => vec!["ら", "れ", "り", "る"]
+                    .iter()
+                    .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+                    .collect::<Vec<_>>(),
+                "ナ" => vec!["な", "ね", "に", "ぬ"]
+                    .iter()
+                    .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
+                    .collect::<Vec<_>>(),
                 _ => panic!("Can not get okuri for henkaku verb with {}", row),
             },
         };
-        vec.iter().map(|v| v.to_string()).collect()
+        vec.iter().cloned().collect()
     }
 }
 

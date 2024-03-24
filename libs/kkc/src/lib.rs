@@ -106,7 +106,7 @@ impl Ord for Candidate {
 
 impl PartialOrd for Candidate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.priority.cmp(&other.priority))
+        self.priority.partial_cmp(&other.priority)
     }
 }
 
@@ -132,9 +132,8 @@ fn get_n_best_candidates(
     while let Some(candidate) = queue.pop() {
         let Candidate {
             current_node,
-            next: _,
             score,
-            priority: _,
+            ..
         } = &candidate;
 
         if *current_node == graph::Node::BOS {
@@ -202,7 +201,9 @@ pub fn get_tankan_candidates(input: &str, dic: &TankanDictionary) -> Vec<String>
 mod tests {
     use std::collections::HashSet;
 
-    use crate::context::Context;
+    use dic::base::speech::{NounVariant, Speech};
+
+    use crate::{context::Context, test_dic::LABELS};
 
     use super::*;
 
@@ -216,7 +217,6 @@ mod tests {
         let result = get_candidates("くるまではしらなかった", &dic, &context, 1);
 
         // assert
-        println!("{:?}", result);
         assert_eq!(1, result.len());
         assert_eq!("来るまではしらなかった", result[0].to_string())
     }
@@ -231,7 +231,6 @@ mod tests {
         let result = get_candidates("くるまではしらなかった", &dic, &context, 3);
 
         // assert
-        println!("{:?}", result);
         assert_eq!(3, result.len());
         assert_eq!(
             HashSet::from_iter(result.iter().map(|c| c.to_string())),
@@ -240,6 +239,36 @@ mod tests {
                 "繰るまではしらなかった".to_string(),
                 "車ではしらなかった".to_string()
             ])
+        )
+    }
+
+    #[test]
+    fn virtual_node_with_1_node() {
+        // arrange
+        let keys = LABELS.iter().cloned().collect::<Vec<_>>();
+        let ancillary_trie = trie::Trie::from_keys(&keys);
+        let mut standard_trie = trie::Trie::from_keys(&keys);
+
+        standard_trie.insert("これ").unwrap();
+
+        let dic = GraphDictionary {
+            standard_trie,
+            standard_dic: HashMap::from([(
+                "これ".to_string(),
+                vec![Word::new("此れ", "これ", Speech::Noun(NounVariant::Common))],
+            )]),
+            ancillary_trie,
+            ancillary_dic: HashMap::from([]),
+        };
+        let context = Context {};
+
+        // act
+        let result = get_candidates("これでいける", &dic, &context, 3);
+
+        // assert
+        assert_eq!(
+            HashSet::from_iter(result.iter().map(|c| c.to_string())),
+            HashSet::from(["此れでいける".to_string(),])
         )
     }
 }

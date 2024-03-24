@@ -11,8 +11,6 @@ use super::{speech::Speech, word::Word};
 pub struct Entry {
     /// 語幹
     stem: String,
-    /// 活用形
-    forms: HashSet<String>,
     /// 語幹の読み。活用形はすべてひらがななので、語幹の読みだけを持つ
     pub stem_reading: String,
     /// 品詞。動詞の活用形はformsで表現されているため、ここでは不要としている
@@ -24,7 +22,6 @@ impl Entry {
     pub fn from_jisyo(reading: &str, kanji: &str, speech: Speech) -> Entry {
         Entry {
             stem: kanji.to_string(),
-            forms: speech.to_forms(reading),
             stem_reading: reading.to_string(),
             speech,
         }
@@ -43,15 +40,10 @@ impl From<Entry> for Vec<Word> {
     /// Entryから活用した形式一覧をWordのリストに変換する
     fn from(val: Entry) -> Self {
         let mut words = Vec::new();
-        let forms = &val.forms;
+        let forms = &val.speech.to_forms(&val.stem, &val.stem_reading);
 
-        for form in forms {
-            let reading = format!("{}{}", val.stem_reading, form);
-            words.push(Word::new(
-                &format!("{}{}", val.stem, form),
-                &reading,
-                val.speech.clone(),
-            ));
+        for (formed, form_reading) in forms {
+            words.push(Word::new(formed, &form_reading, val.speech.clone()));
         }
 
         words
@@ -139,5 +131,58 @@ mod tests {
 
         // Assert
         assert_eq!(actual, "ひ\t引\t/カ行五段/");
+    }
+
+    #[test]
+    fn display_kahen_entry() {
+        // Arrange
+        let entry = Entry::from_jisyo("く", "来", Speech::Verb(VerbForm::Hen("カ".to_string())));
+
+        // Act
+        let words: Vec<Word> = entry.into();
+        let actual = format!("{:?}", words);
+
+        // Assert
+        println!("{}", actual);
+        assert!(
+            words.contains(&Word::new(
+                "来",
+                "こ",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "こ does not contains"
+        );
+        assert!(
+            words.contains(&Word::new(
+                "来",
+                "き",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "き does not contains"
+        );
+        assert!(
+            words.contains(&Word::new(
+                "来る",
+                "くる",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "くる does not contains"
+        );
+        assert!(
+            words.contains(&Word::new(
+                "来れ",
+                "くれ",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "くれ does not contains"
+        );
+        assert!(
+            words.contains(&Word::new(
+                "来い",
+                "こい",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "こい does not contains"
+        );
     }
 }
