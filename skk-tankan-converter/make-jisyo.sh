@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ ! -f work/SKK-JISYO.notes ]; then
+if [ ! -f work/SKK-JISYO.S ]; then
     mkdir -p work/
     curl -L -o work/SKK-JISYO.S https://github.com/skk-dev/dict/raw/master/SKK-JISYO.S
 fi
