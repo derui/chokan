@@ -1,5 +1,12 @@
-use std::{env, error::Error, fs::File, io::Read};
+use std::{
+    env,
+    error::Error,
+    fs::File,
+    io::{Read, Write},
+    path::Path,
+};
 
+use converter::ConvertedEntry;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 
 mod converter;
@@ -12,10 +19,22 @@ fn main() {
     }
 }
 
+fn output_note(note_f: &mut File, huzoku_f: &mut File, entry: &ConvertedEntry) {
+    if entry.is_ancillary() {
+        writeln!(huzoku_f, "{}", entry).unwrap();
+    } else {
+        writeln!(note_f, "{}", entry).unwrap();
+    }
+}
+
 fn try_main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
 
     let filepath = &args[1];
+    let note_path = Path::new(&args[2]);
+    let huzoku_path = Path::new(&args[3]);
+    let mut note_file = File::create(note_path)?;
+    let mut huzoku_file = File::create(huzoku_path)?;
 
     let file = File::open(filepath)?;
     let transcoded = DecodeReaderBytesBuilder::new()
@@ -31,7 +50,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
                 let entries = note.to_entries();
 
                 for entry in entries {
-                    println!("{}", entry)
+                    output_note(&mut note_file, &mut huzoku_file, &entry)
                 }
             }
             Ok(None) => {}

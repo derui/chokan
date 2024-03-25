@@ -37,4 +37,6 @@ tasks:
     deps: [make-notes-dic, make-tankan-dic]
     dir: chokan-dic
     cmds:
-      - cargo run --bin chokan-dic -- ../skk-notes-converter/dic/chokan.notes.dic ./dict/huzoku.dic ../skk-tankan-converter/dic/chokan.tankan.dic dictionary.dat
+      - mkdir -p work
+      - cat ./dict/huzoku.dic ../skk-notes-converter/dic/chokan.huzoku.dic > work/huzoku.dic
+      - cargo run --bin chokan-dic -- ../skk-notes-converter/dic/chokan.notes.dic ./work/huzoku.dic ../skk-tankan-converter/dic/chokan.tankan.dic dictionary.dat

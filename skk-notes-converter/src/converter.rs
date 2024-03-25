@@ -14,6 +14,16 @@ pub struct ConvertedEntry {
     pub speech: Speech,
 }
 
+impl ConvertedEntry {
+    pub fn is_ancillary(&self) -> bool {
+        match &self.speech {
+            // ここでは接辞を対象にする
+            Speech::Affix(_) => true,
+            _ => false,
+        }
+    }
+}
+
 impl Display for ConvertedEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}\t{}\t/{}/", self.headword, self.word, self.speech)
