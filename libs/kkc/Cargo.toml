@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 dic = { version = "0.1.0", path = "../dic" }
 serde = { version = "1.0.197", features = ["derive"] }
+tracing = "0.1.40"
 trie = { version = "0.1.0", path = "../trie" }

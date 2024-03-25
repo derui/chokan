@@ -187,7 +187,7 @@ impl Graph {
 
         match index {
             None => vec![],
-            Some(i) if i <= 0 => vec![Node::BOS],
+            Some(i) if i < 0 => vec![Node::BOS],
             Some(i) => self.nodes[i as usize].to_vec(),
         }
     }

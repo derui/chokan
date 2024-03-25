@@ -14,7 +14,7 @@ mod test_dic;
 /// 解析グラフ上で利用する辞書の形式。
 ///
 /// ここで利用される辞書は、 `chokan-dic` プログラムから生成されるものが利用される
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GraphDictionary {
     pub standard_trie: trie::Trie,
     pub standard_dic: HashMap<String, Vec<Word>>,
