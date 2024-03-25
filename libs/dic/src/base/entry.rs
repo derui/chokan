@@ -140,10 +140,8 @@ mod tests {
 
         // Act
         let words: Vec<Word> = entry.into();
-        let actual = format!("{:?}", words);
 
         // Assert
-        println!("{}", actual);
         assert!(
             words.contains(&Word::new(
                 "来",
@@ -180,6 +178,61 @@ mod tests {
             words.contains(&Word::new(
                 "来い",
                 "こい",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "こい does not contains"
+        );
+    }
+
+    #[test]
+    fn display_kahen_entry2() {
+        // Arrange
+        let entry = Entry::from_jisyo(
+            "かえってく",
+            "帰って来",
+            Speech::Verb(VerbForm::Hen("カ".to_string())),
+        );
+
+        // Act
+        let words: Vec<Word> = entry.into();
+
+        // Assert
+        assert!(
+            words.contains(&Word::new(
+                "帰って来",
+                "かえってこ",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "こ does not contains"
+        );
+        assert!(
+            words.contains(&Word::new(
+                "帰って来",
+                "かえってき",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "き does not contains"
+        );
+        assert!(
+            words.contains(&Word::new(
+                "帰って来る",
+                "かえってくる",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "くる does not contains"
+        );
+        assert!(
+            words.contains(&Word::new(
+                "帰って来れ",
+                "かえってくれ",
+                Speech::Verb(VerbForm::Hen("カ".to_string()))
+            )),
+            "くれ does not contains"
+        );
+        assert!(
+            words.contains(&Word::new(
+                "帰って来い",
+                "かえってこい",
                 Speech::Verb(VerbForm::Hen("カ".to_string()))
             )),
             "こい does not contains"

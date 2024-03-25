@@ -396,9 +396,10 @@ impl VerbForm {
                     .iter()
                     .cloned()
                     .map(|v| {
+                        let reading_last = stem_reading.char_indices().last().unwrap().0;
                         (
                             format!("{}{}", stem, v.chars().skip(1).collect::<String>()),
-                            v.to_string(),
+                            format!("{}{}", &stem_reading[0..reading_last], v.to_string()),
                         )
                     })
                     .collect::<Vec<_>>(),
