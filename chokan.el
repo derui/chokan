@@ -422,6 +422,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
 ;; mode definition
 
+;;;###autoload
 (define-minor-mode chokan-ascii-mode
   "Toggle minor mode to enable Input Method `chokan' in this buffer.
 
@@ -432,6 +433,7 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-j
                 (setq chokan--internal-mode 'ascii)
                 ))
 
+;;;###autoload
 (define-minor-mode chokan-ja-mode
   "Toggle minor mode to enable Input Method `chokan' in this buffer.
 
@@ -454,6 +456,7 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   (chokan-ja-mode)
   )
 
+;;;###autoload
 (define-minor-mode chokan-mode
   "Toggle minor mode to enable Input Method `chokan' in this buffer.
 

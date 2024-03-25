@@ -426,6 +426,7 @@
          (member (aref input 0) consonants)
          (member (aref input 1) consonants))))
 
+;;;###autoload
 (defun chokan-roman-table-roman-to-kana (input) 
   "ローマ字を仮名に変換する。
 
@@ -446,6 +447,7 @@
       (`(,_ . ,ret)
        (concat sokuon ret)))))
 
+;;;###autoload
 (defun chokan-roman-table-hira-to-kata (hira)
   "ひらがなをカタカナに変換する。変換できない文字はそのままで返す"
   (let ((result '()))

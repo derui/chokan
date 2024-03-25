@@ -50,7 +50,7 @@
     )
   "記号類を日本語における記号に変換するテーブル")
 
-
+;;;###autoload
 (defun chokan-symbol-convert-to-ja (symbol)
   "SYMBOLを日本語における記号に変換する。変換できない場合はnilを返す"
   (let* ((converted (assoc symbol chokan-symbol-conversion-table)))

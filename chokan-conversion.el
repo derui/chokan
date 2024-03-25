@@ -165,6 +165,7 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
 
 ;; public functions
 
+;;;###autoload
 (defun chokan-conversion-launch (callback)
   "現在のポイントから変換起動を試みる。変換起動が出来ない場合は、何も行わない。
 
