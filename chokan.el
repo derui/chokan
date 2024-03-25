@@ -327,7 +327,10 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 5. 自己挿入し、必要ならローマ字かな変換を行う
 "
   (let* ((key (this-command-keys)))
-    (message "key: %s" key)
+    ;; 下線部を追加する場合は、カタカナモードからは強制的に離脱する
+    (when (and (chokan--ja-katakana-p)
+               (not (null underscore)))
+      (setq chokan--internal-mode 'hiragana))
     (chokan--finalize-inverse-if-possible convert-launchable)
     (chokan--launch-conversion-if-possible convert-launchable)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
