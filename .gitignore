@@ -1,9 +1,9 @@
 .task/
 target/
+*/work/
 
 skk-notes-converter/dic/
 skk-tankan-converter/dic/
-skk-tankan-converter/work/
 
 # ignore compiled elisp
 *.elc
