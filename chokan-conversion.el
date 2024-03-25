@@ -52,12 +52,52 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
 (defvar chokan-conversion--websocket nil
   "変換サーバーへのwebsocket connectionを保持する。全バッファで共有される。")
 
-(defconst chokan-conversion--target-character-regexp
+(defvar chokan-conversion--target-character-regexp
   "[a-zA-Z0-9あ-ん]+"
   "変換対象とする文字を検索するための正規表現")
 
+(defvar chokan-conversion--number-context-regexp
+  "[0-9０-９]"
+  "数字のcontextとして利用する文字列の正規表現")
+
+(defvar chokan-conversion--foreign-word-context-regexp
+  "[a-zA-Z]"
+  "外来語のcontextとして利用する文字列の正規表現")
+
+(defun chokan-conversion--same-type-string-backward (regexp)
+  "同一のregexpにマッチする連続した文字列を返す"
+  (save-excursion
+    (let* ((current (point))
+           (char (buffer-substring-no-properties (1- current) current))
+           ret)
+      (while (string-match-p regexp char)
+        (backward-char)
+        (setq ret (concat (or ret "") char))
+        (setq char (buffer-substring-no-properties (1- (point)) (point))))
+      (seq-reverse ret))))
+
+
+(defun chokan-conversion--get-previous-context ()
+  "現在位置より前のcontextを取得する。contextは consの形式で返却され、carにはcontextの種別、cdrにはcontextの文字列が格納される。
+
+contextは、以下のいずれかである。
+
+- 通常の文字列
+- 連続した数字
+- 連続したアルファベット
+"
+  (save-excursion
+    (let* ((current (point))
+           (test-char (buffer-substring-no-properties (1- current) current))
+           (context-fw (chokan-conversion--same-type-string-backward chokan-conversion--foreign-word-context-regexp))
+           (context-number (chokan-conversion--same-type-string-backward chokan-conversion--number-context-regexp)))
+      (pcase (list context-fw context-number)
+        (`(,(pred numberp) ,_) (cons 'foreign-word context-fw))
+        (`(,_ ,(pred numberp)) (cons 'number context-number))
+        (_ '(normal))))))
+
 (defun chokan-conversion--get-conversion-region ()
-  "現在の下線部があれば、その周辺で変換対象のregionと種別を取得する。
+  "現在の下線部があれば、その周辺で変換対象のregionと種別、さらにcontextを取得する。
 下線部が存在しない場合は 'NIL' を返す。
 "
   (let* ((current (point)))
@@ -66,8 +106,9 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
                   (region (cons (prop-match-beginning prop-match) (prop-match-end prop-match)))
                   ;; ひらがな・アルファベット・数字以外、またはカーソル位置を対象にする
                   (end (re-search-forward chokan-conversion--target-character-regexp current t))
-                  (detail (get-text-property (prop-match-beginning prop-match) 'chokan-conversion-detail)))
-        (list (car region) end detail)))))
+                  (detail (get-text-property (prop-match-beginning prop-match) 'chokan-conversion-detail))
+                  (context (chokan-conversion--get-previous-context)))
+        (list (car region) end detail context)))))
 
 ;; websocket用のjsonrpc-connectionを定義する
 (defclass chokan-conversion--connection (jsonrpc-connection)
@@ -147,7 +188,7 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
 
 事前に対応するserverが起動している必要がある。サーバーのアドレスは `chokan-server-address' で設定する。"
   (let* ((conn (chokan-conversion--current-connection))
-         (res (jsonrpc-request conn :GetCandidates `(:input ,input)))
+         (res (jsonrpc-request conn :GetCandidates `(:input ,input :context (:type ,(car ctx) :value ,(cdr ctx)))))
          (candidates (plist-get res :candidates))
          (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
     candidates))
@@ -176,12 +217,13 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
               (start (car region))
               (end (cadr region))
               (type (caddr region))
+              (context (cadddr region))
               (str (buffer-substring-no-properties start end)))
     (let ((func (assoc type chokan-conversion-functions)))
       (if func
           (progn
             (setq chokan-conversion--candidate-pos 0)
-            (setq chokan-conversion--candidates (funcall (cdr func) str nil))
+            (setq chokan-conversion--candidates (funcall (cdr func) str context))
 
             (let* ((candidate (and chokan-conversion--candidates
                                    (car chokan-conversion--candidates))))
