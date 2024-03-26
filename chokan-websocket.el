@@ -106,12 +106,19 @@
         (setf (websocket-client-data chokan-websocket--websocket) chokan-websocket--connection-cache)
         chokan-websocket--connection-cache)))
 
+(defsubst chokan-websocket--context-to-server (name)
+  "contextをserver向けに変換する"
+  (cond
+   ((eq name 'normal) "Normal")
+   ((eq name 'foreign-word) "BorrowedWord")
+   ((eq name 'number) "Counter")))
+
 (defun chokan-websocket-get-candidates (input ctx)
   "変換候補を取得する。
 
 事前に対応するserverが起動している必要がある。サーバーのアドレスは `chokan-websocket-address' で設定する。"
   (let* ((conn (chokan-websocket--current-connection))
-         (res (jsonrpc-request conn :GetCandidates `(:input ,input :context (:type ,(car ctx) :value ,(cdr ctx)))))
+         (res (jsonrpc-request conn :GetCandidates `(:input ,input :context (:type ,(chokan-websocket--context-to-server (car ctx)) :value ,(cdr ctx)))))
          (candidates (plist-get res :candidates))
          (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
     candidates))

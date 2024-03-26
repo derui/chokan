@@ -57,8 +57,8 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
 
 (defvar chokan-conversion-functions
   (list
-   '(normal . chokan-conversion--get-candidates)
-   '(tankan . chokan-conversion--get-tankan-candidates)
+   '(normal . chokan-websocket-get-candidates)
+   '(tankan . chokan-websocket-get-tankan-candidates)
    )
   "変換起動した文字列から、実際に候補を取得する関数のマッピング。
 
@@ -100,15 +100,15 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
 (defvar chokan--conversion-candidate-pos 0
   "現在選択している候補の位置を 0オリジンで保持する。")
 
-(defvar chokan-conversion--target-character-regexp
+(defvar chokan--target-character-regexp
   "[a-zA-Z0-9あ-ん]+"
   "変換対象とする文字を検索するための正規表現")
 
-(defvar chokan-conversion--number-context-regexp
+(defvar chokan--number-context-regexp
   "[0-9０-９]"
   "数字のcontextとして利用する文字列の正規表現")
 
-(defvar chokan-conversion--foreign-word-context-regexp
+(defvar chokan--foreign-word-context-regexp
   "[a-zA-Z]"
   "外来語のcontextとして利用する文字列の正規表現")
 
