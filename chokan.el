@@ -638,9 +638,9 @@ w
 
 contextは、以下のいずれかである。
 
-- 通常の文字列
-- 連続した数字
-- 連続したアルファベット
+- 通常の文字列 :: type = 'normal'
+- 連続した数字 :: type = 'counter'
+- 連続したアルファベット :: type = 'foreign-word'
 "
   (save-excursion
     (let* ((current (point))
@@ -649,7 +649,7 @@ contextは、以下のいずれかである。
            (context-number (chokan--same-type-string-backward chokan--number-context-regexp)))
       (pcase (list context-fw context-number)
         (`(,(pred numberp) ,_) (cons 'foreign-word context-fw))
-        (`(,_ ,(pred numberp)) (cons 'number context-number))
+        (`(,_ ,(pred numberp)) (cons 'counter context-number))
         (_ '(normal))))))
 
 (defun chokan--get-conversion-region ()

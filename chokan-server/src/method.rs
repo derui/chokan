@@ -13,7 +13,7 @@ chokan-serverで提供するmethodの実装を行う。
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 enum GetCandidatesContext {
     Normal,      // 通常のかな漢字変換
-    BorrwedWord, // 外来語
+    ForeignWord, // 外来語
     Counter,     // 数詞
 }
 
