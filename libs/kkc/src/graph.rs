@@ -37,6 +37,14 @@ impl NodePointer {
     fn new(index_at_input: usize, index_at_words: usize) -> NodePointer {
         NodePointer(index_at_input, index_at_words)
     }
+
+    /**
+    node pointerにおける終点のindexを返す
+    */
+    #[inline]
+    fn end_at(&self) -> usize {
+        self.0
+    }
 }
 
 /// Graphの中で使われるNode
@@ -67,9 +75,6 @@ impl ToString for Node {
 impl Node {
     /// このノードの末尾から、最初のindexを返す
     ///
-    /// # Arguments
-    /// * `end_at` - 末尾のindex。0 origin
-    ///
     /// # Returns
     /// このノードの先頭のindex。あれば、一つ前のnodeのend_at + 1となる
     #[inline]
@@ -77,6 +82,17 @@ impl Node {
         match self {
             Node::WordNode(NodePointer(end_at, _), word, _) => end_at - (word.reading.len() - 1),
             Node::Virtual(NodePointer(end_at, _), s, _) => end_at - (s.len() - 1),
+            // EOS/BOSは固定された位置にあるので、定義しない
+            Node::EOS => 0,
+            Node::BOS => 0,
+        }
+    }
+
+    #[inline]
+    fn end_at(&self) -> usize {
+        match self {
+            Node::WordNode(NodePointer(end_at, _), _, _) => *end_at,
+            Node::Virtual(NodePointer(end_at, _), _, _) => *end_at,
             // EOS/BOSは固定された位置にあるので、定義しない
             Node::EOS => 0,
             Node::BOS => 0,
@@ -109,10 +125,13 @@ impl Node {
         }
     }
 
-    /// Nodeに対してscoreを設定する
+    /// Nodeに対してpointerだけ変更したNodeを返す
     ///
     /// # Arguments
-    /// * `score` - 設定するscore
+    /// * `pointer` - 設定するpointer
+    ///
+    /// # Returns
+    /// 新しいNode
     fn clone_with(&self, pointer: NodePointer) -> Self {
         match self {
             Self::WordNode(_, w, s) => Self::WordNode(pointer, w.clone(), s.clone()),
@@ -151,6 +170,8 @@ impl Graph {
         let ancillaries = graph.find_ancillary(&input, dic);
         // 先頭から始まりうる単語をnodesに追加する
         graph.find_word_only_first(&input, dic);
+        // 接頭語の後ろから単語をnodesに追加する
+        graph.find_word_after_prefix(&input, dic, &ancillaries);
         // 付属語を追加する
         graph.merge_ancillaries(&ancillaries);
         // 仮想ノードを追加する
@@ -213,25 +234,37 @@ impl Graph {
 
     /// 付属語の一覧から、単語間で接続しうるものをnodesに追加する
     ///
-    /// sa
-    ///
     /// # Arguments
     /// * `ancillaries` - 付属語の一覧
     fn merge_ancillaries(&mut self, ancillaries: &[Vec<Node>]) {
         // 付属語が設定されているindexは、その付属語の末尾のindexであるため、
         // start_atの位置に単語がある場合のみをmerge対象にする
-        for (i, ancillary) in ancillaries.iter().enumerate() {
+        for ancillary in ancillaries {
             for node in ancillary {
-                let start_at = node.start_at();
-
-                match self.nodes.get(start_at) {
-                    Some(v) if !v.is_empty() => {
-                        let pointer = NodePointer(i, self.nodes[i].len());
-                        self.nodes[i].push(node.clone_with(pointer));
-                        continue;
-                    }
-                    _ => {}
+                if self.is_mergeable_ancillary(node) {
+                    let end_at = node.end_at();
+                    let pointer = NodePointer(end_at, self.nodes[end_at].len());
+                    self.nodes[end_at].push(node.clone_with(pointer));
                 }
+            }
+        }
+    }
+
+    /// 対象の付属語がマージ可能かどうかを返す
+    fn is_mergeable_ancillary(&self, aicillary: &Node) -> bool {
+        let start_at = aicillary.start_at();
+
+        // 先頭である場合、接頭辞の場合だけはmergeできる
+        if start_at == 0 {
+            match aicillary {
+                Node::WordNode(_, w, _) => w.speech == Speech::Affix(AffixVariant::Prefix),
+                _ => false,
+            }
+        } else {
+            // 接頭辞以外は、先頭ではない場所でだけ追加できる
+            match self.nodes.get(start_at) {
+                Some(v) => !v.is_empty(),
+                None => false,
             }
         }
     }
@@ -265,13 +298,12 @@ impl Graph {
 
     /// 先頭から始まりうる単語をnodesに追加する
     ///
-    /// ここでは、あくまで先頭から発見可能である単語に限って検索する。但し、該当する単語が接頭語である場合には
-    /// その後ろから再度検索を実施する場合がある。
+    /// ここでは、あくまで先頭から発見可能である単語に限って検索する。接頭語が存在するかどうかは、
+    /// find_word_after_prefixで行う。
     ///
     /// # Returns
     /// 発見した単語の末尾indexの集合
     fn find_word_only_first(&mut self, input: &[char], dic: &GraphDictionary) -> HashSet<usize> {
-        let mut need_re_search_indices: HashSet<usize> = HashSet::new();
         let mut found_indices: HashSet<usize> = HashSet::new();
 
         for i in 0..input.len() {
@@ -284,22 +316,52 @@ impl Graph {
 
             if let Some(words) = words {
                 for word in words {
-                    // 接頭語が見つかった場合は、続く単語も検索する
-                    if word.speech == Speech::Affix(AffixVariant::Prefix) {
-                        need_re_search_indices.insert(i);
-                    } else {
-                        found_indices.insert(i);
-                    }
+                    found_indices.insert(i);
                     let pointer = NodePointer(i, self.nodes[i].len());
                     self.nodes[i].push(Node::WordNode(pointer, word.clone(), Default::default()));
                 }
             }
         }
 
+        found_indices
+    }
+
+    /// 接頭語がある場合に、その後ろに続きうる単語をgraphに追加する
+    ///
+    /// # Arguments
+    /// * `input` - 入力文字列
+    /// * `dic` - 辞書
+    /// * `ancillaries` - 付属語の一覧
+    ///
+    fn find_word_after_prefix(
+        &mut self,
+        input: &[char],
+        dic: &GraphDictionary,
+        ancillaries: &[Vec<Node>],
+    ) {
         // 接頭語があったindexの後ろから単語のみを探索する
-        for idx in need_re_search_indices {
-            for i in (idx + 1)..input.len() {
-                let key = input[idx..i].iter().collect::<String>();
+        let mut prefix_nodes: Vec<(NodePointer, Node)> = Vec::new();
+
+        for nodes in ancillaries {
+            for node in nodes {
+                match node {
+                    Node::WordNode(
+                        p,
+                        Word {
+                            speech: Speech::Affix(AffixVariant::Prefix),
+                            ..
+                        },
+                        _,
+                    ) if node.start_at() == 0 => prefix_nodes.push((p.clone(), node.clone())),
+                    _ => (),
+                }
+            }
+        }
+
+        // 接頭語のnode pointer + 1が開始なので、それ以降を探索する
+        for (p, _) in prefix_nodes {
+            for i in (p.end_at() + 1)..input.len() {
+                let key = input[(p.end_at() + 1)..=i].iter().collect::<String>();
 
                 let words = dic
                     .standard_trie
@@ -309,19 +371,15 @@ impl Graph {
                 if let Some(words) = words {
                     for word in words {
                         let pointer = NodePointer(i, self.nodes[i].len());
-
                         self.nodes[i].push(Node::WordNode(
                             pointer,
                             word.clone(),
                             Default::default(),
                         ));
-                        found_indices.insert(i);
                     }
                 }
             }
         }
-
-        found_indices
     }
 
     /// 付属語を検索して graph のnodeに追加する
@@ -500,6 +558,69 @@ mod tests {
                 })
                 .collect::<HashSet<_>>(),
             HashSet::from(["れでいける".to_string(),])
+        );
+    }
+
+    #[test]
+    fn find_node_after_prefix() {
+        // arrange
+        let keys = LABELS.iter().cloned().collect::<Vec<_>>();
+        let mut ancillary_trie = trie::Trie::from_keys(&keys);
+        let mut standard_trie = trie::Trie::from_keys(&keys);
+
+        standard_trie.insert("こ").unwrap();
+        ancillary_trie.insert("しん").unwrap();
+
+        let dic = GraphDictionary {
+            standard_trie,
+            standard_dic: HashMap::from([(
+                "こ".to_string(),
+                vec![Word::new(
+                    "来",
+                    "こ",
+                    Speech::Verb(VerbForm::Hen("カ".to_string())),
+                )],
+            )]),
+            ancillary_trie,
+            ancillary_dic: HashMap::from([(
+                "しん".to_string(),
+                vec![Word::new("新", "しん", Speech::Affix(AffixVariant::Prefix))],
+            )]),
+        };
+
+        // act
+        let graph = Graph::from_input("しんこか", &dic);
+
+        // assert
+        println!("{:?}", graph);
+        assert_eq!(
+            graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from([Node::WordNode(
+                NodePointer(1, 0),
+                Word::new("新", "しん", Speech::Affix(AffixVariant::Prefix)),
+                Default::default()
+            ),])
+        );
+        assert_eq!(
+            graph.nodes[2].iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from([Node::WordNode(
+                NodePointer(2, 0),
+                Word::new("来", "こ", Speech::Verb(VerbForm::Hen("カ".to_string())),),
+                Default::default()
+            ),])
+        );
+        assert_eq!(
+            graph.nodes[3]
+                .iter()
+                .cloned()
+                .filter_map(|v| {
+                    match v {
+                        Node::Virtual(_, w, _) => Some(w.iter().collect::<String>()),
+                        _ => None,
+                    }
+                })
+                .collect::<HashSet<_>>(),
+            HashSet::from(["か".to_string(), "こか".to_string(),])
         );
     }
 }
