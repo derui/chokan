@@ -14,38 +14,38 @@
 
 (require 'cl-lib)
 (require 'ert)
-(require 'chokan-roman-table)
-(require 'chokan-symbol)
+(require 'chokan)
 
 ;; define tests
 
 (ert-deftest alphabet-to-kana ()
-  (should (equal nil (chokan-roman-table-roman-to-kana "lx")))
-  (should (equal nil (chokan-roman-table-roman-to-kana "l")))
-  (should (string-equal "し" (chokan-roman-table-roman-to-kana "si")))
+  (should (equal nil (chokan--roman-to-hiragana "lx")))
+  (should (equal nil (chokan--roman-to-hiragana "l")))
+  (should (equal "し" (chokan--roman-to-hiragana "si")))
   (should (equal nil
-                 (chokan-roman-table-roman-to-kana "z")))
+                 (chokan--roman-to-hiragana "z")))
   (should (equal "あ"
-                 (chokan-roman-table-roman-to-kana "a")))
+                 (chokan--roman-to-hiragana "a")))
   (should (equal nil
-                 (chokan-roman-table-roman-to-kana "qi")))
+                 (chokan--roman-to-hiragana "qi")))
   )
 
 (ert-deftest sokuon-to-kana ()
   (should (equal nil
-                 (chokan-roman-table-roman-to-kana "tt")))
+                 (chokan--roman-to-hiragana "tt")))
   (should (equal "っす"
-                 (chokan-roman-table-roman-to-kana "ssu")))
+                 (chokan--roman-to-hiragana "ssu")))
   (should (equal "っった"
-                 (chokan-roman-table-roman-to-kana "ttta")))
+                 (chokan--roman-to-hiragana "ttta")))
   )
 
 (ert-deftest hira-to-kata ()
-  (should (equal "カ" (chokan-roman-table-hira-to-kata "か")))
-  (should (equal "ッt" (chokan-roman-table-hira-to-kata "っt")))
+  (should (equal "カ" (chokan--roman-hira-to-kata "か")))
+  (should (equal "ッt" (chokan--roman-hira-to-kata "っt")))
   )
 
 (ert-deftest en-symbol-to-ja-symbol ()
-  (should (equal "。" (chokan-symbol-convert-to-ja ".")))
-  (should (equal "、" (chokan-symbol-convert-to-ja ",")))
-  (should (equal "ー" (chokan-symbol-convert-to-ja "-"))))
+  (should (equal "。" (chokan--symbol-convert-to-ja ".")))
+  (should (equal "、" (chokan--symbol-convert-to-ja ",")))
+  (should (equal "ー" (chokan--symbol-convert-to-ja "-"))))
+(ert t)

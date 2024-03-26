@@ -21,10 +21,58 @@
 
 ;;; Code:
 
-(require 'chokan-roman-table)
-(require 'chokan-conversion)
-(require 'chokan-symbol)
-(require 'chokan-variable)
+(defgroup chokan nil
+  "chokan - cho-tto Kanzen"
+  :group 'input-method
+  :prefix "chokan-")
+
+(defcustom chokan-katakana-cursor-type 'hollow
+  "カタカナ入力モードの際のカーソルの形状。デフォルトでは下線"
+  :type 'symbol
+  :group 'chokan)
+
+(defcustom chokan-ascii-cursor-type 'bar
+  "asciiモードの際のカーソルの形状。デフォルトではbar"
+  :type 'symbol
+  :group 'chokan)
+
+(defcustom chokan-ja-cursor-type '(hbar . 2)
+  "日本語入力モードの際のカーソルの形状。デフォルトではhollow box"
+  :type 'symbol
+  :group 'chokan)
+
+;; global variable
+
+(defvar chokan-mode-map (make-sparse-keymap)
+  "Keymap for `chokan-mode'. This keymap is empty by default.
+You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
+ ")
+
+(defvar chokan-ascii-mode-map (make-sparse-keymap)
+  "Keymap for `chokan-ascii-mode'.
+ ")
+
+(defvar chokan-ja-mode-map (make-sparse-keymap)
+  "Keymap for `chokan-ja-mode'. ")
+
+(defvar chokan-conversion-functions
+  (list
+   '(normal . chokan-conversion--get-candidates)
+   '(tankan . chokan-conversion--get-tankan-candidates)
+   )
+  "変換起動した文字列から、実際に候補を取得する関数のマッピング。
+
+マッピングのキーとしては、次が利用可能である。
+
+- 'normal' : 通常の変換を行う場合の関数
+- 'tankan' : 単漢字変換を行う場合
+
+関数は、引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
+contextが存在しない場合はnilを渡す。
+'type symbol'は、'foreign'か'numeric'のいずれかである。
+
+実行した結果として、候補のリストを返す。候補がない場合は'NIL'を返す。候補のリストは、文字列のリストである。
+")
 
 ;; buffer-local variable
 
@@ -43,6 +91,28 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
 (defvar chokan--sticky nil
   "次に入力するキーを下線部が対応するものにする。対象のキーはalphabetのみである")
+
+(defvar chokan--conversion-candidates nil
+  "変換候補のリスト。変換起動が行われるたびに初期化される。
+
+candidateは、それぞれ '(id . candidate)' というconsで保持される。idは、候補の識別子であり、candidateは、候補の文字列である。
+")
+(defvar chokan--conversion-candidate-pos 0
+  "現在選択している候補の位置を 0オリジンで保持する。")
+
+(defvar chokan-conversion--target-character-regexp
+  "[a-zA-Z0-9あ-ん]+"
+  "変換対象とする文字を検索するための正規表現")
+
+(defvar chokan-conversion--number-context-regexp
+  "[0-9０-９]"
+  "数字のcontextとして利用する文字列の正規表現")
+
+(defvar chokan-conversion--foreign-word-context-regexp
+  "[a-zA-Z]"
+  "外来語のcontextとして利用する文字列の正規表現")
+
+
 
 ;; faces
 
@@ -66,7 +136,562 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   "反転部に適用されるface"
   :group 'chokan)
 
-;; internal functions
+(defconst chokan--roman-table
+  '(
+    ("a" . "あ")
+    ("i" . "い")
+    ("u" . "う")
+    ("e" . "え")
+    ("o" . "お")
+    ("A" . "あ")
+    ("I" . "い")
+    ("U" . "う")
+    ("E" . "え")
+    ("O" . "お")
+    
+    ("ka" . "か")
+    ("ki" . "き")
+    ("ku" . "く")
+    ("ke" . "け")
+    ("ko" . "こ")
+    ("Ka" . "か")
+    ("Ki" . "き")
+    ("Ku" . "く")
+    ("Ke" . "け")
+    ("Ko" . "こ")
+    
+    ("sa" . "さ")
+    ("si" . "し")
+    ("shi" . "し")
+    ("su" . "す")
+    ("se" . "せ")
+    ("so" . "そ")
+    ("Sa" . "さ")
+    ("Si" . "し")
+    ("Shi" . "し")
+    ("Su" . "す")
+    ("Se" . "せ")
+    ("So" . "そ")
+    
+    ("ta" . "た")
+    ("ti" . "ち")
+    ("chi" . "ち")
+    ("tu" . "つ")
+    ("tsu" . "つ")
+    ("te" . "て")
+    ("to" . "と")
+    ("Ta" . "た")
+    ("Ti" . "ち")
+    ("Chi" . "ち")
+    ("Tu" . "つ")
+    ("Tsu" . "つ")
+    ("Te" . "て")
+    ("To" . "と")
+
+    ("na" . "な")
+    ("ni" . "に")
+    ("nu" . "ぬ")
+    ("ne" . "ね")
+    ("no" . "の")
+    ("Na" . "な")
+    ("Ni" . "に")
+    ("Nu" . "ぬ")
+    ("Ne" . "ね")
+    ("No" . "の")
+
+    ("ha" . "は")
+    ("hi" . "ひ")
+    ("hu" . "ふ")
+    ("fu" . "ふ")
+    ("he" . "へ")
+    ("ho" . "ほ")
+    ("Ha" . "は")
+    ("Hi" . "ひ")
+    ("Hu" . "ふ")
+    ("Fu" . "ふ")
+    ("He" . "へ")
+    ("Ho" . "ほ")
+    
+    ("ma" . "ま")
+    ("mi" . "み")
+    ("mu" . "む")
+    ("me" . "め")
+    ("mo" . "も")
+    ("Ma" . "ま")
+    ("Mi" . "み")
+    ("Mu" . "む")
+    ("Me" . "め")
+    ("Mo" . "も")
+
+    ("ra" . "ら")
+    ("ri" . "り")
+    ("ru" . "る")
+    ("re" . "れ")
+    ("ro" . "ろ")
+    ("Ra" . "ら")
+    ("Ri" . "り")
+    ("Ru" . "る")
+    ("Re" . "れ")
+    ("Ro" . "ろ")
+
+    ("ya" . "や")
+    ("yu" . "ゆ")
+    ("yo" . "よ")
+    ("Ya" . "や")
+    ("Yu" . "ゆ")
+    ("Yo" . "よ")
+
+    ("wa" . "わ")
+    ("wi" . "ゐ")
+    ("wo" . "を")
+    ("we" . "ゑ")
+    ("nn" . "ん")
+    ("Wa" . "わ")
+    ("Wi" . "ゐ")
+    ("Wo" . "を")
+    ("We" . "ゑ")
+    ("Nn" . "ん")
+
+    ;; 濁音・半濁音
+    ("ga" . "が")
+    ("gi" . "ぎ")
+    ("gu" . "ぐ")
+    ("ge" . "げ")
+    ("go" . "ご")
+    ("Ga" . "が")
+    ("Gi" . "ぎ")
+    ("Gu" . "ぐ")
+    ("Ge" . "げ")
+    ("Go" . "ご")
+
+    ("za" . "ざ")
+    ("zi" . "じ")
+    ("ji" . "じ")
+    ("zu" . "ず")
+    ("ze" . "ぜ")
+    ("zo" . "ぞ")
+    ("Za" . "ざ")
+    ("Zi" . "じ")
+    ("Ji" . "じ")
+    ("Zu" . "ず")
+    ("Ze" . "ぜ")
+    ("Zo" . "ぞ")
+
+    ;; jiが両方に利用するのは、ローマ字変換では区別できないので、「ぢ」については定義しない
+    ("da" . "だ")
+    ("di" . "ぢ")
+    ("du" . "づ")
+    ("de" . "で")
+    ("do" . "ど")
+    ("Da" . "だ")
+    ("Di" . "ぢ")
+    ("Du" . "づ")
+    ("De" . "で")
+    ("Do" . "ど")
+
+    ("ba" . "ば")
+    ("bi" . "び")
+    ("bu" . "ぶ")
+    ("be" . "べ")
+    ("bo" . "ぼ")
+    ("Ba" . "ば")
+    ("Bi" . "び")
+    ("Bu" . "ぶ")
+    ("Be" . "べ")
+    ("Bo" . "ぼ")
+
+    ("pa" . "ぱ")
+    ("pi" . "ぴ")
+    ("pu" . "ぷ")
+    ("pe" . "ぺ")
+    ("po" . "ぽ")
+    ("Pa" . "ぱ")
+    ("Pi" . "ぴ")
+    ("Pu" . "ぷ")
+    ("Pe" . "ぺ")
+    ("Po" . "ぽ")
+
+    ;; 拗音
+    ("kya" . "きゃ")
+    ("kyu" . "きゅ")
+    ("kyo" . "きょ")
+    ("Kya" . "きゃ")
+    ("Kyu" . "きゅ")
+    ("Kyo" . "きょ")
+
+    ("sha" . "しゃ")
+    ("shu" . "しゅ")
+    ("sho" . "しょ")
+    ("sya" . "しゃ")
+    ("syu" . "しゅ")
+    ("syo" . "しょ")
+    ("Sha" . "しゃ")
+    ("Shu" . "しゅ")
+    ("Sho" . "しょ")
+    ("Sya" . "しゃ")
+    ("Syu" . "しゅ")
+    ("Syo" . "しょ")
+
+    ("cha" . "ちゃ")
+    ("chu" . "ちゅ")
+    ("cho" . "ちょ")
+    ("Cha" . "ちゃ")
+    ("Chu" . "ちゅ")
+    ("Cho" . "ちょ")
+    ("tya" . "ちゃ")
+    ("tyu" . "ちゅ")
+    ("tyo" . "ちょ")
+    ("Tya" . "ちゃ")
+    ("Tyu" . "ちゅ")
+    ("Tyo" . "ちょ")
+
+    ("nya" . "にゃ")
+    ("nyu" . "にゅ")
+    ("nyo" . "にょ")
+    ("Nya" . "にゃ")
+    ("Nyu" . "にゅ")
+    ("Nyo" . "にょ")
+
+    ("hya" . "ひゃ")
+    ("hyu" . "ひゅ")
+    ("hyo" . "ひょ")
+    ("Hya" . "ひゃ")
+    ("Hyu" . "ひゅ")
+    ("Hyo" . "ひょ")
+
+    ("mya" . "みゃ")
+    ("myu" . "みゅ")
+    ("myo" . "みょ")
+    ("Mya" . "みゃ")
+    ("Myu" . "みゅ")
+    ("Myo" . "みょ")
+
+    ("rya" . "りゃ")
+    ("ryu" . "りゅ")
+    ("ryo" . "りょ")
+    ("Rya" . "りゃ")
+    ("Ryu" . "りゅ")
+    ("Ryo" . "りょ")
+
+    ("gya" . "ぎゃ")
+    ("gyu" . "ぎゅ")
+    ("gyo" . "ぎょ")
+    ("Gya" . "ぎゃ")
+    ("Gyu" . "ぎゅ")
+    ("Gyo" . "ぎょ")
+
+    ("ja" . "じゃ")
+    ("ju" . "じゅ")
+    ("jo" . "じょ")
+    ("Ja" . "じゃ")
+    ("Ju" . "じゅ")
+    ("Jo" . "じょ")
+
+    ("bya" . "びゃ")
+    ("byu" . "びゅ")
+    ("byo" . "びょ")
+    ("Bya" . "びゃ")
+    ("Byu" . "びゅ")
+    ("Byo" . "びょ")
+
+    ("pya" . "ぴゃ")
+    ("pyu" . "ぴゅ")
+    ("pyo" . "ぴょ")
+    ("Pya" . "ぴゃ")
+    ("Pyu" . "ぴゅ")
+    ("Pyo" . "ぴょ")
+
+    ;; 外来語
+    ("fa" . "ふぁ")
+    ("fi" . "ふぃ")
+    ("fe" . "ふぇ")
+    ("fo" . "ふぉ")
+    ("Fa" . "ふぁ")
+    ("Fi" . "ふぃ")
+    ("Fe" . "ふぇ")
+    ("Fo" . "ふぉ")
+
+    ;; 小書き
+    ("xa" . "ぁ")
+    ("xi" . "ぃ")
+    ("xu" . "ぅ")
+    ("xe" . "ぇ")
+    ("xo" . "ぉ")
+    
+    ("xya" . "ゃ")
+    ("xyu" . "ゅ")
+    ("xyo" . "ょ")
+    ("xtu" . "っ")
+    ("xtsu" . "っ")
+    ("xwa" . "ゎ")
+    )
+  "chokanで利用するローマ字変換表。但し、歴史的事情であったり入力負荷が高いような綴りについては、
+広く利用されている形式も利用できるようにしている。
+
+先頭が大文字であるものが定義されているのは、下線部の起動時と挙動を一致させるためである。
+"
+  )
+
+(defvar chokan--katakana-table
+  '(
+    ("あ" . "ア")
+    ("い" . "イ")
+    ("う" . "ウ")
+    ("え" . "エ")
+    ("お" . "オ")
+    ;; 
+    ("か" . "カ")
+    ("き" . "キ")
+    ("く" . "ク")
+    ("け" . "ケ")
+    ("こ" . "コ")
+    ;; 
+    ("さ" . "サ")
+    ("し" . "シ")
+    ("す" . "ス")
+    ("せ" . "セ")
+    ("そ" . "ソ")
+    ;; 
+    ("た" . "タ")
+    ("ち" . "チ")
+    ("つ" . "ツ")
+    ("て" . "テ")
+    ("と" . "ト")
+    ;; 
+    ("な" . "ナ")
+    ("に" . "ニ")
+    ("ぬ" . "ヌ")
+    ("ね" . "ネ")
+    ("の" . "ノ")
+    ;; 
+    ("は" . "ハ")
+    ("ひ" . "ヒ")
+    ("ふ" . "フ")
+    ("へ" . "ヘ")
+    ("ほ" . "ホ")
+    ;; 
+    ("ま" . "マ")
+    ("み" . "ミ")
+    ("む" . "ム")
+    ("め" . "メ")
+    ("も" . "モ")
+    ;; 
+    ("や" . "ヤ")
+    ("ゆ" . "ユ")
+    ("よ" . "ヨ")
+    ;; 
+    ("ら" . "ラ")
+    ("り" . "リ")
+    ("る" . "ル")
+    ("れ" . "レ")
+    ("ろ" . "ロ")
+    ;; 
+    ("わ" . "ワ")
+    ("を" . "ヲ")
+    ("ゐ" . "ヰ")
+    ("ゑ" . "ヱ")
+    ("を" . "ヲ")
+    ("ん" . "ン")
+    ;; 
+    ("が" . "ガ")
+    ("ぎ" . "ギ")
+    ("ぐ" . "グ")
+    ("げ" . "ゲ")
+    ("ご" . "ゴ")
+    ;; 
+    ("ざ" . "ザ")
+    ("じ" . "ジ")
+    ("ず" . "ズ")
+    ("ぜ" . "ゼ")
+    ("ぞ" . "ゾ")
+    ;; 
+    ("だ" . "ダ")
+    ("ぢ" . "ヂ")
+    ("づ" . "ヅ")
+    ("で" . "デ")
+    ("ど" . "ド")
+    ;;
+    ("ば" . "バ")
+    ("び" . "ビ")
+    ("ぶ" . "ブ")
+    ("べ" . "ベ")
+    ("ぼ" . "ボ")
+    ;;
+    ("ぱ" . "パ")
+    ("ぴ" . "ピ")
+    ("ぷ" . "プ")
+    ("ぺ" . "ペ")
+    ("ぽ" . "ポ")
+    ;;
+    ("ゃ" . "ャ")
+    ("ゅ" . "ュ")
+    ("ょ" . "ョ")
+    ("っ" . "ッ")
+    ("ゎ" . "ヮ")
+    ("ぁ" . "ァ")
+    ("ぃ" . "ィ")
+    ("ぅ" . "ゥ")
+    ("ぇ" . "ェ")
+    ("ぉ" . "ォ")
+    )
+  "ひらがなからカタカナへの変換テーブル")
+
+(defconst chokan--symbol-table
+  '(("-" . "ー")
+    ("." . "。")
+    ("," . "、")
+    ("<" . "＜")
+    (">" . "＞")
+    ("(" . "（")
+    (")" . "）")
+    ("[" . "［")
+    ("]" . "］")
+    ("{" . "｛")
+    ("}" . "｝")
+    ("'" . "’")
+    ("\"" . "”")
+    ("`" . "‘")
+    ("~" . "～")
+    ("!" . "！")
+    ("?" . "？")
+    (";" . "；")
+    (":" . "：")
+    ("/" . "・")
+    ("\\" . "＼")
+    ("|" . "｜")
+    ("$" . "＄")
+    ("%" . "％")
+    ("&" . "＆")
+    ("+" . "＋")
+    ("=" . "＝")
+    ("^" . "＾")
+    ("_" . "＿")
+    ([return] . "\n")
+    ;; いくつかの記号は、変換起動などで利用するために一旦定義しない
+    )
+  "記号類を日本語における記号に変換するテーブル")
+
+;;; roman internal functions
+
+(defun chokan--roman-sokuon-p (input)
+  "inputが促音を含むかどうかを判定する。
+
+ここでの促音は、 'tt' のように子音を重ねたもののみを判定する。
+"
+  (let ((consonants '(?t ?b ?j ?f ?h ?s ?w ?r ?y ?p ?k ?g ?z ?c ?v)))
+    (and (>= (length input) 2)
+         (equal (aref input 0) (aref input 1))
+         (member (aref input 0) consonants)
+         (member (aref input 1) consonants))))
+
+(defun chokan--roman-to-hiragana (input) 
+  "ローマ字をひらがなに変換する。
+w
+変換結果によって、以下のいずれかの結果を返す。
+
+- 'nil' : 対応する候補が見つからない場合
+- '\"result\"' : 対応するひらがな
+"
+  (let* ((sokuon "")
+         (input (downcase input)))
+    (while (chokan--roman-sokuon-p input)
+      (setq sokuon (concat sokuon "っ"))
+      (setq input (substring input 1)))
+    (pcase (assoc input chokan--roman-table)
+      ;; 全体の組み合わせで見つからない場合はnil
+      (`() nil)
+      ;; 見つかった場合はそのまま返す
+      (`(,_ . ,ret)
+       (concat sokuon ret)))))
+
+(defun chokan--roman-hira-to-kata (hira)
+  "ひらがなをカタカナに変換する。変換できない文字はそのままで返す"
+  (let ((result '()))
+    (seq-doseq (c hira)
+      (if-let ((kata (assoc (string c) chokan--katakana-table)))
+          (push (cdr kata) result)
+        (push (string c) result)))
+    (string-join (seq-reverse result) "")))
+
+(defun chokan--symbol-convert-to-ja (symbol)
+  "SYMBOLを日本語における記号に変換する。変換できない場合はnilを返す"
+  (let* ((converted (assoc symbol chokan--symbol-table)))
+    (if converted
+        (cdr converted)
+      nil)))
+
+;;; chokan-conversion internal function
+(defun chokan--same-type-string-backward (regexp)
+  "同一のregexpにマッチする連続した文字列を返す"
+  (save-excursion
+    (let* ((current (point))
+           (char (buffer-substring-no-properties (1- current) current))
+           ret)
+      (while (string-match-p regexp char)
+        (backward-char)
+        (setq ret (concat (or ret "") char))
+        (setq char (buffer-substring-no-properties (1- (point)) (point))))
+      (seq-reverse ret))))
+
+(defun chokan--get-previous-context ()
+  "現在位置より前のcontextを取得する。contextは consの形式で返却され、carにはcontextの種別、cdrにはcontextの文字列が格納される。
+
+contextは、以下のいずれかである。
+
+- 通常の文字列
+- 連続した数字
+- 連続したアルファベット
+"
+  (save-excursion
+    (let* ((current (point))
+           (test-char (buffer-substring-no-properties (1- current) current))
+           (context-fw (chokan--same-type-string-backward chokan--foreign-word-context-regexp))
+           (context-number (chokan--same-type-string-backward chokan--number-context-regexp)))
+      (pcase (list context-fw context-number)
+        (`(,(pred numberp) ,_) (cons 'foreign-word context-fw))
+        (`(,_ ,(pred numberp)) (cons 'number context-number))
+        (_ '(normal))))))
+
+(defun chokan--get-conversion-region ()
+  "現在の下線部があれば、その周辺で変換対象のregionと種別、さらにcontextを取得する。
+下線部が存在しない場合は 'NIL' を返す。
+"
+  (let* ((current (point)))
+    (save-excursion
+      (when-let* ((prop-match (text-property-search-backward 'chokan-conversion-start t t nil))
+                  (region (cons (prop-match-beginning prop-match) (prop-match-end prop-match)))
+                  ;; ひらがな・アルファベット・数字以外、またはカーソル位置を対象にする
+                  (end (re-search-forward chokan--target-character-regexp current t))
+                  (detail (get-text-property (prop-match-beginning prop-match) 'chokan-conversion-detail))
+                  (context (chokan--get-previous-context)))
+        (list (car region) end detail context)))))
+
+;;;###autoload
+(defun chokan--conversion-launch (callback)
+  "現在のポイントから変換起動を試みる。変換起動が出来ない場合は、何も行わない。
+
+変換起動が出来た場合は、'CALLBACK'に対象のregionの開始位置と終了位置、最初の変換候補を渡して実行する。変換候補がない場合は、変換候補をnilが設定される。
+"
+
+  (when-let* ((region (chokan--get-conversion-region))
+              (start (car region))
+              (end (cadr region))
+              (type (caddr region))
+              (context (cadddr region))
+              (str (buffer-substring-no-properties start end)))
+    (let ((func (assoc type chokan-conversion-functions)))
+      (if func
+          (progn
+            (setq chokan--candidate-pos 0)
+            (setq chokan--candidates (funcall (cdr func) str context))
+
+            (let* ((candidate (and chokan--candidates
+                                   (car chokan--candidates))))
+              (funcall callback start end candidate)))
+        (funcall callback start end nil)))))
+
+
+;;; chokan-core internal functions
 
 (defsubst chokan--ascii-p ()
   "現在chokanがascii modeであるかどうかを返す"
@@ -125,13 +750,13 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 
 (defun chokan--roman-to-kana (alphabet)
   "現在のmodeに従って `alphabet' をかなに変換する。"
-  (let* ((kana (chokan-roman-table-roman-to-kana alphabet)))
+  (let* ((kana (chokan--roman-to-hiragana alphabet)))
     (pcase kana
       (`() nil)
       ((and v (pred stringp))
        (if (eq chokan--internal-mode 'hiragana)
            v
-         (chokan-roman-table-hira-to-kata v))))))
+         (chokan--roman-hira-to-kata v))))))
 
 (defun chokan--get-roman-region ()
   "現在のpointを含むローマ字の未確定領域を取得する。
@@ -271,7 +896,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
           (goto-char (car region))
           (insert propertized)))))
    ((eq char-type 'symbols)
-    (let ((key (or (chokan-symbol-convert-to-ja key) key)))
+    (let ((key (or (chokan--symbol-convert-to-ja key) key)))
       (chokan--insert-with-type key char-props)
       ;; 対象の部分に下線部が追加されたりするのでその対応をする
       (let* ((props (text-properties-at (- (point) (length key)))))
@@ -297,9 +922,9 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   "必要なら変換処理を起動し、反転部を作成する。 "
 
   (when convert-launchable
-    (chokan-conversion-launch (lambda (start end candidate)
-                                (let* ((candidate (or (cdr candidate) (buffer-substring-no-properties start end))))
-                                  (chokan--insert-candidate (cons start end) candidate))))))
+    (chokan--conversion-launch (lambda (start end candidate)
+                                 (let* ((candidate (or (cdr candidate) (buffer-substring-no-properties start end))))
+                                   (chokan--insert-candidate (cons start end) candidate))))))
 
 (defun chokan--finalize-inverse-if-possible (finalizable &optional inverted-region)
   "反転部を確定できる場合は確定する。
@@ -393,7 +1018,9 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   (interactive)
   (let ((current-key (this-command-keys)))
     (if-let* ((region (chokan--get-inverse-region)))
-        (when-let* ((candidate (chokan-conversion-next-candidate)))
+        (when-let* ((candidate (when-let* ((next (nth (1+ chokan--conversion-candidate-pos) chokan--conversion-candidates)))
+                                 (setq chokan--conversion-candidate-pos (1+ chokan--conversion-candidate-pos))
+                                 next)))
           (chokan--insert-candidate region (cdr candidate)))
       (let* ((chokan-ja-mode nil)
              (old-func (key-binding current-key)))
@@ -406,7 +1033,11 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
   (interactive)
   (let ((current-key (this-command-keys)))
     (if-let* ((region (chokan--get-inverse-region)))
-        (when-let ((candidate (chokan-conversion-previous-candidate)))
+        (when-let ((candidate (if (zerop chokan--conversion-candidate-pos)
+                                  nil
+                                (when-let* ((prev (nth (1- chokan--conversion-candidate-pos) chokan--conversion-candidates)))
+                                  (setq chokan--conversion-candidate-pos (1- chokan--conversion-candidate-pos))
+                                  prev))))
           (chokan--insert-candidate region (cdr candidate)))
       (let* ((chokan-ja-mode nil)
              (old-func (key-binding current-key)))
@@ -453,9 +1084,10 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   (set-face-attribute 'chokan-inverse nil :foreground (face-attribute 'default :background))
   (set-face-attribute 'chokan-inverse nil :background (face-attribute 'default :foreground))
 
-  (chokan-conversion--setup)
   (setq-local chokan--default-cursor-type cursor-type)
   (setq-local chokan--sticky nil)
+  (setq-local chokan-conversion--candidates nil)
+  (setq-local chokan-conversion--candidate-pos 0)
   (chokan-ja-mode)
   )
 

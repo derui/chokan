@@ -9,10 +9,9 @@ tasks:
    
   build:
     sources:
-      - './*.el'
-
+      - './chokan.el'
     generates:
-      - './*.elc'
+      - './chokan.elc'
     cmds:
       - for: sources
         cmd: '{{ .EMACS_BATCH }} -f batch-byte-compile {{ .ITEM }}'
