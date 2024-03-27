@@ -682,11 +682,11 @@ contextは、以下のいずれかである。
     (let ((func (assoc type chokan-conversion-functions)))
       (if func
           (progn
-            (setq chokan--candidate-pos 0)
-            (setq chokan--candidates (funcall (cdr func) str context))
+            (setq chokan--conversion-candidate-pos 0)
+            (setq chokan--conversion-candidates (funcall (cdr func) str context))
 
             (let* ((candidate (and chokan--candidates
-                                   (car chokan--candidates))))
+                                   (car chokan--conversion-candidates))))
               (funcall callback start end candidate)))
         (funcall callback start end nil)))))
 
@@ -1086,8 +1086,8 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
 
   (setq-local chokan--default-cursor-type cursor-type)
   (setq-local chokan--sticky nil)
-  (setq-local chokan-conversion--candidates nil)
-  (setq-local chokan-conversion--candidate-pos 0)
+  (setq-local chokan--conversion-candidates nil)
+  (setq-local chokan--conversion-candidate-pos 0)
   (chokan-ja-mode)
   )
 
