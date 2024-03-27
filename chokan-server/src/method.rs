@@ -1,6 +1,6 @@
 use chokan_dic::ChokanDictionary;
 use jsonrpsee::{core::RpcResult, RpcModule};
-use kkc::{get_candidates, get_tankan_candidates, GraphDictionary};
+use kkc::{context::Context, get_candidates, get_tankan_candidates};
 use serde::{Deserialize, Serialize};
 
 /**
@@ -31,6 +31,25 @@ struct GetCandidatesRequest {
     context: Option<GetCandidatesContext>,
 }
 
+impl From<GetCandidatesContext> for Context {
+    fn from(val: GetCandidatesContext) -> Self {
+        match val.r#type {
+            GetCandidatesContextKind::Normal => Context::normal(),
+            GetCandidatesContextKind::ForeignWord => Context::foreign_word(),
+            GetCandidatesContextKind::Counter => Context::counter(),
+        }
+    }
+}
+
+impl Default for GetCandidatesContext {
+    fn default() -> Self {
+        GetCandidatesContext {
+            r#type: GetCandidatesContextKind::Normal,
+            value: None,
+        }
+    }
+}
+
 /// 候補の一つを表す
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct CandidateResponse {
@@ -58,7 +77,7 @@ pub(crate) fn make_get_candidates_method(
 ) -> anyhow::Result<()> {
     module.register_method("GetCandidates", |params, dictionary| {
         let params = params.parse::<GetCandidatesRequest>()?;
-        let context = kkc::context::new();
+        let context = params.context.unwrap_or_default().into();
         let candidates = get_candidates(&params.input, &dictionary.graph, &context, 100);
 
         let candidates = candidates
@@ -88,7 +107,6 @@ pub(crate) fn make_get_tankan_candidates_method(
 ) -> anyhow::Result<()> {
     module.register_method("GetTankanCandidates", |params, dictionary| {
         let params = params.parse::<GetCandidatesRequest>()?;
-        let context = kkc::context::new();
         let candidates = get_tankan_candidates(&params.input, &dictionary.tankan);
 
         let candidates = candidates

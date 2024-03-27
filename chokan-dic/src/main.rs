@@ -39,8 +39,7 @@ fn read_and_make_dictionary(dic_path: &Path) -> Result<ReadDictionary, std::io::
         .entries()
         .iter()
         .cloned()
-        .map(|v| -> Vec<Word> { v.into() })
-        .flatten()
+        .flat_map(|v| -> Vec<Word> { v.into() })
         .collect();
     words.sort_by(|v1, v2| v1.reading.cmp(&v2.reading));
 
@@ -72,8 +71,7 @@ fn read_and_make_tankan_dictionary(dic_path: &Path) -> Result<TankanDictionary, 
         .entries()
         .iter()
         .cloned()
-        .map(|v| -> Vec<Word> { v.into() })
-        .flatten()
+        .flat_map(|v| -> Vec<Word> { v.into() })
         .collect();
     words.sort_by(|v1, v2| v1.reading.cmp(&v2.reading));
 
@@ -119,7 +117,7 @@ fn main() {
     let tankan = read_and_make_tankan_dictionary(tankan_path).unwrap();
     let dic = chokan_dic::ChokanDictionary {
         graph: graph_dic,
-        tankan: tankan,
+        tankan,
     };
 
     let mut output = File::create(output_path).unwrap();

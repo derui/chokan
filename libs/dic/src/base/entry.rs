@@ -1,7 +1,4 @@
-use std::{
-    collections::HashSet,
-    fmt::{self, Display},
-};
+use std::fmt::{self, Display};
 
 use super::{speech::Speech, word::Word};
 
@@ -43,7 +40,7 @@ impl From<Entry> for Vec<Word> {
         let forms = &val.speech.to_forms(&val.stem, &val.stem_reading);
 
         for (formed, form_reading) in forms {
-            words.push(Word::new(formed, &form_reading, val.speech.clone()));
+            words.push(Word::new(formed, form_reading, val.speech.clone()));
         }
 
         words

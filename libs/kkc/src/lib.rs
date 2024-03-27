@@ -211,7 +211,7 @@ mod tests {
     fn get_best_candidates_from_input() {
         // arrange
         let dic = test_dic::new_dic();
-        let context = Context {};
+        let context = Context::normal();
 
         // act
         let result = get_candidates("くるまではしらなかった", &dic, &context, 1);
@@ -225,7 +225,7 @@ mod tests {
     fn get_best_n_candidates_from_input() {
         // arrange
         let dic = test_dic::new_dic();
-        let context = Context {};
+        let context = Context::normal();
 
         // act
         let result = get_candidates("くるまではしらなかった", &dic, &context, 3);
@@ -245,7 +245,7 @@ mod tests {
     #[test]
     fn virtual_node_with_1_node() {
         // arrange
-        let keys = LABELS.iter().cloned().collect::<Vec<_>>();
+        let keys = LABELS.to_vec();
         let ancillary_trie = trie::Trie::from_keys(&keys);
         let mut standard_trie = trie::Trie::from_keys(&keys);
 
@@ -260,7 +260,7 @@ mod tests {
             ancillary_trie,
             ancillary_dic: HashMap::from([]),
         };
-        let context = Context {};
+        let context = Context::normal();
 
         // act
         let result = get_candidates("これでいける", &dic, &context, 3);

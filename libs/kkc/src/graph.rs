@@ -532,7 +532,7 @@ mod tests {
     #[test]
     fn virtual_node_with_1_node() {
         // arrange
-        let keys = LABELS.iter().cloned().collect::<Vec<_>>();
+        let keys = LABELS.to_vec();
         let ancillary_trie = trie::Trie::from_keys(&keys);
         let mut standard_trie = trie::Trie::from_keys(&keys);
 
@@ -574,7 +574,7 @@ mod tests {
     #[test]
     fn find_node_after_prefix() {
         // arrange
-        let keys = LABELS.iter().cloned().collect::<Vec<_>>();
+        let keys = LABELS.to_vec();
         let mut ancillary_trie = trie::Trie::from_keys(&keys);
         let mut standard_trie = trie::Trie::from_keys(&keys);
 

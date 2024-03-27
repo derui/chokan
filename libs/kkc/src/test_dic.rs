@@ -17,7 +17,7 @@ pub const LABELS: [char; 72] = [
 
 /// テスト用の辞書を提供する
 pub fn new_dic() -> GraphDictionary {
-    let keys = LABELS.iter().cloned().collect::<Vec<_>>();
+    let keys = LABELS.to_vec();
     let mut standard_trie = trie::Trie::from_keys(&keys);
     let mut ancillary_trie = trie::Trie::from_keys(&keys);
 

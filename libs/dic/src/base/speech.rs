@@ -392,26 +392,26 @@ impl VerbForm {
             .collect::<Vec<_>>(),
             VerbForm::Hen(row) => match row.as_str() {
                 // カ行変格活用では、基本的に語幹自体が無いという考え方がある。
-                "カ" => vec!["こ", "き", "くる", "こい", "くれ"]
+                "カ" => ["こ", "き", "くる", "こい", "くれ"]
                     .iter()
                     .cloned()
                     .map(|v| {
                         let reading_last = stem_reading.char_indices().last().unwrap().0;
                         (
                             format!("{}{}", stem, v.chars().skip(1).collect::<String>()),
-                            format!("{}{}", &stem_reading[0..reading_last], v.to_string()),
+                            format!("{}{}", &stem_reading[0..reading_last], v),
                         )
                     })
                     .collect::<Vec<_>>(),
-                "サ" => vec!["さ", "せ", "し", "す"]
+                "サ" => ["さ", "せ", "し", "す"]
                     .iter()
                     .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
                     .collect::<Vec<_>>(),
-                "ラ" => vec!["ら", "れ", "り", "る"]
+                "ラ" => ["ら", "れ", "り", "る"]
                     .iter()
                     .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
                     .collect::<Vec<_>>(),
-                "ナ" => vec!["な", "ね", "に", "ぬ"]
+                "ナ" => ["な", "ね", "に", "ぬ"]
                     .iter()
                     .map(|v| (format!("{}{}", stem, v), format!("{}{}", stem_reading, v)))
                     .collect::<Vec<_>>(),

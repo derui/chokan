@@ -43,8 +43,22 @@ pub fn get_node_score(_context: &Context, current: &Node) -> i32 {
 /// edgeに対するscore
 pub fn get_edge_score(context: &Context, prev: &Node, current: &Node) -> i32 {
     match prev {
-        Node::BOS => 0,
+        Node::BOS => get_edge_score_of_head(context, current),
         _ => get_edge_score_impl(context, prev, current),
+    }
+}
+
+/// 先頭のnodeに対するscoreを算出する
+///
+/// 主に、contextがNormal以外の場合、数詞や接辞を優先するようなscoreを構成する
+fn get_edge_score_of_head(context: &Context, current: &Node) -> i32 {
+    match current {
+        Node::WordNode(_, w, _) => match w.speech {
+            Speech::Counter if context.is_counter() => 2,
+            Speech::Affix(AffixVariant::Prefix) if context.is_foreign_word() => 2,
+            _ => 0,
+        },
+        _ => 0,
     }
 }
 
