@@ -11,10 +11,16 @@ chokan-serverで提供するmethodの実装を行う。
 実行時の文脈を表す
 */
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-enum GetCandidatesContext {
+enum GetCandidatesContextKind {
     Normal,      // 通常のかな漢字変換
     ForeignWord, // 外来語
     Counter,     // 数詞
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct GetCandidatesContext {
+    r#type: GetCandidatesContextKind,
+    value: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

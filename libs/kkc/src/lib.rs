@@ -62,7 +62,7 @@ fn calculate_best_score(
 fn forward_dp(input: &str, graph: &mut graph::Graph, context: &context::Context) {
     let input = input.chars().collect::<Vec<_>>();
 
-    for i in 1..input.len() {
+    for i in 0..input.len() {
         for node in graph.nodes_at(i) {
             // 各nodeに対して、一つ前のnodeからの遷移scoreを計算する
             let prev_nodes = graph.previsous_nodes(&node);

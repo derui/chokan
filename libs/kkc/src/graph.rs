@@ -99,6 +99,16 @@ impl Node {
         }
     }
 
+    /// nodeが付属後かどうかを返す
+    fn is_ancillary(&self) -> bool {
+        match self {
+            Node::WordNode(_, w, _) => w.speech.is_ancillary(),
+            Node::Virtual(_, _, _) => false,
+            Node::EOS => false,
+            Node::BOS => false,
+        }
+    }
+
     /// Nodeにおける現時点のscoreを返す
     ///
     /// EOS/BOSのついてはスコアという概念はないので、あくまで
@@ -261,9 +271,10 @@ impl Graph {
                 _ => false,
             }
         } else {
-            // 接頭辞以外は、先頭ではない場所でだけ追加できる
-            match self.nodes.get(start_at) {
-                Some(v) => !v.is_empty(),
+            // 接頭辞以外は、何らかの自立語が存在する場合に限る
+            match self.nodes.get(start_at - 1) {
+                Some(v) if v.iter().any(|v| !v.is_ancillary()) => true,
+                Some(_) => false,
                 None => false,
             }
         }
@@ -340,7 +351,7 @@ impl Graph {
         ancillaries: &[Vec<Node>],
     ) {
         // 接頭語があったindexの後ろから単語のみを探索する
-        let mut prefix_nodes: Vec<(NodePointer, Node)> = Vec::new();
+        let mut prefix_nodes: Vec<NodePointer> = Vec::new();
 
         for nodes in ancillaries {
             for node in nodes {
@@ -352,14 +363,14 @@ impl Graph {
                             ..
                         },
                         _,
-                    ) if node.start_at() == 0 => prefix_nodes.push((p.clone(), node.clone())),
+                    ) if node.start_at() == 0 => prefix_nodes.push(p.clone()),
                     _ => (),
                 }
             }
         }
 
         // 接頭語のnode pointer + 1が開始なので、それ以降を探索する
-        for (p, _) in prefix_nodes {
+        for p in prefix_nodes {
             for i in (p.end_at() + 1)..input.len() {
                 let key = input[(p.end_at() + 1)..=i].iter().collect::<String>();
 
@@ -545,7 +556,6 @@ mod tests {
         let graph = Graph::from_input("これでいける", &dic);
 
         // assert
-        println!("{:?}", graph);
         assert_eq!(
             graph.nodes[5]
                 .iter()
@@ -589,10 +599,9 @@ mod tests {
         };
 
         // act
-        let graph = Graph::from_input("しんこか", &dic);
+        let graph = Graph::from_input("しんこかこ", &dic);
 
         // assert
-        println!("{:?}", graph);
         assert_eq!(
             graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([Node::WordNode(
@@ -610,7 +619,7 @@ mod tests {
             ),])
         );
         assert_eq!(
-            graph.nodes[3]
+            graph.nodes[4]
                 .iter()
                 .cloned()
                 .filter_map(|v| {
@@ -620,7 +629,7 @@ mod tests {
                     }
                 })
                 .collect::<HashSet<_>>(),
-            HashSet::from(["か".to_string(), "こか".to_string(),])
+            HashSet::from(["かこ".to_string(), "こかこ".to_string(),])
         );
     }
 }
