@@ -5,7 +5,7 @@ use dic::base::{
     word::Word,
 };
 
-use crate::GraphDictionary;
+use crate::{context::Context, GraphDictionary};
 
 /// 解析で利用するグラフと、それを入力文字列から構築する処理を提供する
 
@@ -168,10 +168,11 @@ impl Graph {
     /// # Arguments
     /// * `input` - 解析対象の文字列
     /// * `dic` - 辞書
+    /// * `context` - コンテキスト
     ///
     /// # Returns
     /// 構築されたグラフ
-    pub fn from_input(input: &str, dic: &GraphDictionary) -> Graph {
+    pub fn from_input(input: &str, dic: &GraphDictionary, context: &Context) -> Graph {
         let input = input.chars().collect::<Vec<_>>();
         let nodes: Vec<Vec<Node>> = vec![Default::default(); input.len()];
         let mut graph = Graph { nodes };
@@ -183,7 +184,7 @@ impl Graph {
         // 接頭語の後ろから単語をnodesに追加する
         graph.find_word_after_prefix(&input, dic, &ancillaries);
         // 付属語を追加する
-        graph.merge_ancillaries(&ancillaries);
+        graph.merge_ancillaries(&ancillaries, context);
         // 仮想ノードを追加する
         graph.complete_virtual_nodes(&input);
 
@@ -246,12 +247,13 @@ impl Graph {
     ///
     /// # Arguments
     /// * `ancillaries` - 付属語の一覧
-    fn merge_ancillaries(&mut self, ancillaries: &[Vec<Node>]) {
+    /// * `context` - コンテキスト
+    fn merge_ancillaries(&mut self, ancillaries: &[Vec<Node>], context: &Context) {
         // 付属語が設定されているindexは、その付属語の末尾のindexであるため、
         // start_atの位置に単語がある場合のみをmerge対象にする
         for ancillary in ancillaries {
             for node in ancillary {
-                if self.is_mergeable_ancillary(node) {
+                if self.is_mergeable_ancillary(node, context) {
                     let end_at = node.end_at();
                     let pointer = NodePointer(end_at, self.nodes[end_at].len());
                     self.nodes[end_at].push(node.clone_with(pointer));
@@ -261,13 +263,19 @@ impl Graph {
     }
 
     /// 対象の付属語がマージ可能かどうかを返す
-    fn is_mergeable_ancillary(&self, aicillary: &Node) -> bool {
+    fn is_mergeable_ancillary(&self, aicillary: &Node, context: &Context) -> bool {
         let start_at = aicillary.start_at();
 
-        // 先頭である場合、接頭辞の場合だけはmergeできる
+        // 先頭である場合、contextによってmerge出来るものが変わってくる
         if start_at == 0 {
             match aicillary {
-                Node::WordNode(_, w, _) => w.speech == Speech::Affix(AffixVariant::Prefix),
+                Node::WordNode(_, w, _) => match w.speech {
+                    // 接頭語は、常にmerge可能
+                    Speech::Affix(AffixVariant::Prefix) => true,
+                    Speech::Affix(AffixVariant::Suffix) => context.is_foreign_word(),
+                    Speech::Counter => context.is_counter(),
+                    _ => false,
+                },
                 _ => false,
             }
         } else {
@@ -445,7 +453,7 @@ mod tests {
         let dic = test_dic::new_dic();
 
         // act
-        let graph = Graph::from_input("くるまではしらなかった", &dic);
+        let graph = Graph::from_input("くるまではしらなかった", &dic, &Context::normal());
 
         // assert
         assert_eq!(graph.nodes.len(), 11);
@@ -461,7 +469,7 @@ mod tests {
         let dic = test_dic::new_dic();
 
         // act
-        let graph = Graph::from_input("くるまではしらなかった", &dic);
+        let graph = Graph::from_input("くるまではしらなかった", &dic, &Context::normal());
 
         // assert
         assert_eq!(
@@ -553,7 +561,7 @@ mod tests {
         };
 
         // act
-        let graph = Graph::from_input("これでいける", &dic);
+        let graph = Graph::from_input("これでいける", &dic, &Context::normal());
 
         // assert
         assert_eq!(
@@ -599,7 +607,7 @@ mod tests {
         };
 
         // act
-        let graph = Graph::from_input("しんこかこ", &dic);
+        let graph = Graph::from_input("しんこかこ", &dic, &Context::normal());
 
         // assert
         assert_eq!(
@@ -630,6 +638,98 @@ mod tests {
                 })
                 .collect::<HashSet<_>>(),
             HashSet::from(["かこ".to_string(), "こかこ".to_string(),])
+        );
+    }
+
+    #[test]
+    fn suffix_mergeable_when_foreign_word() {
+        // arrange
+        let keys = LABELS.to_vec();
+        let mut ancillary_trie = trie::Trie::from_keys(&keys);
+        let standard_trie = trie::Trie::from_keys(&keys);
+
+        ancillary_trie.insert("てき").unwrap();
+
+        let dic = GraphDictionary {
+            standard_trie,
+            standard_dic: HashMap::from([]),
+            ancillary_trie,
+            ancillary_dic: HashMap::from([(
+                "てき".to_string(),
+                vec![Word::new("的", "てき", Speech::Affix(AffixVariant::Suffix))],
+            )]),
+        };
+
+        // act
+        let graph = Graph::from_input("てきな", &dic, &Context::foreign_word());
+
+        // assert
+        assert_eq!(
+            graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from([Node::WordNode(
+                NodePointer(1, 0),
+                Word::new("的", "てき", Speech::Affix(AffixVariant::Suffix)),
+                Default::default()
+            ),])
+        );
+        assert_eq!(
+            graph.nodes[2]
+                .iter()
+                .cloned()
+                .filter_map(|v| {
+                    match v {
+                        Node::Virtual(_, w, _) => Some(w.iter().collect::<String>()),
+                        _ => None,
+                    }
+                })
+                .collect::<HashSet<_>>(),
+            HashSet::from(["な".to_string()])
+        );
+    }
+
+    #[test]
+    fn counter_mergeable_when_numeral() {
+        // arrange
+        let keys = LABELS.to_vec();
+        let mut ancillary_trie = trie::Trie::from_keys(&keys);
+        let standard_trie = trie::Trie::from_keys(&keys);
+
+        ancillary_trie.insert("こ").unwrap();
+
+        let dic = GraphDictionary {
+            standard_trie,
+            standard_dic: HashMap::from([]),
+            ancillary_trie,
+            ancillary_dic: HashMap::from([(
+                "こ".to_string(),
+                vec![Word::new("個", "こ", Speech::Counter)],
+            )]),
+        };
+
+        // act
+        let graph = Graph::from_input("この", &dic, &Context::counter());
+
+        // assert
+        assert_eq!(
+            graph.nodes[0].iter().cloned().collect::<HashSet<_>>(),
+            HashSet::from([Node::WordNode(
+                NodePointer(0, 0),
+                Word::new("個", "こ", Speech::Counter),
+                Default::default()
+            ),])
+        );
+        assert_eq!(
+            graph.nodes[1]
+                .iter()
+                .cloned()
+                .filter_map(|v| {
+                    match v {
+                        Node::Virtual(_, w, _) => Some(w.iter().collect::<String>()),
+                        _ => None,
+                    }
+                })
+                .collect::<HashSet<_>>(),
+            HashSet::from(["の".to_string()])
         );
     }
 }

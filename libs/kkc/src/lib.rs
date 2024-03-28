@@ -177,7 +177,7 @@ pub fn get_candidates(
     context: &context::Context,
     n: usize,
 ) -> Vec<Candidate> {
-    let mut graph = graph::Graph::from_input(input, dic);
+    let mut graph = graph::Graph::from_input(input, dic, context);
     forward_dp(input, &mut graph, context);
     get_n_best_candidates(context, &graph, n)
 }
