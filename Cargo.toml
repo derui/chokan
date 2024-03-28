@@ -7,4 +7,4 @@ members = [
   "libs/dic",
   "libs/kkc",
   "libs/trie"
-, "chokan-server", "skk-tankan-converter"]
+, "chokan-server", "skk-tankan-converter", "skk-dic-parser"]

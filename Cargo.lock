@@ -1164,6 +1164,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "skk-dic-parser"
+version = "0.1.0"
+dependencies = [
+ "encoding_rs",
+ "encoding_rs_io",
+ "peg",
+]
+
+[[package]]
 name = "skk-notes-converter"
 version = "0.1.0"
 dependencies = [
