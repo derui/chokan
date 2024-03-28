@@ -685,7 +685,7 @@ contextは、以下のいずれかである。
             (setq chokan--conversion-candidate-pos 0)
             (setq chokan--conversion-candidates (funcall (cdr func) str context))
 
-            (let* ((candidate (and chokan--candidates
+            (let* ((candidate (and chokan--conversion-candidates
                                    (car chokan--conversion-candidates))))
               (funcall callback start end candidate)))
         (funcall callback start end nil)))))
