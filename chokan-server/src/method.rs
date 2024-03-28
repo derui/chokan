@@ -14,7 +14,7 @@ chokan-serverで提供するmethodの実装を行う。
 enum GetCandidatesContextKind {
     Normal,      // 通常のかな漢字変換
     ForeignWord, // 外来語
-    Counter,     // 数詞
+    Numeral,     // 数詞
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -36,7 +36,7 @@ impl From<GetCandidatesContext> for Context {
         match val.r#type {
             GetCandidatesContextKind::Normal => Context::normal(),
             GetCandidatesContextKind::ForeignWord => Context::foreign_word(),
-            GetCandidatesContextKind::Counter => Context::counter(),
+            GetCandidatesContextKind::Numeral => Context::numeral(),
         }
     }
 }

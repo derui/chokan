@@ -273,7 +273,7 @@ impl Graph {
                     // 接頭語は、常にmerge可能
                     Speech::Affix(AffixVariant::Prefix) => true,
                     Speech::Affix(AffixVariant::Suffix) => context.is_foreign_word(),
-                    Speech::Counter => context.is_counter(),
+                    Speech::Counter => context.is_numeral(),
                     _ => false,
                 },
                 _ => false,
@@ -707,7 +707,7 @@ mod tests {
         };
 
         // act
-        let graph = Graph::from_input("この", &dic, &Context::counter());
+        let graph = Graph::from_input("この", &dic, &Context::numeral());
 
         // assert
         assert_eq!(

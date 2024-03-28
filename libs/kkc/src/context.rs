@@ -4,7 +4,7 @@
 pub enum ContextKind {
     Normal,      // 通常のかな漢字変換
     ForeignWord, // 外来語
-    Counter,     // 数詞
+    Numeral,     // 数詞
 }
 
 #[derive(Debug)]
@@ -28,9 +28,9 @@ impl Context {
     }
 
     /// 通常のコンテキストを生成する.
-    pub fn counter() -> Context {
+    pub fn numeral() -> Context {
         Context {
-            kind: ContextKind::Counter,
+            kind: ContextKind::Numeral,
         }
     }
 
@@ -40,7 +40,7 @@ impl Context {
     }
 
     /// 現在のコンテキストが数詞かどうかを返す
-    pub fn is_counter(&self) -> bool {
-        self.kind == ContextKind::Counter
+    pub fn is_numeral(&self) -> bool {
+        self.kind == ContextKind::Numeral
     }
 }

@@ -54,7 +54,7 @@ pub fn get_edge_score(context: &Context, prev: &Node, current: &Node) -> i32 {
 fn get_edge_score_of_head(context: &Context, current: &Node) -> i32 {
     match current {
         Node::WordNode(_, w, _) => match w.speech {
-            Speech::Counter if context.is_counter() => 2,
+            Speech::Counter if context.is_numeral() => 2,
             Speech::Affix(AffixVariant::Prefix) if context.is_foreign_word() => 2,
             _ => 0,
         },
