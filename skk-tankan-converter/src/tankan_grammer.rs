@@ -31,32 +31,13 @@ impl Tankan {
     }
 }
 
-peg::parser! {
-
-  grammar tankan_parser() for str {
-      rule eof() = ![_]
-      rule any() = [_]
-      rule space() = [' ' | '\t' ]
-      rule kana() -> String = n:$(['あ'..='ん' | 'ゐ' | 'ゃ' | 'ゅ' | 'ょ' | 'ぁ' | 'ぃ' | 'ぅ' | 'ぇ' | 'ぉ' | 'っ' | 'ー']) { n.to_string() }
-
-      rule reading() -> String = n:kana()+ { n.concat() }
-      rule kanji() -> String = n:$([^ ' ' | '/']+) "/" { n.to_string() }
-      rule entry() -> Tankan = r:reading() space()+ "/" s:kanji()+ {
-          Tankan {reading: r, entries: s}
-      }
-
-      pub rule root() -> Option<Tankan> = comment() {None} / n:entry() { Some(n) }
-
-       rule comment() = ";" any()* "\n"
-  }
-}
-
 /// 対象の一行を解析して、Noteを返す
 pub fn parse_tankan(s: &str) -> Result<Option<Tankan>, ParseError<LineCol>> {
-    if let Some(tankan) = tankan_parser::root(s)? {
+    let tankan = skk_dic_parser::parse_skk_entry(s)?;
+    if let Some(entry) = tankan {
         // 一文字ではない場合は単漢字とみなさない
-        let entries = tankan
-            .entries
+        let entries = entry
+            .words()
             .iter()
             .filter(|&v| v.chars().collect::<Vec<char>>().len() == 1)
             .cloned()
@@ -66,7 +47,7 @@ pub fn parse_tankan(s: &str) -> Result<Option<Tankan>, ParseError<LineCol>> {
             Ok(None)
         } else {
             Ok(Some(Tankan {
-                reading: tankan.reading,
+                reading: entry.reading(),
                 entries,
             }))
         }
@@ -79,25 +60,6 @@ pub fn parse_tankan(s: &str) -> Result<Option<Tankan>, ParseError<LineCol>> {
 mod tests {
 
     use super::*;
-
-    #[test]
-    fn parse_entry() {
-        assert_eq!(
-            tankan_parser::root("さる /猿/"),
-            Ok(Some(Tankan {
-                reading: "さる".to_string(),
-                entries: vec!["猿".to_string()]
-            }))
-        );
-
-        assert_eq!(
-            tankan_parser::root("さつ /冊/札/"),
-            Ok(Some(Tankan {
-                reading: "さつ".to_string(),
-                entries: vec!["冊".to_string(), "札".to_string()]
-            }))
-        );
-    }
 
     #[test]
     fn ignore_multi_character_word() {

@@ -2,7 +2,7 @@ use std::{env, error::Error, fs::File, io::Read};
 
 use encoding_rs_io::DecodeReaderBytesBuilder;
 
-mod s_dic_grammer;
+mod tankan_grammer;
 
 fn main() {
     if let Err(err) = try_main() {
@@ -25,7 +25,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     let lines = content.split('\n').collect::<Vec<_>>();
 
     for (index, line) in lines.iter().enumerate() {
-        match s_dic_grammer::parse_tankan(line) {
+        match tankan_grammer::parse_tankan(line) {
             Ok(Some(note)) => {
                 let entries = note.to_entries();
 

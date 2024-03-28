@@ -1190,6 +1190,7 @@ dependencies = [
  "encoding_rs",
  "encoding_rs_io",
  "peg",
+ "skk-dic-parser",
 ]
 
 [[package]]
