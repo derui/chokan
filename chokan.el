@@ -104,7 +104,7 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
   "[a-zA-Z0-9あ-ん]+"
   "変換対象とする文字を検索するための正規表現")
 
-(defvar chokan--number-context-regexp
+(defvar chokan--numeral-context-regexp
   "[0-9０-９]"
   "数字のcontextとして利用する文字列の正規表現")
 
@@ -639,17 +639,17 @@ w
 contextは、以下のいずれかである。
 
 - 通常の文字列 :: type = 'normal'
-- 連続した数字 :: type = 'counter'
+- 連続した数字 :: type = 'numeral'
 - 連続したアルファベット :: type = 'foreign-word'
 "
   (save-excursion
     (let* ((current (point))
            (test-char (buffer-substring-no-properties (1- current) current))
            (context-fw (chokan--same-type-string-backward chokan--foreign-word-context-regexp))
-           (context-number (chokan--same-type-string-backward chokan--number-context-regexp)))
+           (context-number (chokan--same-type-string-backward chokan--numeral-context-regexp)))
       (pcase (list context-fw context-number)
         (`(,(pred numberp) ,_) (cons 'foreign-word context-fw))
-        (`(,_ ,(pred numberp)) (cons 'counter context-number))
+        (`(,_ ,(pred numberp)) (cons 'numeral context-number))
         (_ '(normal))))))
 
 (defun chokan--get-conversion-region ()

@@ -111,7 +111,7 @@
   (cond
    ((eq name 'normal) "Normal")
    ((eq name 'foreign-word) "BorrowedWord")
-   ((eq name 'number) "Counter")))
+   ((eq name 'numeral) "Numeral")))
 
 (defun chokan-websocket-get-candidates (input ctx)
   "変換候補を取得する。
