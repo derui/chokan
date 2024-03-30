@@ -2,7 +2,7 @@
 
 if [ ! -f work/SKK-JISYO.M ]; then
     mkdir -p work/
-    curl -L -o work/SKK-JISYO.S https://github.com/skk-dev/dict/raw/master/SKK-JISYO.M
+    curl -L -o work/SKK-JISYO.M https://github.com/skk-dev/dict/raw/master/SKK-JISYO.M
 fi
 
 cargo build
