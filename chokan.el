@@ -969,15 +969,13 @@ contextは、以下のいずれかである。
   "chokanをasciiモードに変更する"
   (interactive)
   (chokan-ja-mode -1)
-  (chokan-ascii-mode +1)
-  (setq cursor-type chokan-ascii-cursor-type))
+  (chokan-ascii-mode +1))
 
 (defun chokan-ja ()
   "chokanを日本語入力モードに変更する"
   (interactive)
   (chokan-ascii-mode -1)
-  (chokan-ja-mode +1)
-  (setq cursor-type chokan-ja-cursor-type))
+  (chokan-ja-mode +1))
 
 (defun chokan-toggle-katakana ()
   "chokanの内部モードをカタカナ入力に変更する"
@@ -1065,6 +1063,7 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-j
   :keymap chokan-ascii-mode-map
   :after-hook (progn
                 (setq chokan--internal-mode 'ascii)
+                (setq cursor-type chokan-ascii-cursor-type)
                 ))
 
 ;;;###autoload
@@ -1076,6 +1075,7 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   :keymap chokan-ja-mode-map
   :after-hook (progn
                 (setq chokan--internal-mode 'hiragana)
+                (setq cursor-type chokan-ja-cursor-type)
                 ))
 
 (defun chokan-mode--activate ()
@@ -1124,7 +1124,32 @@ When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `choka
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
-(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" " " "<return>"))
+(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" "<space>" "<return>"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
+
+;; register input method
+
+;;;###autoload
+(defun chokan-activate (&optional name)
+  "chokanをleim経由で起動する"
+  (setq deactivate-current-input-method-function #'chokan-deactivate)
+  (chokan-mode +1)
+  (when (eq (selected-window) (minibuffer-window))
+    (add-hook 'minibuffer-exit-hook #'chokan-leim-exit-from-minibuffer)))
+
+;;;###autoload
+(defun chokan-deactivate ()
+  "chokanをleim経由で終了する"
+  (chokan-mode -1))
+
+;;;###autoload
+(defun chokan-leim-exit-from-minibuffer ()
+  "chokanがminiubuffer内で起動していて、終了するときに呼び出される"
+  (deactivate-input-method)
+  (when (<= (minibuffer-depth) 1)
+    (remove-hook 'minibuffer-exit-hook #'chokan-leim-exit-from-minibuffer)))
+
+;;;###autoload
+(register-input-method 'japanese-chokan "Japanese" #'chokan-activate "chokan" "Cho-tto Kan-zen")
 
 (provide 'chokan)
