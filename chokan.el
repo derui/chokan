@@ -916,15 +916,18 @@ contextは、以下のいずれかである。
                                                :background ,(face-attribute 'default :foreground))
                                   chokan-inverse t)))
     (when (= end current)
-      (goto-char (+ 1 start (length candidate))))))
+      (goto-char (+ start (length candidate))))))
+
+(defun chokan--conversion-callback (start end candidate)
+  "変換起動のコールバック関数。挿入する候補が 'CANDIDATE'である。'START', 'END' は対応する範囲をあらわす。"
+  (let* ((candidate (or (cdr candidate) (buffer-substring-no-properties start end))))
+    (chokan--insert-candidate (cons start end) candidate)))
 
 (defun chokan--launch-conversion-if-possible (convert-launchable)
   "必要なら変換処理を起動し、反転部を作成する。 "
 
   (when convert-launchable
-    (chokan--conversion-launch (lambda (start end candidate)
-                                 (let* ((candidate (or (cdr candidate) (buffer-substring-no-properties start end))))
-                                   (chokan--insert-candidate (cons start end) candidate))))))
+    (chokan--conversion-launch #'chokan--conversion-callback)))
 
 (defun chokan--finalize-inverse-if-possible (finalizable &optional inverted-region)
   "反転部を確定できる場合は確定する。
@@ -955,7 +958,9 @@ contextは、以下のいずれかである。
     ;; 下線部を追加する場合は、カタカナモードからは強制的に離脱する
     (when (and (chokan--ja-katakana-p)
                (not (null underscore)))
-      (setq chokan--internal-mode 'hiragana))
+      (setq chokan--internal-mode 'hiragana)
+      (setq cursor-type 'chokan-ja-cursor-type))
+    
     (chokan--finalize-inverse-if-possible convert-launchable)
     (chokan--launch-conversion-if-possible convert-launchable)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
