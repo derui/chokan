@@ -36,8 +36,14 @@ impl Display for Node {
 }
 
 /// 未使用領域そのものを与える型
-#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize, Copy)]
 pub struct Empty(usize);
+
+impl From<&NodeIdx> for Empty {
+    fn from(value: &NodeIdx) -> Self {
+        Empty(value.0)
+    }
+}
 
 impl ops::Sub<Label> for Empty {
     type Output = Option<Base>;
@@ -62,86 +68,37 @@ pub mod empties {
 
     use super::{Base, Check, Empty, Node, NodeIdx};
 
-    /// 空配列の集合を返す
-    pub fn as_empties(nodes: &[Node]) -> Vec<Empty> {
-        let mut set: HashSet<Empty> = HashSet::new();
-
-        let mut root = nodes
-            .iter()
-            .find(|v| v.check.is_empty())
-            .and_then(|v| v.check.next_empty());
-
-        while let Some(rt) = root {
-            if set.contains(&rt) {
-                break;
-            }
-            set.insert(rt.clone());
-
-            root = nodes[rt.0].check.next_empty()
-        }
-
-        let mut vec = set.iter().cloned().collect::<Vec<_>>();
-        vec.sort();
-        vec
-    }
+    pub(crate) type Empties = HashSet<Empty>;
 
     /// 指定したindexを未使用領域から削除する
-    pub fn delete_at(vec: &mut Vec<Node>, idx: &NodeIdx) {
-        let pos = vec
-            .iter()
-            .position(|p| p.check.next_empty() == Some(Empty::from(*idx)));
-
-        if let Some(pos) = pos {
-            if pos == usize::from(*idx) {
-                // 自分自身が対象だったら何もしない
-                return;
-            }
-
-            let check = vec[usize::from(*idx)].check;
-            vec[pos].check = vec[pos].check.unchain(&check);
-        }
+    pub fn delete_at(empties: &mut Empties, idx: &NodeIdx) {
+        empties.remove(&Empty::from(idx));
     }
 
     /// 対象の位置を未使用に変更する
-    pub fn push_unused(vec: &mut [Node], idx: NodeIdx) {
-        let last_empty = vec.iter().rposition(|v| v.check.is_empty());
-
-        if let Some(last_empty_idx) = last_empty {
-            let current_check = vec[last_empty_idx].check;
-            let (current_check, new_check) = current_check.chain(&idx);
-            vec[last_empty_idx].check = current_check;
-            vec[usize::from(idx)].check = new_check;
-        } else {
-            // 見つからない場合は、自分自身を参照したものを設定する
-            vec[usize::from(idx)].check = Check::empty_at(usize::from(idx));
-        }
-
-        vec[usize::from(idx)].base = Base::empty()
+    pub fn push_unused(vec: &mut Empties, idx: NodeIdx) {
+        vec.insert(Empty::from(idx));
     }
 
     /// 未使用領域を `size` だけ広げる
     ///
     /// 拡張するというのは未使用領域に閉じている。
-    pub fn expand_empties(vec: &mut Vec<Node>, size: usize) {
+    pub fn expand_empties(vec: &mut Vec<Node>, empties: &mut Empties, size: usize) {
         let current_len = vec.len();
 
         // 拡張領域を作成する。末尾は常に先頭から最初に見つかった未使用領域を指す
-        let mut expanded: Vec<Node> = (0..size)
-            .map(|idx| Node {
+        let expanded: Vec<Node> = vec![
+            Node {
                 base: Base::empty(),
-                check: Check::empty_at(current_len + idx + 1),
-            })
-            .collect();
+                check: Check::empty(),
+            };
+            size
+        ];
 
-        // 現在ある末尾のcheckの値を、今追加する先頭のindexに向ける
-        // 追加するcheckの末尾は、未使用領域の先頭に向けておく
-        if let Some((idx, v)) = vec.iter().enumerate().rfind(|(_, v)| v.check.is_empty()) {
-            let (for_idx, for_last) = v.check.chain(&NodeIdx::from(current_len));
-            vec[idx].check = for_idx;
-            expanded[size - 1].check = for_last;
-        } else {
-            expanded[size - 1].check = Check::empty_at(current_len);
-        }
+        // 追加する全体のindexを未使用領域に追加する
+        empties.extend(
+            (current_len..current_len + size).map(|v| -> Empty { NodeIdx::from(v).into() }),
+        );
 
         // 直接追加する
         vec.extend_from_slice(&expanded)
@@ -286,8 +243,8 @@ impl Check {
     }
 
     /// 内部用のfactory
-    fn empty_at(s: usize) -> Self {
-        Check(-(s as i32))
+    fn empty() -> Self {
+        Check(-1)
     }
 
     /// Checkが未使用かどうか返す
@@ -301,35 +258,6 @@ impl Check {
     pub fn is_used(&self) -> bool {
         !self.is_empty()
     }
-
-    /// 次の未使用checkを返す
-    pub fn next_empty(&self) -> Option<Empty> {
-        if self.is_used() {
-            None
-        } else {
-            Some(Empty((-self.0) as usize))
-        }
-    }
-
-    /// 現在指している次の未使用領域を切り替えて、再設定する
-    ///
-    /// # Returns
-    /// 0として現在位置に設定される新しい [Check] 、1に、nextのindexに対して設定される [Check] を返す
-    fn chain(&self, next: &NodeIdx) -> (Self, Self) {
-        assert!(self.is_empty(), "Can not chain with used");
-        (Self::empty_at(usize::from(*next)), Self(self.0))
-    }
-
-    /// 現在指している先を、 `next` で渡された先に変更する
-    fn unchain(&self, next: &Self) -> Self {
-        assert!(self.is_empty() && next.is_empty(), "should be all empty");
-
-        if let Some(v) = next.next_empty() {
-            Self::from(v)
-        } else {
-            panic!("Illegal path")
-        }
-    }
 }
 
 impl From<Check> for NodeIdx {
@@ -337,12 +265,6 @@ impl From<Check> for NodeIdx {
     fn from(val: Check) -> Self {
         assert!(val.is_used(), "should be used");
         NodeIdx(val.0 as usize)
-    }
-}
-
-impl From<Empty> for Check {
-    fn from(value: Empty) -> Self {
-        Self(-(value.0 as i32))
     }
 }
 
@@ -365,7 +287,7 @@ impl Label {
 }
 
 /// Nodeを指し示すindex
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct NodeIdx(usize);
 
 impl NodeIdx {
@@ -478,65 +400,12 @@ mod tests {
     }
 
     mod empties {
-        use crate::types::{empties, Base, Check, Empty, Label, Node, NodeIdx};
+        use std::collections::HashSet;
 
-        #[test]
-        fn return_empties_in_nodes() {
-            // arrange
-            let nodes = vec![
-                Node {
-                    base: Base::root(),
-                    check: Check::root(),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::empty_at(2),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::empty_at(1),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::from(Base(3)),
-                },
-            ];
-
-            // act
-            let empties = empties::as_empties(&nodes);
-
-            // assert
-            assert_eq!(empties, vec![Empty(1), Empty(2)])
-        }
-
-        #[test]
-        fn return_empties_as_empty_if_no_empty() {
-            // arrange
-            let nodes = vec![
-                Node {
-                    base: Base::root(),
-                    check: Check::root(),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::from(Base(2)),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::from(Base(2)),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::from(Base(3)),
-                },
-            ];
-
-            // act
-            let empties = empties::as_empties(&nodes);
-
-            // assert
-            assert!(empties.is_empty(), "should be empty")
-        }
+        use crate::types::{
+            empties::{self, Empties},
+            Base, Check, Empty, Label, Node, NodeIdx,
+        };
 
         #[test]
         fn expandable_empty_node() {
@@ -545,9 +414,10 @@ mod tests {
                 base: Base::root(),
                 check: Check::root(),
             }];
+            let mut empties: Empties = HashSet::new();
 
             // act
-            empties::expand_empties(&mut nodes, 4);
+            empties::expand_empties(&mut nodes, &mut empties, 4);
 
             // assert
             assert_eq!(
@@ -559,22 +429,32 @@ mod tests {
                     },
                     Node {
                         base: Base::empty(),
-                        check: Check::empty_at(2)
+                        check: Check::empty()
                     },
                     Node {
                         base: Base::empty(),
-                        check: Check::empty_at(3)
+                        check: Check::empty()
                     },
                     Node {
                         base: Base::empty(),
-                        check: Check::empty_at(4)
+                        check: Check::empty()
                     },
                     Node {
                         base: Base::empty(),
-                        check: Check::empty_at(1)
+                        check: Check::empty()
                     },
                 ]
-            )
+            );
+
+            assert_eq!(
+                empties,
+                HashSet::from([
+                    Empty::from(NodeIdx::from(2)),
+                    Empty::from(NodeIdx::from(3)),
+                    Empty::from(NodeIdx::from(4)),
+                    Empty::from(NodeIdx::from(1)),
+                ])
+            );
         }
 
         #[test]
@@ -587,16 +467,17 @@ mod tests {
                 },
                 Node {
                     base: Base::root(),
-                    check: Check::empty_at(1),
+                    check: Check::empty(),
                 },
                 Node {
                     base: Base::root(),
                     check: Check::from(Base(1)),
                 },
             ];
+            let mut empties: Empties = HashSet::from([NodeIdx::from(1).into()]);
 
             // act
-            empties::expand_empties(&mut nodes, 4);
+            empties::expand_empties(&mut nodes, &mut empties, 4);
 
             // assert
             assert_eq!(
@@ -608,7 +489,7 @@ mod tests {
                     },
                     Node {
                         base: Base::root(),
-                        check: Check::empty_at(3)
+                        check: Check::empty()
                     },
                     Node {
                         base: Base::root(),
@@ -616,93 +497,44 @@ mod tests {
                     },
                     Node {
                         base: Base::empty(),
-                        check: Check::empty_at(4)
+                        check: Check::empty()
                     },
                     Node {
                         base: Base::empty(),
-                        check: Check::empty_at(5)
+                        check: Check::empty()
                     },
                     Node {
                         base: Base::empty(),
-                        check: Check::empty_at(6)
+                        check: Check::empty()
                     },
                     Node {
                         base: Base::empty(),
-                        check: Check::empty_at(1)
+                        check: Check::empty()
                     },
                 ]
-            )
+            );
+            assert_eq!(
+                empties,
+                HashSet::from([
+                    NodeIdx::from(1).into(),
+                    NodeIdx::from(3).into(),
+                    NodeIdx::from(4).into(),
+                    NodeIdx::from(5).into(),
+                    NodeIdx::from(6).into(),
+                ])
+            );
         }
 
         #[test]
         fn push_unused_to_vec() {
             // arrange
-            let mut nodes = vec![
-                Node {
-                    base: Base::root(),
-                    check: Check::root(),
-                },
-                Node {
-                    base: Base::new(1),
-                    check: Check::empty_at(1),
-                },
-                Node {
-                    base: Base::empty(),
-                    check: Check::from(Base(1)),
-                },
-            ];
+            let mut empties = HashSet::new();
 
             // act
-            empties::push_unused(&mut nodes, Base::new(1) + Label::new(1));
+            empties::push_unused(&mut empties, Base::new(1) + Label::new(1));
 
             // assert
-            assert_eq!(
-                nodes,
-                vec![
-                    Node {
-                        base: Base::root(),
-                        check: Check::root()
-                    },
-                    Node {
-                        base: Base::new(1),
-                        check: Check::empty_at(2)
-                    },
-                    Node {
-                        base: Base::empty(),
-                        check: Check::empty_at(1)
-                    },
-                ]
-            )
-        }
-
-        #[test]
-        fn unchain_empty_from_list() {
-            // arrange
-            let mut nodes = vec![
-                Node {
-                    base: Base::root(),
-                    check: Check::root(),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::empty_at(2),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::empty_at(3),
-                },
-                Node {
-                    base: Base::root(),
-                    check: Check::empty_at(1),
-                },
-            ];
-
-            // act
-            empties::delete_at(&mut nodes, &NodeIdx::from(2));
-            let ret = empties::as_empties(&nodes);
-
-            // assert
-            assert_eq!(ret, vec![Empty(1), Empty(3)])
+            assert_eq!(empties, HashSet::from([NodeIdx::from(2).into(),]))
         }
     }
 

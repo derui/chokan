@@ -1,10 +1,10 @@
 /// Trieのデータ型と操作を提供するmodule
 mod types;
 
-use std::usize;
+use std::{collections::HashSet, usize};
 
 use serde::{Deserialize, Serialize};
-use types::{empties, Base, Check, Label, Labels, Node, NodeIdx};
+use types::{empties, Base, Check, Empty, Label, Labels, Node, NodeIdx};
 
 /// 最も基本的なtrie構造を表現する
 /// 任意のデータ構造を保有する必要がある場合は、[HoldableTrie<T>]を利用すること
@@ -16,6 +16,9 @@ pub struct Trie {
     /// 内部で値として利用する、文字とデータIDのマッピングを管理する
     /// 今回は255種類のみ許容する
     labels: Labels,
+
+    /// 未使用の領域を管理する
+    empties: HashSet<Empty>,
 }
 
 impl Trie {
@@ -31,7 +34,11 @@ impl Trie {
             },
         ];
 
-        Trie { nodes, labels }
+        Trie {
+            nodes,
+            labels,
+            empties: HashSet::new(),
+        }
     }
 
     /// 現在指している `idx` から遷移するlabelの一覧を返す
@@ -84,9 +91,9 @@ impl Trie {
         let min_label = labels.first().unwrap();
         let other_labels = &labels[1..];
 
-        for e in empties::as_empties(&self.nodes) {
+        for e in self.empties.iter() {
             // 実際に空として認識するのは、最小のlabelのみが基準となる
-            if let Some(t) = e - *min_label {
+            if let Some(t) = *e - *min_label {
                 let mut is_ok = true;
 
                 // 一つでも利用中のcheckがある場合は、何もしない
@@ -163,8 +170,9 @@ impl Trie {
                 }
             }
 
-            // 移動が完了したら、元々のlabelがあった位置とbaseを初期化する
-            empties::push_unused(&mut self.nodes, current_base + *l);
+            // 移動が完了したら、元々のlabelがあった位置を未使用とする。baseについても初期化する
+            empties::push_unused(&mut self.empties, current_base + *l);
+            self.nodes[usize::from(current_base + *l)].base = Base::empty();
         }
 
         // 現在注目しているnodeが移動した場合は、新しいbaseに対して書き込み、そうではない場合はbaseを起点にして書き込む
@@ -189,11 +197,15 @@ impl Trie {
         let next_idx = *base + *label;
         let current_len = self.nodes.len();
         if current_len <= usize::from(next_idx) {
-            empties::expand_empties(&mut self.nodes, usize::from(next_idx) - current_len + 1);
+            empties::expand_empties(
+                &mut self.nodes,
+                &mut self.empties,
+                usize::from(next_idx) - current_len + 1,
+            );
         }
 
         // 先に未使用領域から外してから、対象の位置に書き込む
-        empties::delete_at(&mut self.nodes, &next_idx);
+        empties::delete_at(&mut self.empties, &next_idx);
         self.nodes[usize::from(next_idx)].check = Check::from(*idx);
         self.nodes[usize::from(*idx)].base = *base;
 
@@ -264,7 +276,7 @@ impl Trie {
     /// # Returns
     /// 発見されたnodeのindex。見つからなかった場合はNone
     pub fn search(&self, key: &str, callback: &dyn Fn(NodeIdx, &str)) -> Option<usize> {
-        let labels = self.labels.key_to_labels(key).unwrap();
+        let labels = self.labels.key_to_labels(key).expect(key);
         let mut current = NodeIdx::head();
         let mut result = Vec::new();
         let mut found_labels = String::new();
@@ -378,5 +390,40 @@ mod tests {
                     .cloned()
             )
         );
+    }
+
+    #[test]
+    fn japanese_label_case_1() {
+        // arrange
+        let mut trie = Trie::from_keys(&"じっしつてきになさい".chars().collect::<Vec<_>>());
+        let _ = trie.insert("じっしつ");
+        let _ = trie.insert("じっしつてき");
+        let _ = trie.insert("じっしつてきに");
+        let _ = trie.insert("じっしつてきな");
+        let _ = trie.insert("じって");
+        let _ = trie.insert("じっさい");
+
+        // act
+
+        // assert
+        assert!(
+            trie.search("じっしつてきに", &|_, _| {}).is_some(),
+            "じっしつてきに"
+        );
+        assert!(
+            trie.search("じっしつて", &|_, _| {}).is_some(),
+            "じっしつて"
+        );
+        assert!(trie.search("じっしつ", &|_, _| {}).is_some(), "じっしつ");
+        assert!(
+            trie.search("じっしつてき", &|_, _| {}).is_some(),
+            "じっしつてき"
+        );
+        assert!(
+            trie.search("じっしつてきな", &|_, _| {}).is_some(),
+            "じっしつてきな"
+        );
+        assert!(trie.search("じって", &|_, _| {}).is_some(), "じって");
+        assert!(trie.search("じっさい", &|_, _| {}).is_some(), "じっさい");
     }
 }

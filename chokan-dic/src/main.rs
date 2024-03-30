@@ -15,7 +15,7 @@ struct ReadDictionary {
 }
 
 // trie用のキー
-const JP_KEYS: &str = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽっぁぃぅぇぉゃゅょ";
+const JP_KEYS: &str = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽっぁぃぅぇぉゃゅょーゑゐ";
 const EN_KEYS: &str = "abcdefghijklmnopqrstuvwxyz";
 
 fn label_keys() -> Vec<char> {
@@ -49,7 +49,13 @@ fn read_and_make_dictionary(dic_path: &Path) -> Result<ReadDictionary, std::io::
             info!("Words: {} processed...", count);
         }
         let reading = word.reading.iter().collect::<String>();
-        let _ = trie.insert(&reading);
+        if let Err(_) = trie.insert(&reading) {
+            info!("Can not insert : {reading}");
+        }
+
+        if let None = trie.search(&reading, &|_, _| {}) {
+            info!("Do not searchable word : {reading}");
+        }
         let v = dic_map.entry(reading).or_insert(Vec::new());
         v.push(word);
     }
@@ -57,7 +63,7 @@ fn read_and_make_dictionary(dic_path: &Path) -> Result<ReadDictionary, std::io::
     Ok(ReadDictionary { trie, dic: dic_map })
 }
 
-/// 辞書ファイルを読み込んで、trieと辞書を作成する
+/// 辞書ファイルを読み込んで、単漢字用の辞書を作成する
 fn read_and_make_tankan_dictionary(dic_path: &Path) -> Result<TankanDictionary, std::io::Error> {
     let file = File::open(dic_path)?;
     let mut reader = StandardDictionaryReader::new(file);
