@@ -113,6 +113,10 @@ candidateは、それぞれ '(id . candidate)' というconsで保持される�
   "外来語のcontextとして利用する文字列の正規表現")
 
 
+(defvar chokan--candidate-overlay nil
+  "候補を表現するためのoverlay")
+(defvar chokan--conversion-overlay nil
+  "変換起動部分を表現するためのoverlay")
 
 ;; faces
 
@@ -774,9 +778,10 @@ contextは、以下のいずれかである。
 
 仕様上、未確定領域は現在のポイントから前にしか存在しない。"
   (save-excursion
-    (if-let* ((backward-prop (text-property-search-backward 'chokan-inverse t t))
-              (forward-prop (text-property-search-forward 'chokan-inverse t t)))
-        (cons (prop-match-beginning backward-prop) (prop-match-end forward-prop))
+    (if-let* ((overlay chokan--candidate-overlay)
+              (start (overlay-start overlay))
+              (end (overlay-end overlay)))
+        (cons start end)
       nil)))
 
 (defun chokan--convert-roman-to-kana-if-possible (region)
@@ -839,10 +844,6 @@ contextは、以下のいずれかである。
 (defun chokan--get-face (text-props)
   "text propertiesから、対応するfaceに対応するproperty listを返す"
   (flatten-list (list (if (plist-get text-props 'chokan-conversion-start) '(:underline t) )
-                      (if (plist-get text-props 'chokan-inverse) (list
-                                                                  :foreground (face-attribute 'default :background)
-                                                                  :background (face-attribute 'default :foreground)
-                                                                  ))
                       (if (plist-get text-props 'chokan-alphabet) '(:foreground "darkgoldenrod")))))
 
 
@@ -903,20 +904,20 @@ contextは、以下のいずれかである。
         (put-text-property (- (point) (length key)) (point) 'face (chokan--get-face props)))))))
 
 (defun chokan--insert-candidate (region candidate)
-  "指定されたregionに対して 'CANDIDATE'を挿入し、反転部とする。 "
+  "指定されたregionに対して 'CANDIDATE'を挿入し、反転部とする。
+
+ここではoverlayの構築が行われる。"
   (let* ((start (car region))
          (end (cdr region))
-         (current (point)))
+         (current (point))
+         (current-face (or (save-excursion (goto-char start) (face-at-point))
+                           'default))
+         (overlay (or chokan--candidate-overlay
+                      (setq chokan--candidate-overlay (make-overlay start end)))))
     (save-excursion
-      (delete-region start end)
-      (goto-char start)
-      (insert candidate)
-      (add-text-properties start (+ start (length candidate))
-                           `(face (:foreground ,(face-attribute 'default :background)
-                                               :background ,(face-attribute 'default :foreground))
-                                  chokan-inverse t)))
-    (when (= end current)
-      (goto-char (+ start (length candidate))))))
+      (put-text-property start end 'chokan-inverse t)
+      (overlay-put overlay 'face `(t :inverse-video t))
+      (overlay-put overlay 'display candidate))))
 
 (defun chokan--conversion-callback (start end candidate)
   "変換起動のコールバック関数。挿入する候補が 'CANDIDATE'である。'START', 'END' は対応する範囲をあらわす。"
@@ -936,8 +937,16 @@ contextは、以下のいずれかである。
 
   (when-let* (finalizable
               (region (or (and (consp inverted-region) inverted-region)
-                          (chokan--get-inverse-region))))
-    (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil))))
+                          (chokan--get-inverse-region)))
+              (candidate (overlay-get chokan--candidate-overlay 'display)))
+    (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil))
+    (delete-overlay chokan--candidate-overlay)
+    (setq chokan--candidate-overlay nil)
+
+    (save-excursion
+      (delete-region (car region) (cdr region))
+      (goto-char (car region))
+      (insert candidate))))
 
 (defun chokan--insert (convert-launchable underscore char-type)
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
