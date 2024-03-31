@@ -10,7 +10,7 @@ use crate::{context::Context, graph::Node};
 /// 計算されたscore
 ///
 /// scoreは、計算の過程で、接続不可能なケースが存在しうる。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, Default)]
 pub struct Score(i32);
 
 impl Score {
@@ -26,7 +26,7 @@ pub const MIN_SCORE: Score = Score(i32::MIN);
 impl PartialOrd for Score {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         if self.0 < 0 && other.0 < 0 {
-            return Some(Ordering::Equal);
+            Some(Ordering::Equal)
         } else if self.0 < 0 {
             return Some(Ordering::Less);
         } else if other.0 < 0 {
@@ -34,12 +34,6 @@ impl PartialOrd for Score {
         } else {
             return self.0.partial_cmp(&other.0);
         }
-    }
-}
-
-impl Default for Score {
-    fn default() -> Self {
-        Self(0)
     }
 }
 
@@ -222,6 +216,6 @@ mod tests {
         assert!(Score(1) <= Score(1), "1 <= 1");
         assert!(MIN_SCORE == MIN_SCORE, "-1 == -1");
         assert!(MIN_SCORE < Score(1), "-1 < 1");
-        assert!((MIN_SCORE > Score(1)) == false, "-1 > 1");
+        assert!(MIN_SCORE <= Score(1), "-1 > 1");
     }
 }

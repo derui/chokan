@@ -49,11 +49,11 @@ fn read_and_make_dictionary(dic_path: &Path) -> Result<ReadDictionary, std::io::
             info!("Words: {} processed...", count);
         }
         let reading = word.reading.iter().collect::<String>();
-        if let Err(_) = trie.insert(&reading) {
+        if trie.insert(&reading).is_err() {
             info!("Can not insert : {reading}");
         }
 
-        if let None = trie.search(&reading, &|_, _| {}) {
+        if trie.search(&reading, &|_, _| {}).is_none() {
             info!("Do not searchable word : {reading}");
         }
         let v = dic_map.entry(reading).or_insert(Vec::new());

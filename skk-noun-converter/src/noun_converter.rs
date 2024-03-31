@@ -30,7 +30,7 @@ pub fn parse_nouns(s: &str) -> Result<Option<Noun>, ParseError<LineCol>> {
     let entry = skk_dic_parser::parse_skk_entry(s)?;
     if let Some(entry) = entry {
         // 一文字ではない場合は単漢字とみなさない
-        if let Some(_) = entry.okuri() {
+        if entry.okuri().is_some() {
             Ok(None)
         } else {
             Ok(Some(Noun {
