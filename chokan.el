@@ -59,6 +59,7 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
   (list
    '(normal . chokan-websocket-get-candidates)
    '(tankan . chokan-websocket-get-tankan-candidates)
+   '(update-frequency . chokan-websocket-update-frequency)
    )
   "変換起動した文字列から、実際に候補を取得する関数のマッピング。
 
@@ -66,12 +67,16 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
 
 - 'normal' : 通常の変換を行う場合の関数
 - 'tankan' : 単漢字変換を行う場合
+- 'update-frequency' : かな漢字変換の頻度を更新する
 
-関数は、引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
+関数は、'normal' および 'tankan'は、 引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
 contextが存在しない場合はnilを渡す。
 'type symbol'は、'foreign'か'numeric'のいずれかである。
 
-実行した結果として、候補のリストを返す。候補がない場合は'NIL'を返す。候補のリストは、文字列のリストである。
+実行した結果として、以下の形式で候補のリストを返す。
+`(:id session-id :candidates ((id . candidate)))
+
+'update-frequency'は、その変換におけるsession idとcandidate idが渡される。
 ")
 
 ;; buffer-local variable
@@ -95,7 +100,8 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 (defvar chokan--conversion-candidates nil
   "変換候補のリスト。変換起動が行われるたびに初期化される。
 
-candidateは、それぞれ '(id . candidate)' というconsで保持される。idは、候補の識別子であり、candidateは、候補の文字列である。
+candidateは、それぞれ '(:id id :candidate-id candidate-id :candidate value)'
+ というplistで保持される。idは、候補の識別子であり、candidateは、候補の文字列である。
 ")
 (defvar chokan--conversion-candidate-pos 0
   "現在選択している候補の位置を 0オリジンで保持する。")
@@ -685,7 +691,7 @@ contextは、以下のいずれかである。
             (setq chokan--conversion-candidates (funcall (cdr func) str context))
 
             (let* ((candidate (and chokan--conversion-candidates
-                                   (car chokan--conversion-candidates))))
+                                   (car (plist-get chokan--conversion-candidates :candidates)))))
               (funcall callback start end candidate)))
         (funcall callback start end nil)))))
 
@@ -951,7 +957,8 @@ contextは、以下のいずれかである。
   (when-let* (finalizable
               (region (or (and (consp inverted-region) inverted-region)
                           (chokan--get-inverse-region)))
-              (candidate (overlay-get chokan--candidate-overlay 'display)))
+              (session-id (plist-get chokan--conversion-candidates :id))
+              (candidate (nth chokan--conversion-candidate-pos (plist-get chokan--conversion-candidates :candidates))))
     (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil))
     (delete-overlay chokan--candidate-overlay)
     (setq chokan--candidate-overlay nil)
@@ -959,7 +966,10 @@ contextは、以下のいずれかである。
     (save-excursion
       (delete-region (car region) (cdr region))
       (goto-char (car region))
-      (insert candidate))))
+      (insert (cdr candidate)))
+
+    (when-let* ((func (assoc 'update-frequency chokan-conversion-functions)))
+      (funcall (cdr func) session-id (car candidate)))))
 
 (defun chokan--insert (convert-launchable underscore char-type)
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
@@ -1042,8 +1052,9 @@ contextは、以下のいずれかである。
 反転部がない場合は、もともとのキーバインドにフォールバックする。"
   (interactive)
   (let ((current-key (this-command-keys)))
-    (if-let* ((region (chokan--get-inverse-region)))
-        (when-let* ((candidate (when-let* ((next (nth (1+ chokan--conversion-candidate-pos) chokan--conversion-candidates)))
+    (if-let* ((region (chokan--get-inverse-region))
+              (candidates (plist-get chokan--conversion-candidates :candidates)))
+        (when-let* ((candidate (when-let* ((next (nth (1+ chokan--conversion-candidate-pos) candidates)))
                                  (setq chokan--conversion-candidate-pos (1+ chokan--conversion-candidate-pos))
                                  next)))
           (chokan--insert-candidate region (cdr candidate)))
@@ -1057,10 +1068,11 @@ contextは、以下のいずれかである。
 反転部がない場合は、もともとのキーバインドにフォールバックする。"
   (interactive)
   (let ((current-key (this-command-keys)))
-    (if-let* ((region (chokan--get-inverse-region)))
+    (if-let* ((region (chokan--get-inverse-region))
+              (candidates (plist-get chokan--conversion-candidates :candidates)))
         (when-let ((candidate (if (zerop chokan--conversion-candidate-pos)
                                   nil
-                                (when-let* ((prev (nth (1- chokan--conversion-candidate-pos) chokan--conversion-candidates)))
+                                (when-let* ((prev (nth (1- chokan--conversion-candidate-pos) candidates)))
                                   (setq chokan--conversion-candidate-pos (1- chokan--conversion-candidate-pos))
                                   prev))))
           (chokan--insert-candidate region (cdr candidate)))
