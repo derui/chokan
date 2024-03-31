@@ -1,7 +1,9 @@
 use chokan_dic::ChokanDictionary;
-use jsonrpsee::{core::RpcResult, RpcModule};
+use jsonrpsee::{core::RpcResult, MethodCallback, RpcModule};
 use kkc::{context::Context, get_candidates, get_tankan_candidates};
 use serde::{Deserialize, Serialize};
+
+use crate::method_context::MethodContext;
 
 /**
 chokan-serverで提供するmethodの実装を行う。
@@ -73,12 +75,18 @@ struct GetCandidatesResponse {
 /// # Arguments
 /// * `module` - 登録するmodule
 pub(crate) fn make_get_candidates_method(
-    module: &mut RpcModule<ChokanDictionary>,
+    module: &mut RpcModule<MethodContext>,
 ) -> anyhow::Result<()> {
-    module.register_method("GetCandidates", |params, dictionary| {
+    module.register_method("GetCandidates", |params, ctx| {
         let params = params.parse::<GetCandidatesRequest>()?;
         let context = params.context.unwrap_or_default().into();
-        let candidates = get_candidates(&params.input, &dictionary.graph, &context, 100);
+        let candidates = get_candidates(
+            &params.input,
+            &ctx.dictionary.graph,
+            &context,
+            &ctx.frequency,
+            100,
+        );
 
         let candidates = candidates
             .into_iter()
@@ -103,11 +111,11 @@ pub(crate) fn make_get_candidates_method(
 /// # Arguments
 /// * `module` - 登録するmodule
 pub(crate) fn make_get_tankan_candidates_method(
-    module: &mut RpcModule<ChokanDictionary>,
+    module: &mut RpcModule<MethodContext>,
 ) -> anyhow::Result<()> {
-    module.register_method("GetTankanCandidates", |params, dictionary| {
+    module.register_method("GetTankanCandidates", |params, ctx| {
         let params = params.parse::<GetCandidatesRequest>()?;
-        let candidates = get_tankan_candidates(&params.input, &dictionary.tankan);
+        let candidates = get_tankan_candidates(&params.input, &ctx.dictionary.tankan);
 
         let candidates = candidates
             .into_iter()

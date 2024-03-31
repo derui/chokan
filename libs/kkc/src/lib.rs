@@ -5,7 +5,7 @@ use score::{Score, MIN_SCORE};
 use serde::{Deserialize, Serialize};
 
 pub mod context;
-mod frequency;
+pub mod frequency;
 mod graph;
 mod score;
 mod tankan;
@@ -39,12 +39,13 @@ fn calculate_best_score(
     current: &graph::Node,
     prev_nodes: &[graph::Node],
     context: &context::Context,
+    frequency: &frequency::ConversionFrequency,
 ) -> Score {
     let mut best_score = MIN_SCORE;
 
     for prev_node in prev_nodes {
         let prev_score: Score = prev_node.get_score().into();
-        let current_score = score::get_node_score(context, current);
+        let current_score = score::get_node_score(context, current, frequency);
         let edge_score = score::get_edge_score(context, prev_node, current);
 
         let score: Score = prev_score + current_score + edge_score;
@@ -61,7 +62,12 @@ fn calculate_best_score(
 ///
 /// この関数は、graphに対して前向きDPを行い、各ノードに対する最適なスコアを計算する。ちょうどビタビアルゴリズムを実装することと
 /// 同義である
-fn forward_dp(input: &str, graph: &mut graph::Graph, context: &context::Context) {
+fn forward_dp(
+    input: &str,
+    graph: &mut graph::Graph,
+    context: &context::Context,
+    frequency: &frequency::ConversionFrequency,
+) {
     let input = input.chars().collect::<Vec<_>>();
 
     for i in 0..input.len() {
@@ -69,7 +75,7 @@ fn forward_dp(input: &str, graph: &mut graph::Graph, context: &context::Context)
             // 各nodeに対して、一つ前のnodeからの遷移scoreを計算する
             let prev_nodes = graph.previsous_nodes(&node);
 
-            let score = calculate_best_score(&node, &prev_nodes, context);
+            let score = calculate_best_score(&node, &prev_nodes, context, frequency);
 
             if let Some(node) = graph.get_node_mut(&node) {
                 node.set_score(score);
@@ -118,6 +124,7 @@ impl PartialOrd for Candidate {
 fn get_n_best_candidates(
     context: &context::Context,
     graph: &graph::Graph,
+    frequency: &frequency::ConversionFrequency,
     n: usize,
 ) -> Vec<Candidate> {
     let mut queue: BinaryHeap<Candidate> = BinaryHeap::new();
@@ -148,7 +155,7 @@ fn get_n_best_candidates(
         // 各ノードについて、その一つ前のノードからの遷移scoreと、現在のnodeからゴールまでのコストを設定する。
         for prev_node in graph.previsous_nodes(current_node) {
             let edge_score = score::get_edge_score(context, &prev_node, current_node);
-            let node_score = score::get_node_score(context, current_node);
+            let node_score = score::get_node_score(context, current_node, frequency);
             let next_score = edge_score + node_score + *score;
 
             if let Some(priority) = Option::from(next_score + prev_node.get_score().into()) {
@@ -179,11 +186,12 @@ pub fn get_candidates(
     input: &str,
     dic: &GraphDictionary,
     context: &context::Context,
+    frequency: &frequency::ConversionFrequency,
     n: usize,
 ) -> Vec<Candidate> {
     let mut graph = graph::Graph::from_input(input, dic, context);
-    forward_dp(input, &mut graph, context);
-    get_n_best_candidates(context, &graph, n)
+    forward_dp(input, &mut graph, context, frequency);
+    get_n_best_candidates(context, &graph, frequency, n)
 }
 
 // re-export tankan
@@ -216,9 +224,10 @@ mod tests {
         // arrange
         let dic = test_dic::new_dic();
         let context = Context::normal();
+        let freq = frequency::ConversionFrequency::new();
 
         // act
-        let result = get_candidates("くるまではしらなかった", &dic, &context, 1);
+        let result = get_candidates("くるまではしらなかった", &dic, &context, &freq, 1);
 
         // assert
         assert_eq!(1, result.len());
@@ -230,9 +239,10 @@ mod tests {
         // arrange
         let dic = test_dic::new_dic();
         let context = Context::normal();
+        let freq = frequency::ConversionFrequency::new();
 
         // act
-        let result = get_candidates("くるまではしらなかった", &dic, &context, 3);
+        let result = get_candidates("くるまではしらなかった", &dic, &context, &freq, 3);
 
         // assert
         assert_eq!(3, result.len());
@@ -265,9 +275,10 @@ mod tests {
             ancillary_dic: HashMap::from([]),
         };
         let context = Context::normal();
+        let freq = frequency::ConversionFrequency::new();
 
         // act
-        let result = get_candidates("これでいける", &dic, &context, 3);
+        let result = get_candidates("これでいける", &dic, &context, &freq, 3);
 
         // assert
         assert_eq!(

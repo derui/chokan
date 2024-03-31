@@ -5,7 +5,7 @@ use dic::base::{
     word::Word,
 };
 
-use crate::{context::Context, graph::Node};
+use crate::{context::Context, frequency::ConversionFrequency, graph::Node};
 
 /// 計算されたscore
 ///
@@ -74,10 +74,22 @@ node自体のscoreと、2node間 = edgeのscoreを計算する関数を定義す
 ///
 /// # Returns
 /// nodeに対するscore
-pub fn get_node_score(_context: &Context, current: &Node) -> Score {
+pub fn get_node_score(
+    context: &Context,
+    current: &Node,
+    frequencies: &ConversionFrequency,
+) -> Score {
     // 読みが長い方が選択される可能性は高いものの、score自体はある程度の影響しかしないようにしておく
     match current {
-        Node::WordNode(_, w, _) => Score(w.reading.len() as i32),
+        Node::WordNode(_, w, _) => {
+            let frequency =
+                frequencies.get_frequency_of_word(&w.word.iter().collect::<String>(), context);
+            Score(
+                ((frequency % 1000) + w.reading.len() as u64)
+                    .try_into()
+                    .unwrap(),
+            )
+        }
         Node::Virtual(_, _, _) => Default::default(),
         Node::BOS => Default::default(),
         Node::EOS => Default::default(),

@@ -6,7 +6,7 @@ use crate::context::Context;
 
 /// 変換結果の頻度を保存するための構造体
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Hash, Clone)]
-pub enum ConvertedResult {
+enum ConvertedResult {
     Word {
         /// 確定したときのContext
         context: Context,
@@ -37,8 +37,14 @@ impl ConversionFrequency {
     /// # Arguments
     /// * `result` - 更新する変換結果
     ///
-    pub fn update(&mut self, result: &ConvertedResult) {
-        let count = self.frequencies.entry(result.clone()).or_insert(0);
+    pub fn update_word(&mut self, word: &str, context: &Context) {
+        let count = self
+            .frequencies
+            .entry(ConvertedResult::Word {
+                context: context.clone(),
+                word: word.to_string(),
+            })
+            .or_insert(0);
         *count += 1;
     }
 
@@ -50,7 +56,7 @@ impl ConversionFrequency {
     ///
     /// # Returns
     /// 指定した変換結果の頻度。まだ変換されたことがない場合は0
-    pub fn get_frequency(&self, word: &str, context: &Context) -> u64 {
+    pub fn get_frequency_of_word(&self, word: &str, context: &Context) -> u64 {
         let result = ConvertedResult::Word {
             context: context.clone(),
             word: word.to_string(),
@@ -69,7 +75,7 @@ mod tests {
         // arrange
         let obj = ConversionFrequency::new();
         // act
-        let ret = obj.get_frequency("foo", &Context::normal());
+        let ret = obj.get_frequency_of_word("foo", &Context::normal());
 
         // assert
         assert_eq!(ret, 0);
@@ -79,14 +85,11 @@ mod tests {
     fn update_frequency() {
         // arrange
         let mut obj = ConversionFrequency::new();
-        obj.update(&ConvertedResult::Word {
-            context: Context::normal(),
-            word: "foo".to_string(),
-        });
+        obj.update_word("foo", &Context::normal());
 
         // act
-        let ret = obj.get_frequency("foo", &Context::normal());
-        let other_context = obj.get_frequency("foo", &Context::foreign_word());
+        let ret = obj.get_frequency_of_word("foo", &Context::normal());
+        let other_context = obj.get_frequency_of_word("foo", &Context::foreign_word());
 
         // assert
         assert_eq!(ret, 1);

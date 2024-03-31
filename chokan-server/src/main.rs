@@ -12,11 +12,13 @@ use jsonrpsee::{
     server::{RpcServiceBuilder, Server},
     RpcModule,
 };
+use kkc::frequency::ConversionFrequency;
 use postcard::from_bytes;
 
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod method;
+mod method_context;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -61,8 +63,14 @@ RPCモジュールを定義する。
 # Returns
 定義したRPCモジュール
 */
-fn define_module(dictionary: ChokanDictionary) -> anyhow::Result<RpcModule<ChokanDictionary>> {
-    let mut module = RpcModule::new(dictionary);
+fn define_module(
+    dictionary: ChokanDictionary,
+) -> anyhow::Result<RpcModule<method_context::MethodContext>> {
+    let ctx = method_context::MethodContext {
+        dictionary,
+        frequency: ConversionFrequency::new(),
+    };
+    let mut module = RpcModule::new(ctx);
 
     method::make_get_candidates_method(&mut module)?;
     method::make_get_tankan_candidates_method(&mut module)?;
@@ -73,7 +81,10 @@ fn define_module(dictionary: ChokanDictionary) -> anyhow::Result<RpcModule<Choka
 /**
 サーバーを起動する。ここで起動したサーバーは、基本的にsighupを受け取るまで停止しない。
  */
-async fn run_server(port: u16, rpc_module: RpcModule<ChokanDictionary>) -> anyhow::Result<()> {
+async fn run_server(
+    port: u16,
+    rpc_module: RpcModule<method_context::MethodContext>,
+) -> anyhow::Result<()> {
     let addr = format!("127.0.0.1:{}", port).parse::<SocketAddr>()?;
     let rpc_middleware = RpcServiceBuilder::new().rpc_logger(1024);
     let server = Server::builder()
