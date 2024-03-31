@@ -1,6 +1,6 @@
 use chokan_dic::ChokanDictionary;
 use jsonrpsee::{core::RpcResult, MethodCallback, RpcModule};
-use kkc::{context::Context, get_candidates, get_tankan_candidates};
+use kkc::{context::Context, get_candidates, get_tankan_candidates, Candidate};
 use serde::{Deserialize, Serialize};
 
 use crate::method_context::MethodContext;
@@ -80,13 +80,11 @@ pub(crate) fn make_get_candidates_method(
     module.register_method("GetCandidates", |params, ctx| {
         let params = params.parse::<GetCandidatesRequest>()?;
         let context = params.context.unwrap_or_default().into();
-        let candidates = get_candidates(
-            &params.input,
-            &ctx.dictionary.graph,
-            &context,
-            &ctx.frequency,
-            100,
-        );
+        let candidates: Vec<Candidate>;
+        {
+            let freq = ctx.frequency.lock().unwrap();
+            candidates = get_candidates(&params.input, &ctx.dictionary.graph, &context, &freq, 100);
+        }
 
         let candidates = candidates
             .into_iter()

@@ -4,6 +4,7 @@ use std::{
     io::Read,
     net::SocketAddr,
     path::Path,
+    sync::Mutex,
 };
 
 use chokan_dic::ChokanDictionary;
@@ -19,6 +20,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 mod method;
 mod method_context;
+mod session;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -68,7 +70,7 @@ fn define_module(
 ) -> anyhow::Result<RpcModule<method_context::MethodContext>> {
     let ctx = method_context::MethodContext {
         dictionary,
-        frequency: ConversionFrequency::new(),
+        frequency: Mutex::new(ConversionFrequency::new()),
     };
     let mut module = RpcModule::new(ctx);
 
