@@ -97,6 +97,24 @@ pub struct Candidate {
     priority: i32,
 }
 
+impl Candidate {
+    /// 自立語を取得する
+    ///
+    /// # Returns
+    /// 自立語のみを取得した文字列
+    pub fn to_string_only_independent(&self) -> Option<String> {
+        match &self.current_node {
+            graph::Node::WordNode(_, w, _) if !w.speech.is_ancillary() => {
+                Some(w.word.iter().collect())
+            }
+            _ => self
+                .next
+                .as_ref()
+                .and_then(|v| v.to_string_only_independent()),
+        }
+    }
+}
+
 impl ToString for Candidate {
     fn to_string(&self) -> String {
         match &self.next {

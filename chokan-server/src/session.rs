@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use kkc::Candidate;
+use kkc::{context::Context, Candidate};
 use uuid::Uuid;
 
 /// 各セッションのID
@@ -16,14 +16,41 @@ impl SessionId {
 
 impl From<String> for SessionId {
     fn from(value: String) -> Self {
-        SessionId(value)
+        Self(value.clone())
     }
 }
 
+impl ToString for SessionId {
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
+
+/// 変換した候補にidを付与したもの
+#[derive(PartialEq, Debug, Clone)]
+pub struct RespondedCandidate {
+    pub id: String,
+    pub body: Candidate,
+}
+
 /// 単漢字以外の変換が行われたときに使われるsession
-#[derive(PartialEq, Debug)]
-struct ConversionSession {
-    candidates: Vec<Candidate>,
+#[derive(PartialEq, Debug, Clone)]
+pub struct ConversionSession {
+    pub context: Context,
+    candidates: Vec<RespondedCandidate>,
+}
+
+impl ConversionSession {
+    /// 指定したidに対応するcandidateを返す
+    ///
+    /// # Arguments
+    /// * `id` - 対象のid
+    ///
+    /// # Returns
+    /// 対応するcandidate
+    pub fn find_candidate(&self, id: String) -> Option<RespondedCandidate> {
+        self.candidates.iter().find(|v| v.id == id).cloned()
+    }
 }
 
 /// セッションを管理するStore
@@ -49,14 +76,21 @@ impl SessionStore {
         self.sessions.remove(id)
     }
 
-    pub fn add_session(&mut self, candidates: &Vec<Candidate>) -> SessionId {
+    pub fn add_session(
+        &mut self,
+        id: &SessionId,
+        candidates: &Vec<RespondedCandidate>,
+        context: &Context,
+    ) {
         let candidates = candidates.clone();
-        let session_id = SessionId::new();
 
-        self.sessions
-            .insert(session_id.clone(), ConversionSession { candidates });
-
-        session_id
+        self.sessions.insert(
+            id.clone(),
+            ConversionSession {
+                candidates,
+                context: context.clone(),
+            },
+        );
     }
 }
 
@@ -80,12 +114,19 @@ mod tests {
     fn get_session() {
         // arrange
         let mut store = SessionStore::new();
-        let id = store.add_session(&vec![]);
+        let id = SessionId::new();
+        store.add_session(&id, &vec![], &Context::normal());
 
         // act
         let ret = store.pop_session(&id);
 
         // assert
-        assert_eq!(ret, Some(ConversionSession { candidates: vec![] }));
+        assert_eq!(
+            ret,
+            Some(ConversionSession {
+                candidates: vec![],
+                context: Context::normal()
+            })
+        );
     }
 }

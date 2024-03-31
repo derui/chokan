@@ -4,7 +4,7 @@ use std::{
     io::Read,
     net::SocketAddr,
     path::Path,
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 
 use chokan_dic::ChokanDictionary;
@@ -16,6 +16,7 @@ use jsonrpsee::{
 use kkc::frequency::ConversionFrequency;
 use postcard::from_bytes;
 
+use session::SessionStore;
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod method;
@@ -73,9 +74,26 @@ fn define_module(
         frequency: Mutex::new(ConversionFrequency::new()),
     };
     let mut module = RpcModule::new(ctx);
+    let (session_sender, session_receiver) = std::sync::mpsc::channel();
+    let store = Arc::new(Mutex::new(SessionStore::new()));
 
-    method::make_get_candidates_method(&mut module)?;
+    method::make_get_candidates_method(&mut module, session_sender)?;
     method::make_get_tankan_candidates_method(&mut module)?;
+    method::make_update_frequency_method(&mut module, store.clone())?;
+
+    let store_in_thread = store.clone();
+    // ここでのthreadは、後始末する必要がない
+    tokio::spawn(async move {
+        loop {
+            if let Ok(session) = session_receiver.recv() {
+                let (id, candidates, context) = session;
+                store_in_thread
+                    .lock()
+                    .unwrap()
+                    .add_session(&id, &candidates, &context);
+            }
+        }
+    });
 
     Ok(module)
 }
