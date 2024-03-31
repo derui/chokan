@@ -5,7 +5,7 @@ use dic::base::{
     word::Word,
 };
 
-use crate::{context::Context, GraphDictionary};
+use crate::{context::Context, score::Score, GraphDictionary};
 
 /// 解析で利用するグラフと、それを入力文字列から構築する処理を提供する
 
@@ -13,10 +13,10 @@ use crate::{context::Context, GraphDictionary};
 #[derive(Debug, PartialEq, Clone, Eq, Hash, Default)]
 pub struct NodeScore {
     // startからこのnodeまでのコスト
-    cost_from_start: i32,
+    cost_from_start: Score,
 }
 
-impl From<NodeScore> for i32 {
+impl From<NodeScore> for Score {
     fn from(value: NodeScore) -> Self {
         value.cost_from_start
     }
@@ -125,7 +125,7 @@ impl Node {
     ///
     /// # Arguments
     /// * `score` - 設定するscore
-    pub(crate) fn set_score(&mut self, score: i32) {
+    pub(crate) fn set_score(&mut self, score: Score) {
         match self {
             Node::WordNode(_, _, s) => s.cost_from_start = score,
             Node::Virtual(_, _, s) => s.cost_from_start = score,

@@ -1,13 +1,15 @@
 use std::collections::{BinaryHeap, HashMap};
 
 use dic::base::word::Word;
+use score::{Score, MIN_SCORE};
 use serde::{Deserialize, Serialize};
 
 pub mod context;
+mod frequency;
 mod graph;
 mod score;
-
 mod tankan;
+
 #[cfg(test)]
 mod test_dic;
 
@@ -37,15 +39,15 @@ fn calculate_best_score(
     current: &graph::Node,
     prev_nodes: &[graph::Node],
     context: &context::Context,
-) -> i32 {
-    let mut best_score = i32::MIN;
+) -> Score {
+    let mut best_score = MIN_SCORE;
 
     for prev_node in prev_nodes {
-        let prev_score = prev_node.get_score();
+        let prev_score: Score = prev_node.get_score().into();
         let current_score = score::get_node_score(context, current);
         let edge_score = score::get_edge_score(context, prev_node, current);
 
-        let score = i32::from(prev_score) + current_score + edge_score;
+        let score: Score = prev_score + current_score + edge_score;
 
         if score > best_score {
             best_score = score;
@@ -85,7 +87,7 @@ pub struct Candidate {
     //
     // Candidateは、全体をcloneして連鎖的に保持することで、先頭から取得することが可能になる
     next: Option<Box<Candidate>>,
-    score: i32,
+    score: Score,
     priority: i32,
 }
 
@@ -124,7 +126,7 @@ fn get_n_best_candidates(
     queue.push(Candidate {
         current_node: graph::Node::EOS,
         next: None,
-        score: 0,
+        score: Default::default(),
         priority: 0,
     });
 
@@ -149,12 +151,14 @@ fn get_n_best_candidates(
             let node_score = score::get_node_score(context, current_node);
             let next_score = edge_score + node_score + *score;
 
-            queue.push(Candidate {
-                current_node: prev_node.clone(),
-                next: Some(Box::new(candidate.clone())),
-                score: next_score,
-                priority: next_score + i32::from(prev_node.get_score()),
-            });
+            if let Some(priority) = Option::from(next_score + prev_node.get_score().into()) {
+                queue.push(Candidate {
+                    current_node: prev_node.clone(),
+                    next: Some(Box::new(candidate.clone())),
+                    score: next_score,
+                    priority,
+                });
+            }
         }
     }
 
@@ -218,7 +222,7 @@ mod tests {
 
         // assert
         assert_eq!(1, result.len());
-        assert_eq!("来るまではしらなかった", result[0].to_string())
+        assert_eq!("車ではしらなかった", result[0].to_string())
     }
 
     #[test]
@@ -235,9 +239,9 @@ mod tests {
         assert_eq!(
             HashSet::from_iter(result.iter().map(|c| c.to_string())),
             HashSet::from([
+                "車ではしらなかった".to_string(),
                 "来るまではしらなかった".to_string(),
                 "繰るまではしらなかった".to_string(),
-                "車ではしらなかった".to_string()
             ])
         )
     }

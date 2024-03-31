@@ -1,13 +1,15 @@
+use serde::{Deserialize, Serialize};
+
 /// かな漢字変換を実施するときのcontext
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Hash, Clone)]
 pub enum ContextKind {
     Normal,      // 通常のかな漢字変換
     ForeignWord, // 外来語
     Numeral,     // 数詞
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct Context {
     kind: ContextKind,
 }
