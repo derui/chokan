@@ -65,18 +65,18 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
 
 マッピングのキーとしては、次が利用可能である。
 
-- 'normal' : 通常の変換を行う場合の関数
-- 'tankan' : 単漢字変換を行う場合
-- 'update-frequency' : かな漢字変換の頻度を更新する
+- `normal' : 通常の変換を行う場合の関数
+- `tankan' : 単漢字変換を行う場合
+- `update-frequency' : かな漢字変換の頻度を更新する
 
-関数は、'normal' および 'tankan'は、 引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
+関数は、`normal' および `tankan'は、 引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
 contextが存在しない場合はnilを渡す。
-'type symbol'は、'foreign'か'numeric'のいずれかである。
+'type symbol'は、`foreign'か`numeric'のいずれかである。
 
 実行した結果として、以下の形式で候補のリストを返す。
-`(:id session-id :candidates ((id . candidate)))
+`(:id session-id :candidates ((id . candidate)))'
 
-'update-frequency'は、その変換におけるsession idとcandidate idが渡される。
+`update-frequency'は、その変換におけるsession idとcandidate idが渡される。
 ")
 
 ;; buffer-local variable
@@ -86,9 +86,9 @@ contextが存在しない場合はnilを渡す。
 
 chokanが起動された時点では、自動的に `hiragana' に設定される。
 
-- 'ascii' : アルファベットをそのまま入力する
-- 'hiragana' : ひらがなを入力する。変換を起動することができる
-- 'katakana' : カタカナを入力する。変換を起動することはできない
+- `ascii' : アルファベットをそのまま入力する
+- `hiragana' : ひらがなを入力する。変換を起動することができる
+- `katakana' : カタカナを入力する。変換を起動することはできない
 ")
 
 (defvar chokan--default-cursor-type nil
@@ -100,7 +100,7 @@ chokanが起動された時点では、自動的に `hiragana' に設定され�
 (defvar chokan--conversion-candidates nil
   "変換候補のリスト。変換起動が行われるたびに初期化される。
 
-candidateは、それぞれ '(:id id :candidate-id candidate-id :candidate value)'
+candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value)'
  というplistで保持される。idは、候補の識別子であり、candidateは、候補の文字列である。
 ")
 (defvar chokan--conversion-candidate-pos 0
@@ -581,7 +581,7 @@ candidateは、それぞれ '(:id id :candidate-id candidate-id :candidate value
 (defun chokan--roman-sokuon-p (input)
   "inputが促音を含むかどうかを判定する。
 
-ここでの促音は、 'tt' のように子音を重ねたもののみを判定する。
+ここでの促音は、 `tt' のように子音を重ねたもののみを判定する。
 "
   (let ((consonants '(?t ?b ?j ?f ?h ?s ?w ?r ?y ?p ?k ?g ?z ?c ?v)))
     (and (>= (length input) 2)
@@ -594,8 +594,8 @@ candidateは、それぞれ '(:id id :candidate-id candidate-id :candidate value
 w
 変換結果によって、以下のいずれかの結果を返す。
 
-- 'nil' : 対応する候補が見つからない場合
-- '\"result\"' : 対応するひらがな
+- `nil' : 対応する候補が見つからない場合
+- `\"result\"' : 対応するひらがな
 "
   (let* ((sokuon "")
          (input (downcase input)))
@@ -643,14 +643,12 @@ w
 
 contextは、以下のいずれかである。
 
-- 通常の文字列 :: type = 'normal'
-- 連続した数字 :: type = 'numeral'
-- 連続したアルファベット :: type = 'foreign-word'
+- 通常の文字列 :: type = `normal'
+- 連続した数字 :: type = `numeral'
+- 連続したアルファベット :: type = `foreign-word'
 "
   (save-excursion
-    (let* ((current (point))
-           (test-char (buffer-substring-no-properties (1- current) current))
-           (context-fw (chokan--same-type-string-backward chokan--foreign-word-context-regexp))
+    (let* ((context-fw (chokan--same-type-string-backward chokan--foreign-word-context-regexp))
            (context-number (chokan--same-type-string-backward chokan--numeral-context-regexp)))
       (pcase (list context-fw context-number)
         (`(,(pred numberp) ,_) (cons 'foreign-word context-fw))
@@ -659,17 +657,19 @@ contextは、以下のいずれかである。
 
 (defun chokan--get-conversion-region ()
   "現在の下線部があれば、その周辺で変換対象のregionと種別、さらにcontextを取得する。
-下線部が存在しない場合は 'NIL' を返す。
+下線部が存在しない場合は `NIL' を返す。
 "
   (let* ((current (point)))
     (save-excursion
-      (when-let* ((prop-match (text-property-search-backward 'chokan-conversion-start t t nil))
-                  (region (cons (prop-match-beginning prop-match) (prop-match-end prop-match)))
+      (when-let* ((props (text-property-search-backward 'chokan-conversion-start t t))
+                  (start (prop-match-beginning props))
                   ;; ひらがな・アルファベット・数字以外、またはカーソル位置を対象にする
-                  (end (re-search-forward chokan--target-character-regexp current t))
-                  (detail (get-text-property (prop-match-beginning prop-match) 'chokan-conversion-detail))
+                  (end (progn
+                         (goto-char start)
+                         (re-search-forward chokan--target-character-regexp current t)))
+                  (detail (get-text-property start 'chokan-conversion-detail))
                   (context (chokan--get-previous-context)))
-        (list (car region) end detail context)))))
+        (list start end detail context)))))
 
 ;;;###autoload
 (defun chokan--conversion-launch (callback)
@@ -685,6 +685,8 @@ contextは、以下のいずれかである。
               (context (cadddr region))
               (str (buffer-substring-no-properties start end)))
     (let ((func (assoc type chokan-conversion-functions)))
+      ;; 下線部は存在していることがここで確定しているので、overlayを削除する
+      (delete-overlay chokan--conversion-overlay)
       (if func
           (progn
             (setq chokan--conversion-candidate-pos 0)
@@ -765,9 +767,9 @@ contextは、以下のいずれかである。
 
 (defun chokan--get-roman-content ()
   "現在のpointを含むローマ字の未確定文字列とregionを取得する。返却する文字列にはtext propertyが含まれる。
-未確定領域がない場合は 'NIL' を返す。
+未確定領域がない場合は `NIL' を返す。
 
-返却する形式は '((START . END) . CONTENT)' というconsである。
+返却する形式は `((START . END) . CONTENT)' というconsである。
 
 仕様上、未確定領域は現在のポイントから前にしか存在しない。"
   (save-excursion
@@ -779,7 +781,7 @@ contextは、以下のいずれかである。
 
 (defun chokan--get-inverse-region ()
   "現在のpointを含む反転部の領域を取得する。
-反転部がない場合は 'NIL' を返す。
+反転部がない場合は `NIL' を返す。
 
 仕様上、未確定領域は現在のポイントから前にしか存在しない。"
   (save-excursion
@@ -790,9 +792,9 @@ contextは、以下のいずれかである。
       nil)))
 
 (defun chokan--convert-roman-to-kana-if-possible (content)
-  "chokanのローマ字変換において、確定できていない文字がある場合に、それを変換する。 'CONTENT' は、実行時点でまだ確定していないローマ字の文字列である。
+  "chokanのローマ字変換において、確定できていない文字がある場合に、それを変換する。 `CONTENT' は、実行時点でまだ確定していないローマ字の文字列である。
 
-結果として、変換できた場合は変換した文字を、出来なかった場合は'NIL'を返す
+結果として、変換できた場合は変換した文字を、出来なかった場合は`NIL'を返す
 "
   ;; 変換する領域は、現時点を含んで同じpropertyを持つ領域全体である
   (let* ((ret (if content
@@ -845,76 +847,71 @@ contextは、以下のいずれかである。
       (`(nil nil t)
        (put-text-property start end 'chokan-inverse t)))))
 
-(defun chokan--get-face (text-props)
-  "text propertiesから、対応するfaceに対応するproperty listを返す"
-  (flatten-list (list (if (plist-get text-props 'chokan-alphabet) '(:foreground "darkgoldenrod")))))
-
-
-(defun chokan--propertize-string (converted original)
-  "'ORIGINAL'の文字列からtext-propertyを判定し、結果としてface設定がされた文字列を返す。
+(defun chokan--propertize-keep-conversion (converted original)
+  "`ORIGINAL'の文字列にあるpropertyからconversion-startを判定し、必要ならpropertizeした文字列を返す。
 
 この処理は、前提として下線部またはローマ字部分に限る。反転部については、この関数では処理する必要がないため行うことはない。
-
-'REGION' が 'NIL' の場合はnilを返す。'CONVERTED' のみが 'NIL' の場合は、regionの文字列に対してfaceを設定する
 "
-  (let* ((kana-finalized (not (null converted)))
-         (converted (or converted original)))
-    (with-temp-buffer
-      (let ((message-log-max nil)))
-      
-      (insert original)
-      (goto-char (point-min))
-      (replace-string original converted)
-
-      ;; 先頭が下線部である場合は、その部分にfaceを設定する
-      (when-let* ((props (text-properties-at (point-min)))
-                  (conversion-start (plist-get props 'chokan-conversion-start)))
-        (add-face-text-property (point-min) (1+ (point-min)) 'chokan-conversion-start t))
-
-      (buffer-substring (point-min) (point-max))
-      )
-    ))
+  (with-temp-buffer
+    (insert (or original converted))
+    (goto-char (point-min))
+    
+    (let* ((conversion-start (get-text-property (point-min) 'chokan-conversion-start))
+           (conversion-detail (get-text-property (point-min) 'chokan-conversion-detail))
+           (head (seq-take converted 1))
+           (last (seq-drop converted 1)))
+      (cons conversion-start
+            
+            (concat (propertize head 'chokan-conversion-start conversion-start
+                                'chokan-conversion-detail conversion-detail)
+                    last)))))
 
 (defun chokan--self-insert (key char-type char-props)
   "chokanでキーに対応する文字を入力するための関数。
 
-'key' は入力されたキー、 'char-props' は入力した文字に対するpropertyをいれたassociation listである。
-'char-type' は、 'alphabet' 'symbols' のいずれかのsymbolである。 'char-type' が 'alphabet' の場合のみ、ローマ字かな変換を行う。
+`key' は入力されたキー、 `char-props' は入力した文字に対するpropertyをいれたassociation listである。
+`char-type' は、 `alphabet' `symbols' のいずれかのsymbolである。 `char-type' が `alphabet' の場合のみ、ローマ字かな変換を行う。
 
 "
+  ;; conversion-startがtの場合は、この前にすでに挿入されているので、無視する必要がある
   (unless (cdr (assoc 'conversion-start char-props))
     (cond
      ((eq char-type 'alphabet)
-      (chokan--insert-with-type key char-props)
-
       ;; ローマ字である場合は変換も行う
       (let* ((content (chokan--get-roman-content))
              (region (car content))
              (content (cdr content))
-             (converted (chokan--convert-roman-to-kana-if-possible content))
-             (propertized (chokan--propertize-string converted content)))
-        (delete-region (car region) (cdr region))
-        (goto-char (car region))
-        (insert propertized)))
+             (converted (chokan--convert-roman-to-kana-if-possible (concat content key))))
+        ;; 変換できなかった場合はそのまま挿入する
+        (if (not converted)
+            (progn
+              (chokan--insert-with-type key char-props)
+              (put-text-property (1- (point)) (point) (if font-lock-mode 'font-lock-face 'face) 'chokan-kana-roman))
+          (when region
+            (delete-region (car region) (cdr region))
+            (goto-char (car region)))
+          (let* ((converted (chokan--propertize-keep-conversion converted content))
+                 (content (cdr converted))
+                 (overlay-need (car converted)))
+            ;; 変換できる場合で、かつ下線部がある場合は、一応overlayを移動しておく
+            (insert content)
+            (when-let* (overlay-need
+                        (start (- (point) (length content))))
+              (move-overlay chokan--conversion-overlay start (1+ start) (current-buffer)))))))
      ((eq char-type 'symbols)
       (let ((key (or (chokan--symbol-convert-to-ja key) key)))
-        (chokan--insert-with-type key char-props)
-        ;; 対象の部分に下線部が追加されたりするのでその対応をする
-        (let* ((props (text-properties-at (- (point) (length key)))))
-          (put-text-property (- (point) (length key)) (point) 'face (chokan--get-face props))))))))
+        (chokan--insert-with-type key char-props))))))
 
 (defun chokan--insert-candidate (region candidate)
-  "指定されたregionに対して 'CANDIDATE'を挿入し、反転部とする。
+  "指定されたregionに対して `CANDIDATE'を挿入し、反転部とする。
 
 ここではoverlayの構築が行われる。"
   (let* ((start (car region))
          (end (cdr region))
-         (current (point))
-         (current-face (or (save-excursion (goto-char start) (face-at-point))
-                           'default))
          (overlay (or chokan--candidate-overlay
                       (setq chokan--candidate-overlay (make-overlay start end)))))
     (save-excursion
+      (move-overlay chokan--candidate-overlay start end (current-buffer))
       (put-text-property start end 'chokan-inverse t)
       (overlay-put overlay 'face `(t :inverse-video t))
       (overlay-put overlay 'display candidate))))
@@ -931,18 +928,21 @@ contextは、以下のいずれかである。
     (chokan--conversion-launch #'chokan--conversion-callback)))
 
 (defun chokan--insert-conversion-start-if-possible (key alphabet conversion-startable)
-  "'CONVERSION-STARTABLE' が 'non-nil' の場合、 'KEY' を下線部として挿入する。
+  "`CONVERSION-STARTABLE' が `non-nil' の場合、 `KEY' を下線部として挿入する。
 
-'ALPHABET' が 'non-nil' である場合、対象のkeyは未確定のローマ字であることを示す。
+`ALPHABET' が `non-nil' である場合、対象のkeyは未確定のローマ字であることを示す。
 "
 
   (when conversion-startable
     (let* ((kana (when alphabet (chokan--convert-roman-to-kana-if-possible key)))
            (key (or kana key))
-           (face (if kana 'chokan-conversion-start 'chokan-conversion-start-roman)))
+           (face (if (not kana) 'chokan-conversion-start-roman nil))
+           (current (point)))
       (chokan--insert-with-type key `((roman . ,(and alphabet (null kana)))
                                       (conversion-start . ,conversion-startable)
                                       (inverse . nil)))
+      (move-overlay chokan--conversion-overlay current (point) (current-buffer))
+      
       (save-excursion
         ;; 変換できた場合、romanのfaceはいらないので、削除する
         (if font-lock-mode
@@ -971,27 +971,27 @@ contextは、以下のいずれかである。
     (when-let* ((func (assoc 'update-frequency chokan-conversion-functions)))
       (funcall (cdr func) session-id (car candidate)))))
 
-(defun chokan--insert (convert-launchable underscore char-type)
+(defun chokan--insert (convert-launchable conversion-detail char-type)
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
 
-'CONVERT-LAUNCHABLE' が 'non-nil' の場合、起動したコマンドのキーが変換起動可能であることを表す。
-'UNDERSCORE' が 'non-nil' の場合、入力した文字が下線部になる。指定したsymbolに対応する特殊変換がトグルされる
-'CHAR-TYPE' は、 'alphabet' 'symbols' のいずれかのsymbolである。
+`CONVERT-LAUNCHABLE' が `non-nil' の場合、起動したコマンドのキーが変換起動可能であることを表す。
+`UNDERSCORE' が `non-nil' の場合、入力した文字が下線部になる。指定したsymbolに対応する特殊変換がトグルされる
+`CHAR-TYPE' は、 `alphabet' `symbols' のいずれかのsymbolである。
 
 この関数では以下を実行する。
 
 1. 現在のmodeがカタカナであるかどうか
-2. 反転部の確定（ 'convert-launchable' が non-nil である場合）
-3. 下線部のかな漢字変換起動（ 'convert-launchable' が non-nil である場合）
-4. 下線部の設定（ 'underscore' が non-nil である場合）
+2. 反転部の確定（ `convert-launchable' が non-nil である場合）
+3. 下線部のかな漢字変換起動（ `convert-launchable' が non-nil である場合）
+4. 下線部の設定（ `conversion-detail' が non-nil である場合）
 5. 自己挿入し、必要ならローマ字かな変換を行う
 "
   (let* ((key (this-command-keys)))
     (chokan--finalize-inverse-if-possible convert-launchable)
     (chokan--launch-conversion-if-possible convert-launchable)
-    (chokan--insert-conversion-start-if-possible key (eq char-type 'alphabet) underscore)
+    (chokan--insert-conversion-start-if-possible key (eq char-type 'alphabet) conversion-detail)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
-                                         (conversion-start . ,underscore)
+                                         (conversion-start . ,conversion-detail)
                                          (inverse . nil)))
     ;; stickyはあらゆる入力で解除される
     (chokan--sticky-deactivate)))
@@ -1124,6 +1124,10 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   (setq-local chokan--sticky nil)
   (setq-local chokan--conversion-candidates nil)
   (setq-local chokan--conversion-candidate-pos 0)
+  (setq-local chokan--conversion-overlay (make-overlay 1 1))
+  (overlay-put chokan--conversion-overlay 'face 'chokan-conversion-start)
+  ;; これをやっておかないと、余計なfaceが反映されてしまう
+  (delete-overlay chokan--conversion-overlay)
   (chokan-ja-mode)
   )
 
@@ -1131,13 +1135,14 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
 (define-minor-mode chokan-mode
   "Toggle minor mode to enable Input Method `chokan' in this buffer.
 
-`chokan' has some functions to input japanese in Emacs, one of `ASCII' mode for input alphabet, and `JA' mode for input japanese text.
+`chokan' has some functions to input japanese in Emacs, one of `ASCII' mode
+for input alphabet, and `JA' mode for input japanese text.
 
-When called interactively, toggle `chokan-mode'.  With prefix ARG, enable `chokan-mode' if ARG is positive, and disable it otherwise.
+When called interactively, toggle `chokan-mode'.  With prefix ARG,
+enable `chokan-mode' if ARG is positive, and disable it otherwise.
 "
   :keymap chokan-mode-map
   :after-hook (progn
-                (make-variable-buffer-local 'after-change-functions)
                 (add-hook 'post-command-hook #'chokan--post-command nil t)
                 (if chokan-mode
                     (chokan-mode--activate)

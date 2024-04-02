@@ -119,7 +119,7 @@
 事前に対応するserverが起動している必要がある。サーバーのアドレスは `chokan-websocket-address' で設定する。"
   (let* ((conn (chokan-websocket--current-connection))
          (res (jsonrpc-request conn :GetCandidates `(:input ,input :context (:type ,(chokan-websocket--context-to-server (car ctx)) :value ,(cdr ctx)))))
-         (session-id (plist-get res :sessionId))
+         (session-id (plist-get res :session_id))
          (candidates (plist-get res :candidates))
          (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
     `(:id ,session-id :candidates ,candidates)))
@@ -131,7 +131,7 @@
   (let* ((input (substring input 1))
          (conn (chokan-websocket--current-connection))
          (res (jsonrpc-request conn :GetTankanCandidates `(:input ,input)))
-         (session-id (plist-get res :sessionId))
+         (session-id (plist-get res :session_id))
          (candidates (plist-get res :candidates))
          (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
     `(:id ,session-id :candidates ,candidates)))
@@ -141,7 +141,7 @@
 
 'session-id' はセッションID、'candidate-id' は候補IDである。"
   (let* ((conn (chokan-websocket--current-connection)))
-    (res (jsonrpc-request conn :UpdateFrequency `(:sessionId ,session-id :candidateId ,candidate-id)))))
+    (jsonrpc-request conn :UpdateFrequency `(:session_id ,session-id :candidate_id ,candidate-id))))
 
 ;; public functions
 
