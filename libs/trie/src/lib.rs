@@ -4,7 +4,15 @@ mod types;
 use std::{collections::HashSet, usize};
 
 use serde::{Deserialize, Serialize};
-use types::{empties, Base, Check, Empty, Label, Labels, Node, NodeIdx};
+use types::{
+    base::Base,
+    check::Check,
+    empties,
+    empty::Empty,
+    label::{Label, Labels},
+    node::Node,
+    node_idx::NodeIdx,
+};
 
 /// 最も基本的なtrie構造を表現する
 /// 任意のデータ構造を保有する必要がある場合は、[HoldableTrie<T>]を利用すること
@@ -28,10 +36,7 @@ impl Trie {
 
         let nodes = vec![
             // 仕組み上、0のcheckが利用されることはないため、初期化時点では常に1を指しておく
-            Node {
-                base: Base::root(),
-                check: Check::root(),
-            },
+            Node::new_root(),
         ];
 
         Trie {
