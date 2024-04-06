@@ -1,16 +1,12 @@
-/// Trieのデータ型と操作を提供するmodule
+mod nodes;
 mod types;
 
-use std::{collections::HashSet, usize};
-
+use nodes::Nodes;
 use serde::{Deserialize, Serialize};
+use std::usize;
 use types::{
     base::Base,
-    check::Check,
-    empties,
-    empty::Empty,
     label::{Label, Labels},
-    node::Node,
     node_idx::NodeIdx,
 };
 
@@ -19,14 +15,11 @@ use types::{
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Trie {
     /// ダブル配列を構成するための基本的なデータ構造。
-    nodes: Vec<Node>,
+    nodes: Nodes,
 
     /// 内部で値として利用する、文字とデータIDのマッピングを管理する
     /// 今回は255種類のみ許容する
     labels: Labels,
-
-    /// 未使用の領域を管理する
-    empties: HashSet<Empty>,
 }
 
 impl Trie {
@@ -34,95 +27,10 @@ impl Trie {
     pub fn from_keys(keys: &[char]) -> Trie {
         let labels = Labels::from_chars(keys);
 
-        let nodes = vec![
-            // 仕組み上、0のcheckが利用されることはないため、初期化時点では常に1を指しておく
-            Node::new_root(),
-        ];
-
         Trie {
-            nodes,
+            nodes: Nodes::new(),
             labels,
-            empties: HashSet::new(),
         }
-    }
-
-    /// 現在指している `idx` から遷移するlabelの一覧を返す
-    ///
-    /// # Arguments
-    /// - `idx` - 遷移元のindex
-    ///
-    /// # Returns
-    /// 遷移先のlabelの一覧
-    fn find_labels_of(&self, idx: &NodeIdx) -> Vec<Label> {
-        let mut labels = Vec::new();
-        let base = self.nodes[usize::from(*idx)].base;
-
-        if base.is_empty() {
-            return labels;
-        }
-
-        // 遷移先の数の上限は、 `labels` から返されるlabelの数が上限になる
-        for l in self.labels.label_set() {
-            let l_idx = base + l;
-
-            match self.nodes.get(usize::from(l_idx)) {
-                Some(ck) if ck.is_transit(idx) => {
-                    labels.push(l);
-                }
-                _ => (),
-            }
-        }
-
-        labels
-    }
-
-    /// xcheckアルゴリズムの実装。
-    ///
-    /// # Arguments
-    /// - `labels` - 遷移先ラベルの集合
-    ///
-    /// # Returns
-    /// 返却される値は、すべてのlabelが設定可能と判定されたbaseのindexである
-    fn xcheck(&self, labels: &[Label]) -> Base {
-        let ary_size = self.nodes.len() as u32;
-        let mut labels = labels.to_owned();
-
-        if labels.is_empty() {
-            return Base::new(ary_size);
-        }
-
-        labels.sort();
-
-        let min_label = labels.first().unwrap();
-        let other_labels = &labels[1..];
-
-        for e in self.empties.iter() {
-            // 実際に空として認識するのは、最小のlabelのみが基準となる
-            if let Some(t) = *e - *min_label {
-                let mut is_ok = true;
-
-                // 一つでも利用中のcheckがある場合は、何もしない
-                for label in other_labels {
-                    let i = t + *label;
-                    match self.nodes.get(usize::from(i)) {
-                        Some(n) if n.check.is_used() => {
-                            is_ok = false;
-                            break;
-                        }
-                        None => {
-                            // Noneになる場合、範囲を超えてしまっているので、領域の追加が必要であるが、空として認識できる
-                        }
-                        _ => (),
-                    }
-                }
-
-                if is_ok {
-                    return t;
-                }
-            }
-        }
-
-        Base::new(ary_size)
     }
 
     /// 指定されているnodeとlabelから、衝突しているnodeの移動を行う
@@ -133,88 +41,37 @@ impl Trie {
     /// - `node` - 現在注目しているnode。baseを取得したもとのindexになる
     /// - `label` - 設定対象のlabel
     ///
-    /// # Returns
-    /// 現在注目していた[NodeIdx]に対して衝突を回避した後、基準になるBase
-    fn move_conflicted(&mut self, node: &NodeIdx, label: &Label, base: &Base) -> NodeIdx {
+    fn move_conflicted(&mut self, node: &NodeIdx, label: &Label) {
         // 移動する対象を確定する
         let detect_to_move_base: (NodeIdx, Vec<Label>);
 
         // できるだけ遷移先が少ない方を移動する
         {
-            let check_idx = *base + *label;
-            let conflicted_node = NodeIdx::from(self.nodes[usize::from(check_idx)].check);
+            let check_idx = self.nodes.base_of(node).expect("should be a base") + *label;
+            let conflicted_node: NodeIdx = self
+                .nodes
+                .check_of(&check_idx)
+                .expect("Can not get check")
+                .into();
 
             assert!(*node != conflicted_node, "each node should be different");
 
-            let current_labels = self.find_labels_of(node);
-            let conflicted_labels = self.find_labels_of(&conflicted_node);
+            let mut current_labels = self.nodes.find_labels_of(node, &self.labels);
+            let conflicted_labels = self.nodes.find_labels_of(&conflicted_node, &self.labels);
+            current_labels.push(*label);
 
-            // 今注目しているnodeのlabelsは、本来移動するものより一個少ない
-            // ただし、この後の処理で移動するときに問題になるので、labelsにはくわえていない
-            if current_labels.len() + 1 < conflicted_labels.len() {
+            // conflictしたlabel自体も対象に加えて、移動する方を決定する
+            if current_labels.len() < conflicted_labels.len() {
                 detect_to_move_base = (*node, current_labels);
             } else {
                 detect_to_move_base = (conflicted_node, conflicted_labels);
             }
         }
 
-        // 全体が入る先を探索して、そこにラベル一式を移動する
-        let new_base = self.xcheck(&detect_to_move_base.1);
-        let current_base = self.nodes[usize::from(detect_to_move_base.0)].base;
-        for l in detect_to_move_base.1.iter() {
-            let idx = self.write_at(&detect_to_move_base.0, l, &new_base);
-
-            // 移動したlabelからの遷移がある場合、その遷移先に置き換える
-            if self.nodes[usize::from(current_base + *l)].base.is_used() {
-                self.nodes[usize::from(idx)].base = self.nodes[usize::from(current_base + *l)].base;
-
-                let labels_of_moved = self.find_labels_of(&(current_base + *l));
-                let transition_base = self.nodes[usize::from(current_base + *l)].base;
-                for l in labels_of_moved {
-                    self.nodes[usize::from(transition_base + l)].check = Check::from(idx);
-                }
-            }
-
-            // 移動が完了したら、元々のlabelがあった位置を未使用とする。baseについても初期化する
-            empties::push_unused(&mut self.empties, current_base + *l);
-            self.nodes[usize::from(current_base + *l)].base = Base::empty();
-        }
-
-        // 現在注目しているnodeが移動した場合は、新しいbaseに対して書き込み、そうではない場合はbaseを起点にして書き込む
-        if detect_to_move_base.0 == *node {
-            self.write_at(node, label, &new_base)
-        } else {
-            self.write_at(node, label, base)
-        }
-    }
-
-    /// 指定した位置に `label` を書き込み、書き込んだ位置を [NodeIdx] として返す
-    ///
-    /// # Arguments
-    /// - `idx` - 遷移元のindex
-    /// - `label` - 設定するlabel
-    /// - `base` - 設定もとのbase
-    ///
-    /// # Returns
-    /// checkを書き込んだ先の[NodeIdx]
-    fn write_at(&mut self, idx: &NodeIdx, label: &Label, base: &Base) -> NodeIdx {
-        // 必要なら領域を拡張してから書き込む
-        let next_idx = *base + *label;
-        let current_len = self.nodes.len();
-        if current_len <= usize::from(next_idx) {
-            empties::expand_empties(
-                &mut self.nodes,
-                &mut self.empties,
-                usize::from(next_idx) - current_len + 1,
-            );
-        }
-
-        // 先に未使用領域から外してから、対象の位置に書き込む
-        empties::delete_at(&mut self.empties, &next_idx);
-        self.nodes[usize::from(next_idx)].check = Check::from(*idx);
-        self.nodes[usize::from(*idx)].base = *base;
-
-        next_idx
+        // 全体が入る先を探索して、移動が必要なものを移動する
+        let new_base = self.nodes.xcheck(&detect_to_move_base.1);
+        self.nodes
+            .rebase(&detect_to_move_base.0, &new_base, &self.labels);
     }
 
     /// Trieに新しいキーを追加する
@@ -239,30 +96,37 @@ impl Trie {
     pub fn insert(&mut self, key: &str) -> Result<(), ()> {
         let labels = self.labels.key_to_labels(key)?;
         let mut current = NodeIdx::head();
+        let mut need_restart = false;
 
-        for label in labels.iter() {
-            let node = &self.nodes[usize::from(current)];
-
+        for (i, label) in labels.iter().enumerate() {
             // baseが未使用の場合は、xcheck経由で新しいbaseを計算する
-            let mut base = node.base;
-            if base.is_empty() {
-                let mut labels = self.find_labels_of(&current);
-                labels.push(*label);
-                base = self.xcheck(&labels);
+            let base: Base;
+            if let Some(b) = self.nodes.base_of(&current) {
+                if b.is_empty() {
+                    let labels = vec![*label];
+                    base = self.nodes.xcheck(&labels);
+                    self.nodes.record_transition_base_at(&current, &base);
+                } else {
+                    base = b;
+                }
+            } else {
+                // 取得できない場合はどこかの処理がおかしいので、継続できない。
+                return Err(());
             }
 
-            match self.nodes.get(usize::from(base + *label)) {
-                Some(n) if n.is_transit(&current) => {
+            match self.nodes.check_of(&(base + *label)) {
+                Some(n) if n.is_transition_from(&current) => {
                     // labelに対して遷移が記録されている場合、遷移先から進める
-                    current = node.next_node(label);
-                    continue;
+                    current = base + *label;
                 }
-                Some(n) if !n.can_transit() => {
+                Some(n) if n.is_used() => {
                     // 使用中の場合は衝突しているので、衝突を解消してから書き込みを行う
-                    current = self.move_conflicted(&current, label, &base);
+                    // ただし、衝突を回避した時点で、currentが使い物にならなくなる場合があるため、再度先頭から挿入し直す
+                    self.move_conflicted(&current, label);
+                    current = self.nodes.record_transition_at(&current, label);
                 }
                 _ => {
-                    current = self.write_at(&current, label, &base);
+                    current = self.nodes.record_transition_at(&current, label);
                 }
             }
         }
@@ -281,32 +145,40 @@ impl Trie {
     /// # Returns
     /// 発見されたnodeのindex。見つからなかった場合はNone
     pub fn search(&self, key: &str, callback: &dyn Fn(NodeIdx, &str)) -> Option<usize> {
-        let labels = self.labels.key_to_labels(key).expect(key);
+        let labels = match self.labels.key_to_labels(key) {
+            Ok(it) => it,
+            Err(()) => return None,
+        };
         let mut current = NodeIdx::head();
         let mut result = Vec::new();
         let mut found_labels = String::new();
 
         for label in labels.iter() {
-            let node = &self.nodes[usize::from(current)];
-            if node.base.is_empty() {
+            if let Some(base) = self.nodes.base_of(&current) {
+                if base.is_empty() {
+                    return None;
+                }
+
+                let transition = base + *label;
+                match self.nodes.check_of(&transition) {
+                    Some(n) if !n.is_transition_from(&current) => {
+                        return None;
+                    }
+                    None => {
+                        return None;
+                    }
+                    _ => (),
+                }
+
+                if let Some(ch) = self.labels.label_to_char(label) {
+                    found_labels.push(ch);
+                }
+                current = transition;
+                callback(current, &found_labels);
+                result.push(current);
+            } else {
                 return None;
             }
-
-            let transition = node.base + *label;
-            match self.nodes.get(usize::from(transition)) {
-                Some(n) if !n.is_transit(&current) => {
-                    return None;
-                }
-                None => {
-                    return None;
-                }
-                _ => (),
-            }
-
-            found_labels.push(self.labels.label_to_char(label));
-            current = transition;
-            callback(current, &found_labels);
-            result.push(current);
         }
 
         Some(usize::from(current))
@@ -330,7 +202,7 @@ mod tests {
         let _ = trie.insert("abc");
 
         // act
-        let index = trie.search("ab", &|_, _| {});
+        let index = trie.search("abc", &|_, _| {});
         // assert
         assert_ne!(index, None);
     }
@@ -416,7 +288,7 @@ mod tests {
             "じっしつてきに"
         );
         assert!(
-            trie.search("じっしつて", &|_, _| {}).is_some(),
+            trie.search("じっしつて", &|_, _| {}).is_none(),
             "じっしつて"
         );
         assert!(trie.search("じっしつ", &|_, _| {}).is_some(), "じっしつ");

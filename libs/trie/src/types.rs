@@ -1,5 +1,5 @@
 pub(crate) mod node {
-    use std::fmt::Display;
+    use std::fmt::{self, Display};
 
     use serde::{Deserialize, Serialize};
 
@@ -8,7 +8,7 @@ pub(crate) mod node {
     /// 内部で利用するbase/checkのペア
     /// ここで定義されるbase/checkは、内部的には未使用領域を負の値で管理している。
     /// baseにおける負の値は **前の未使用baseのindex** を負の値としており、 checkにおける負の値は、 **次の未使用checkのindex** を負の値としている
-    #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+    #[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
     pub struct Node {
         pub base: Base,
         pub check: Check,
@@ -28,27 +28,17 @@ pub(crate) mod node {
                 check: Check::empty(),
             }
         }
+    }
 
-        /// Nodeがidxに対する遷移かどうか返す
-        pub fn is_transit(&self, idx: &NodeIdx) -> bool {
-            self.check.is_used() && NodeIdx::from(self.check) == *idx
-        }
-
-        /// Nodeがidxに対してtransitできるかどうかを返す
-        pub fn can_transit(&self) -> bool {
-            self.check.is_empty()
-        }
-
-        /// 現在のbaseと対象のlabelから、次の遷移先のindexを返す
-        pub fn next_node(&self, label: &Label) -> NodeIdx {
-            assert!(self.check.is_used(), "Can not transit if check is empty");
-            self.base + *label
+    impl fmt::Debug for Node {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "[b={}:c={}]", self.base, self.check)
         }
     }
 
     impl Display for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "[{}:{}]", self.base, self.check)
+            write!(f, "[b={}:c={}]", self.base, self.check)
         }
     }
 }
@@ -66,6 +56,12 @@ pub(crate) mod empty {
 
     impl From<&NodeIdx> for Empty {
         fn from(value: &NodeIdx) -> Self {
+            Empty(usize::from(*value))
+        }
+    }
+
+    impl From<&Base> for Empty {
+        fn from(value: &Base) -> Self {
             Empty(usize::from(*value))
         }
     }
@@ -131,13 +127,19 @@ pub mod empties {
     pub(crate) type Empties = HashSet<Empty>;
 
     /// 指定したindexを未使用領域から削除する
-    pub fn delete_at(empties: &mut Empties, idx: &NodeIdx) {
+    pub fn delete_at<T>(empties: &mut Empties, idx: T)
+    where
+        Empty: From<T>,
+    {
         empties.remove(&Empty::from(idx));
     }
 
     /// 対象の位置を未使用に変更する
-    pub fn push_unused(vec: &mut Empties, idx: NodeIdx) {
-        vec.insert(Empty::from(idx));
+    pub fn push_unused<T>(empties: &mut Empties, idx: T)
+    where
+        Empty: From<T>,
+    {
+        empties.insert(Empty::from(idx));
     }
 
     /// 未使用領域を `size` だけ広げる
@@ -290,7 +292,7 @@ pub mod empties {
             let mut empties = HashSet::new();
 
             // act
-            push_unused(&mut empties, Base::new(1) + Label::new(1));
+            push_unused(&mut empties, &(Base::new(1) + Label::new(1)));
 
             // assert
             assert_eq!(empties, HashSet::from([NodeIdx::from(2).into(),]))
@@ -336,12 +338,15 @@ pub(crate) mod label {
         ///
         /// # Returns
         /// 対応する文字。labelが存在しない場合はpanic
-        pub fn label_to_char(&self, label: &Label) -> char {
+        pub fn label_to_char(&self, label: &Label) -> Option<char> {
+            if label.is_terminal() {
+                return None;
+            }
+
             self.labels
                 .iter()
                 .find(|(_, v)| **v == label.0)
                 .map(|(k, _)| *k)
-                .unwrap()
         }
 
         /// keyからLabelに変換する
@@ -354,6 +359,9 @@ pub(crate) mod label {
                 let id = self.label_of(c)?;
                 labels.push(id);
             }
+
+            // 終端しておく
+            labels.push(Label::new(self.labels.len() as u8 + 1));
 
             Ok(labels)
         }
@@ -375,7 +383,10 @@ pub(crate) mod label {
 
         /// 内部で保持しているラベルの集合を返す
         pub fn label_set(&self) -> Vec<Label> {
-            self.labels.values().map(|v| Label(*v)).collect()
+            let mut labels: Vec<_> = self.labels.values().map(|v| Label(*v)).collect();
+            labels.push(Label::new(self.labels.len() as u8 + 1));
+
+            return labels;
         }
     }
 
@@ -385,7 +396,12 @@ pub(crate) mod label {
 
     impl Label {
         pub fn new(v: u8) -> Self {
+            assert!(v > 0, "All label must be greater than 0");
             Self(v)
+        }
+
+        fn is_terminal(&self) -> bool {
+            self.0 == 0
         }
     }
 
@@ -406,6 +422,12 @@ pub(crate) mod label {
         }
 
         #[test]
+        #[should_panic]
+        fn do_not_allow_unnecessary_label() {
+            Label::new(0);
+        }
+
+        #[test]
         fn get_labeled_keys_from_key() {
             // arrange
             let ls = Labels::from_chars(&['a', 'b', 'c']);
@@ -420,7 +442,8 @@ pub(crate) mod label {
                     Label::new(1),
                     Label::new(1),
                     Label::new(2),
-                    Label::new(3)
+                    Label::new(3),
+                    Label::new(4),
                 ])
             )
         }
@@ -452,16 +475,10 @@ pub(crate) mod base {
     /// Base自体を表す型
     ///
     /// Baseはそもそもoffset自体を表現しているので、実際はindexで利用することがほとんどである
-    #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, PartialOrd, Ord, Hash)]
     pub struct Base(i32);
 
     impl Base {
-        /// Baseから利用されうるtransitionの範囲を返す
-        pub fn transition_range(self, labels: &Labels) -> Vec<NodeIdx> {
-            let labels = labels.label_set();
-            labels.iter().map(|v| self + *v).collect()
-        }
-
         /// Baseを新規に作成する
         pub fn new(v: u32) -> Base {
             Self(v as i32)
@@ -499,6 +516,12 @@ pub(crate) mod base {
         }
     }
 
+    impl From<Base> for usize {
+        fn from(value: Base) -> Self {
+            value.0 as usize
+        }
+    }
+
     impl Display for Base {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{}", self.0)
@@ -512,21 +535,6 @@ pub(crate) mod base {
         fn root_is_not_empty() {
             assert!(Base::root().is_used(), "should be used");
             assert!(!Base::root().is_empty(), "should be used");
-        }
-
-        #[test]
-        fn get_transition_range() {
-            // arrange
-            let labels = Labels::from_chars(&['a', 'b']);
-
-            // act
-            let base = Base::new(12);
-            let mut range = base.transition_range(&labels);
-            range.sort();
-
-            // assert
-            assert_eq!(range.len(), 2);
-            assert_eq!(range, vec![base + Label::new(1), base + Label::new(2)]);
         }
 
         #[test]
@@ -576,6 +584,11 @@ pub(crate) mod check {
         #[inline]
         pub fn is_used(&self) -> bool {
             !self.is_empty()
+        }
+
+        /// checkが対象のnodeからの遷移であるかを返す
+        pub fn is_transition_from(&self, idx: &NodeIdx) -> bool {
+            self.is_used() && NodeIdx::from(*self) == *idx
         }
     }
 

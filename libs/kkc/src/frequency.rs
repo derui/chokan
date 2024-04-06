@@ -24,6 +24,12 @@ pub struct ConversionFrequency {
     frequencies: HashMap<ConvertedResult, u64>,
 }
 
+impl Default for ConversionFrequency {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConversionFrequency {
     /// 新しい[ConversionFrequency]を生成する
     pub fn new() -> ConversionFrequency {

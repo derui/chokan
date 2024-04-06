@@ -1,7 +1,6 @@
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
-use chokan_dic::ChokanDictionary;
-use jsonrpsee::{core::RpcResult, MethodCallback, RpcModule};
+use jsonrpsee::{core::RpcResult, RpcModule};
 use kkc::{context::Context, get_candidates, get_tankan_candidates, Candidate};
 use serde::{Deserialize, Serialize};
 
