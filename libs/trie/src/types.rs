@@ -3,7 +3,7 @@ pub(crate) mod node {
 
     use serde::{Deserialize, Serialize};
 
-    use super::{base::Base, check::Check, label::Label, node_idx::NodeIdx};
+    use super::{base::Base, check::Check};
 
     /// 内部で利用するbase/checkのペア
     /// ここで定義されるbase/checkは、内部的には未使用領域を負の値で管理している。
@@ -386,7 +386,7 @@ pub(crate) mod label {
             let mut labels: Vec<_> = self.labels.values().map(|v| Label(*v)).collect();
             labels.push(Label::new(self.labels.len() as u8 + 1));
 
-            return labels;
+            labels
         }
     }
 
@@ -467,10 +467,7 @@ pub(crate) mod base {
 
     use serde::{Deserialize, Serialize};
 
-    use super::{
-        label::{Label, Labels},
-        node_idx::NodeIdx,
-    };
+    use super::{label::Label, node_idx::NodeIdx};
 
     /// Base自体を表す型
     ///

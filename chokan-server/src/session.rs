@@ -79,10 +79,10 @@ impl SessionStore {
     pub fn add_session(
         &mut self,
         id: &SessionId,
-        candidates: &Vec<RespondedCandidate>,
+        candidates: &[RespondedCandidate],
         context: &Context,
     ) {
-        let candidates = candidates.clone();
+        let candidates = candidates.to_owned();
 
         self.sessions.insert(
             id.clone(),
@@ -115,7 +115,7 @@ mod tests {
         // arrange
         let mut store = SessionStore::new();
         let id = SessionId::new();
-        store.add_session(&id, &vec![], &Context::normal());
+        store.add_session(&id, &[], &Context::normal());
 
         // act
         let ret = store.pop_session(&id);

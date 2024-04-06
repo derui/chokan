@@ -10,7 +10,7 @@ use crate::{context::Context, frequency::ConversionFrequency, graph::Node};
 /// 計算されたscore
 ///
 /// scoreは、計算の過程で、接続不可能なケースが存在しうる。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Score(i32);
 
 impl Score {

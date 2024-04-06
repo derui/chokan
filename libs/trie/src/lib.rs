@@ -96,9 +96,9 @@ impl Trie {
     pub fn insert(&mut self, key: &str) -> Result<(), ()> {
         let labels = self.labels.key_to_labels(key)?;
         let mut current = NodeIdx::head();
-        let mut need_restart = false;
+        let _need_restart = false;
 
-        for (i, label) in labels.iter().enumerate() {
+        for (_i, label) in labels.iter().enumerate() {
             // baseが未使用の場合は、xcheck経由で新しいbaseを計算する
             let base: Base;
             if let Some(b) = self.nodes.base_of(&current) {

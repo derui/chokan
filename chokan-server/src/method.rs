@@ -186,13 +186,10 @@ pub(crate) fn make_update_frequency_method(
                 })
                 .and_then(|(v, ctx)| v.body.to_string_only_independent().map(|v| (v, ctx)));
 
-            match word {
-                Some((word, context)) => {
-                    let mut freq = ctx.frequency.lock().unwrap();
+            if let Some((word, context)) = word {
+                let mut freq = ctx.frequency.lock().unwrap();
 
-                    freq.update_word(&word, &context);
-                }
-                _ => {}
+                freq.update_word(&word, &context);
             }
         }
 
