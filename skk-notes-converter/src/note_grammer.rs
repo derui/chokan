@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn parse_okuri() {
-        for (_, c) in "abcdefghijklmnopqrstuvwxyz".chars().enumerate() {
+        for c in "abcdefghijklmnopqrstuvwxyz".chars() {
             assert_eq!(note_parser::okuri_alpha(&c.to_string()), Ok(c.to_string()));
         }
 

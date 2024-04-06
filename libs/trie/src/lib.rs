@@ -98,7 +98,7 @@ impl Trie {
         let mut current = NodeIdx::head();
         let _need_restart = false;
 
-        for (_i, label) in labels.iter().enumerate() {
+        for label in labels.iter() {
             // baseが未使用の場合は、xcheck経由で新しいbaseを計算する
             let base: Base;
             if let Some(b) = self.nodes.base_of(&current) {

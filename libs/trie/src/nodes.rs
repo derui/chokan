@@ -39,11 +39,6 @@ impl Nodes {
         self.nodes.get(usize::from(*check_idx)).map(|v| v.base)
     }
 
-    /// [NodeIdx]が指すcheckを返す
-    fn check_unchecked(&self, check_idx: &NodeIdx) -> &Check {
-        &self.nodes[usize::from(*check_idx)].check
-    }
-
     /// [NodeIdx]が指すbaseを返す
     fn base_unchecked(&self, check_idx: &NodeIdx) -> &Base {
         &self.nodes[usize::from(*check_idx)].base
