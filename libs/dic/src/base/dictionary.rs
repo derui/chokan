@@ -3,7 +3,7 @@ use super::entry::Entry;
 /// 辞書全体を構成する型。
 /// この型は、辞書ファイルを読み込んで構築され、またentryの追加、削除が実施できる
 /// この辞書においては、同一の品詞などを追加することも可能になっている。
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Dictionary {
     entries: Vec<Entry>,
 }

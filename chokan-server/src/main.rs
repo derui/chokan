@@ -64,7 +64,18 @@ async fn main() -> anyhow::Result<()> {
     let user_dictionary_dir = args
         .user_dictionary_dir
         .map(|v| PathBuf::from(v).into_boxed_path());
-    let module = define_module(dictionary, user_dictionary_dir, args.number_of_conversions)?;
+    let user_pref = user_dictionary_dir
+        .and_then(|v| match UserPref::restore_user_pref(v) {
+            Ok(v) => Some(v),
+            Err(_) => None,
+        })
+        .unwrap_or(UserPref::new(
+            ConversionFrequency::new(),
+            Dictionary::new(vec![]),
+            None,
+        ));
+
+    let module = define_module(dictionary, user_pref, args.number_of_conversions)?;
 
     run_server(args.port, module).await?;
 
@@ -115,15 +126,11 @@ RPCモジュールを定義する。
 */
 fn define_module(
     dictionary: ChokanDictionary,
-    path: Option<Box<Path>>,
+    user_pref: UserPref,
     number_of_conversion: u8,
 ) -> anyhow::Result<RpcModule<method_context::MethodContext>> {
     let dictionary = Arc::new(Mutex::new(dictionary));
-    let user_pref = Arc::new(Mutex::new(user_pref::UserPref::new(
-        ConversionFrequency::new(),
-        Dictionary::new(vec![]),
-        path,
-    )));
+    let user_pref = Arc::new(Mutex::new(user_pref));
 
     let ctx = method_context::MethodContext::new(dictionary, user_pref.clone());
     let mut module = RpcModule::new(ctx);

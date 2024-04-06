@@ -18,7 +18,7 @@ enum ConvertedResult {
 /// 変換結果の頻度を保存するための構造体
 ///
 /// 頻度は、変換結果の文字列をキーとして、その変換結果を確定した回数を保存する。
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct ConversionFrequency {
     /// 変換結果と回数を保存する
     frequencies: HashMap<ConvertedResult, u64>,
