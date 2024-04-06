@@ -67,20 +67,34 @@ impl UserPref {
             Ok(v) if v => {
                 let path = user_directory.join(USER_FREQUENCY_NAME);
                 let frequency: ConversionFrequency = if path.exists() {
-                    let mut file = std::fs::File::open(path)?;
+                    let mut file = std::fs::File::open(path.clone())?;
                     let mut bytes = vec![];
                     file.read_to_end(&mut bytes)?;
-                    postcard::from_bytes(&bytes)?
+                    let v = postcard::from_bytes(&bytes)?;
+                    tracing::info!(
+                        "Restored user frequency information from {}",
+                        path.display()
+                    );
+                    v
                 } else {
                     ConversionFrequency::new()
                 };
 
                 let path = user_directory.join(USER_DICTIONARY_NAME);
-                let file = std::fs::File::open(path)?;
+                let user_dictionary = if path.exists() {
+                    let file = std::fs::File::open(path.clone())?;
 
-                let mut reader = StandardDictionaryReader::new(file);
-                let mut user_dictionary = Dictionary::new(vec![]);
-                reader.read_all(&mut user_dictionary)?;
+                    let mut reader = StandardDictionaryReader::new(file);
+                    let mut user_dictionary = Dictionary::new(vec![]);
+                    reader.read_all(&mut user_dictionary)?;
+                    tracing::info!(
+                        "Restored user frequency information from {}",
+                        path.display()
+                    );
+                    user_dictionary
+                } else {
+                    Dictionary::new(vec![])
+                };
 
                 Ok(UserPref::new(
                     frequency,
