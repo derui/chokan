@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.81"
 chokan-dic = { version = "0.1.0", path = "../chokan-dic" }
 clap = { version = "4.5.3", features = ["derive"] }
+dic = { version = "0.1.0", path = "../libs/dic" }
 jsonrpsee = { version = "0.22.3", features = ["server", "macros"] }
 kkc = { version = "0.1.0", path = "../libs/kkc" }
 postcard = { version = "1.0.8", features = ["alloc"] }

@@ -201,6 +201,7 @@ dependencies = [
  "anyhow",
  "chokan-dic",
  "clap",
+ "dic",
  "jsonrpsee",
  "kkc",
  "postcard",

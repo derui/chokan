@@ -88,8 +88,15 @@ pub(crate) fn make_get_candidates_method(
         let context = params.context.unwrap_or_default().into();
         let candidates: Vec<Candidate>;
         {
-            let freq = ctx.frequency.lock().unwrap();
-            candidates = get_candidates(&params.input, &ctx.dictionary.graph, &context, &freq, 100);
+            let dict = ctx.dictionary.lock().unwrap();
+            let user_pref = ctx.user_pref.lock().unwrap();
+            candidates = get_candidates(
+                &params.input,
+                &dict.graph,
+                &context,
+                user_pref.frequency(),
+                100,
+            );
         }
 
         let candidates = candidates
@@ -130,7 +137,8 @@ pub(crate) fn make_get_tankan_candidates_method(
 ) -> anyhow::Result<()> {
     module.register_method("GetTankanCandidates", |params, ctx| {
         let params = params.parse::<GetCandidatesRequest>()?;
-        let candidates = get_tankan_candidates(&params.input, &ctx.dictionary.tankan);
+        let dict = ctx.dictionary.lock().unwrap();
+        let candidates = get_tankan_candidates(&params.input, &dict.tankan);
 
         let candidates = candidates
             .into_iter()
@@ -166,9 +174,11 @@ pub struct UpdateFrequencyResponse {}
 /// # Arguments
 /// * `module` - 登録するmodule
 /// * `store` - sessionを管理するstore
+/// * `notifier` - 変換が完了したことを通知する
 pub(crate) fn make_update_frequency_method(
     module: &mut RpcModule<MethodContext>,
     store: Arc<Mutex<SessionStore>>,
+    notifier: Sender<()>,
 ) -> anyhow::Result<()> {
     module.register_method("UpdateFrequency", move |params, ctx| {
         let params = params.parse::<UpdateFrequencyRequest>()?;
@@ -187,11 +197,13 @@ pub(crate) fn make_update_frequency_method(
                 .and_then(|(v, ctx)| v.body.to_string_only_independent().map(|v| (v, ctx)));
 
             if let Some((word, context)) = word {
-                let mut freq = ctx.frequency.lock().unwrap();
+                let mut user_pref = ctx.user_pref.lock().unwrap();
 
-                freq.update_word(&word, &context);
+                user_pref.update_frequency(&word, &context);
             }
         }
+        // 成否に関わらずに送っておく
+        notifier.send(()).unwrap();
 
         RpcResult::Ok(UpdateFrequencyResponse {})
     })?;

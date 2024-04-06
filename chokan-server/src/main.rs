@@ -1,14 +1,15 @@
 use std::{
     fs::{self, File},
-    future,
+    future::{self},
     io::Read,
     net::SocketAddr,
-    path::Path,
-    sync::{Arc, Mutex},
+    path::{Path, PathBuf},
+    sync::{mpsc::Receiver, Arc, Mutex},
 };
 
 use chokan_dic::ChokanDictionary;
 use clap::Parser;
+use dic::base::dictionary::Dictionary;
 use jsonrpsee::{
     server::{RpcServiceBuilder, Server},
     RpcModule,
@@ -17,11 +18,14 @@ use kkc::frequency::ConversionFrequency;
 use postcard::from_bytes;
 
 use session::SessionStore;
+use tokio::task::JoinHandle;
 use tracing_subscriber::util::SubscriberInitExt;
+use user_pref::UserPref;
 
 mod method;
 mod method_context;
 mod session;
+mod user_pref;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -33,6 +37,17 @@ struct Args {
     /// 利用する辞書のパス
     #[arg(short, long)]
     dictionary_path: String,
+
+    /// ユーザー辞書を保存するdirectory。
+    /// 指定しない場合は、頻度とユーザー辞書は保存されない。
+    #[arg(short, long)]
+    user_dictionary_dir: Option<String>,
+
+    /// 保存するまでの変換回数のタイミングを指定する。
+    ///
+    /// デフォルトは100
+    #[arg(short, long, default_value_t = 100)]
+    number_of_conversions: u8,
 }
 
 #[tokio::main]
@@ -46,13 +61,45 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
     let dictionary = read_dictionary_from(&args.dictionary_path)?;
-    let module = define_module(dictionary)?;
+    let user_dictionary_dir = args
+        .user_dictionary_dir
+        .map(|v| PathBuf::from(v).into_boxed_path());
+    let module = define_module(dictionary, user_dictionary_dir, args.number_of_conversions)?;
 
     run_server(args.port, module).await?;
 
     let () = future::pending().await;
 
     Ok(())
+}
+
+/// 定期的にユーザー辞書を保存する処理をspawnする
+fn spawn_save_user_pref_per_count(
+    pref: Arc<Mutex<UserPref>>,
+    number_of_conversion: u8,
+    tx: Receiver<()>,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut conversion_counter: u32 = 0;
+        loop {
+            if let Ok(()) = tx.recv() {
+                if conversion_counter + 1 >= number_of_conversion as u32 {
+                    conversion_counter = 0;
+                    let pref = pref.lock().unwrap();
+                    match pref.save_user_dictionary() {
+                        Ok(()) => {
+                            tracing::debug!("User dictionary saved");
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to save user dictionary: {}", e);
+                        }
+                    }
+                } else {
+                    conversion_counter += 1;
+                }
+            }
+        }
+    })
 }
 
 /**
@@ -68,18 +115,25 @@ RPCモジュールを定義する。
 */
 fn define_module(
     dictionary: ChokanDictionary,
+    path: Option<Box<Path>>,
+    number_of_conversion: u8,
 ) -> anyhow::Result<RpcModule<method_context::MethodContext>> {
-    let ctx = method_context::MethodContext {
-        dictionary,
-        frequency: Mutex::new(ConversionFrequency::new()),
-    };
+    let dictionary = Arc::new(Mutex::new(dictionary));
+    let user_pref = Arc::new(Mutex::new(user_pref::UserPref::new(
+        ConversionFrequency::new(),
+        Dictionary::new(vec![]),
+        path,
+    )));
+
+    let ctx = method_context::MethodContext::new(dictionary, user_pref.clone());
     let mut module = RpcModule::new(ctx);
     let (session_sender, session_receiver) = std::sync::mpsc::channel();
+    let (conversion_notifier, conversion_reciever) = std::sync::mpsc::channel();
     let store = Arc::new(Mutex::new(SessionStore::new()));
 
     method::make_get_candidates_method(&mut module, session_sender)?;
     method::make_get_tankan_candidates_method(&mut module)?;
-    method::make_update_frequency_method(&mut module, store.clone())?;
+    method::make_update_frequency_method(&mut module, store.clone(), conversion_notifier)?;
 
     let store_in_thread = store.clone();
     // ここでのthreadは、後始末する必要がない
@@ -94,6 +148,7 @@ fn define_module(
             }
         }
     });
+    spawn_save_user_pref_per_count(user_pref.clone(), number_of_conversion, conversion_reciever);
 
     Ok(module)
 }
