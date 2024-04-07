@@ -61,11 +61,12 @@ impl Trie {
             current_labels.push(*label);
 
             // conflictしたlabel自体も対象に加えて、移動する方を決定する
-            if current_labels.len() < conflicted_labels.len() {
-                detect_to_move_base = (*node, current_labels);
-            } else {
-                detect_to_move_base = (conflicted_node, conflicted_labels);
-            }
+            // TODO: ここで自分自身のnodeを動かさないと、自分自身のnode自体がずれてしまう。
+            // if current_labels.len() < conflicted_labels.len() {
+            detect_to_move_base = (*node, current_labels);
+            // } else {
+            //     detect_to_move_base = (conflicted_node, conflicted_labels);
+            // }
         }
 
         // 全体が入る先を探索して、移動が必要なものを移動する
