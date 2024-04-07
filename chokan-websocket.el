@@ -143,6 +143,16 @@
   (let* ((conn (chokan-websocket--current-connection)))
     (jsonrpc-request conn :UpdateFrequency `(:session_id ,session-id :candidate_id ,candidate-id))))
 
+(defun chokan-websocket-register-word (word reading speech-kind)
+  "単語を登録する。
+
+`WORD' は単語、`READING' は読みである。 `SPEECH-KIND'は `GUESS'、 `COMMON', `PROPER'のいずれかである "
+  (let* ((conn (chokan-websocket--current-connection))
+         (kind (cond ((eq speech-kind 'guess) "Guess")
+                     ((eq speech-kind 'common) "CommonNoun")
+                     ((eq speech-kind 'proper) "ProperNoun"))))
+    (jsonrpc-request conn :RegisterWord `(:reading ,reading  :word ,word :kind ,kind))))
+
 ;; public functions
 
 (provide 'chokan-websocket)

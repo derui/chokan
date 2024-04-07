@@ -60,6 +60,7 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
    '(normal . chokan-websocket-get-candidates)
    '(tankan . chokan-websocket-get-tankan-candidates)
    '(update-frequency . chokan-websocket-update-frequency)
+   '(register-word . chokan-websocket-register-word)
    )
   "変換起動した文字列から、実際に候補を取得する関数のマッピング。
 
@@ -68,6 +69,7 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
 - `normal' : 通常の変換を行う場合の関数
 - `tankan' : 単漢字変換を行う場合
 - `update-frequency' : かな漢字変換の頻度を更新する
+- `register-word' : かな漢字変換の頻度を更新する
 
 関数は、`normal' および `tankan'は、 引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
 contextが存在しない場合はnilを渡す。
@@ -77,6 +79,9 @@ contextが存在しない場合はnilを渡す。
 `(:id session-id :candidates ((id . candidate)))'
 
 `update-frequency'は、その変換におけるsession idとcandidate idが渡される。
+
+`register-word' は、選択された漢字、その読みと品詞が渡される。
+  品詞が指定されていない場合は `GUESS' のシンボルが渡される。
 ")
 
 ;; buffer-local variable
@@ -1114,6 +1119,17 @@ contextは、以下のいずれかである。
   "次に入力するアルファベットを、大文字のアルファベットと同等にする"
   (interactive)
   (chokan--sticky-activate))
+
+(defun chokan-register-word (s e)
+  "指定した範囲を単語として登録する。
+
+追加の引数が追加された場合は、品詞を追加で設定する。
+"
+  (interactive "r")
+  (when-let* ((func (assoc 'register-word chokan-conversion-functions)))
+    (let* ((word (buffer-substring-no-properties s e))
+           (reading (read-string "読み")))
+      (funcall (cdr func) word reading 'guess))))
 
 ;; mode definition
 
