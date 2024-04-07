@@ -761,7 +761,7 @@ contextは、以下のいずれかである。
     (pcase kana
       (`() nil)
       ((and v (pred stringp))
-       (if (chokan--ja-p)
+       (if (not (chokan--ja-katakana-p))
            v
          (chokan--roman-hira-to-kata v))))))
 
@@ -998,10 +998,8 @@ contextは、以下のいずれかである。
 
 (defun chokan--katakana-enable ()
   "カタカナモードに遷移する"
-  
   (setq chokan--internal-mode 'katakana)
-  (setq cursor-type chokan-katakana-cursor-type)
-  )
+  (setq cursor-type chokan-katakana-cursor-type))
 
 (defun chokan--hiragana-enable ()
   "ひらがなモードに遷移する"
@@ -1019,7 +1017,8 @@ contextは、以下のいずれかである。
   "chokanを日本語入力モードに変更する"
   (interactive)
   (chokan-ascii-mode -1)
-  (chokan-ja-mode +1))
+  (chokan-ja-mode +1)
+  (chokan--hiragana-enable))
 
 (defun chokan-toggle-katakana ()
   "chokanの内部モードをカタカナ入力に変更する。
@@ -1054,6 +1053,15 @@ contextは、以下のいずれかである。
   "各種記号を入力する。記号は原則として変換起動するが、自分自身は下線部ではない。"
   (interactive)
   (chokan--insert t nil 'symbols))
+
+(defun chokan-through-key ()
+  "元々割り当てられているcommandを実行するが、変換起動は実行する"
+  (interactive)
+  (let ((chokan-ja-mode nil)
+        (old-func (key-binding (this-command-keys))))
+    (call-interactively old-func)
+    (chokan--finalize-inverse-if-possible t)
+    (chokan--launch-conversion-if-possible t)))
 
 (defun chokan-insert-tankan-start-key ()
   "単漢字変換を起動して文字を入力する"
@@ -1114,10 +1122,9 @@ contextは、以下のいずれかである。
 This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-ja-mode'.
 "
   :keymap chokan-ascii-mode-map
-  :after-hook (progn
+  :after-hook (progn 
                 (setq chokan--internal-mode 'ascii)
-                (setq cursor-type chokan-ascii-cursor-type)
-                ))
+                (setq cursor-type chokan-ascii-cursor-type)))
 
 ;;;###autoload
 (define-minor-mode chokan-ja-mode
@@ -1126,10 +1133,7 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-j
 This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-ascii-mode'.
 "
   :keymap chokan-ja-mode-map
-  :after-hook (progn
-                (setq chokan--internal-mode 'hiragana)
-                (setq cursor-type chokan-ja-cursor-type)
-                ))
+  :after-hook (chokan--hiragana-enable))
 
 (defun chokan-mode--activate ()
   "chokan-modeが起動するときに実行する処理をまとめた*関数"
@@ -1172,15 +1176,18 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
 (define-key chokan-ja-mode-map (kbd "C-h") #'chokan-next-candidate)
 (define-key chokan-ja-mode-map (kbd "C-g") #'chokan-previous-candidate)
-(define-key chokan-ja-mode-map (kbd "'") #'chokan-sticky)
+(define-key chokan-ja-mode-map (kbd ";") #'chokan-sticky)
 (define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
-(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" "<space>" "<return>"))
+(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" "'"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
+
+(define-key chokan-ja-mode-map (kbd "RET") #'chokan-through-key)
+(define-key chokan-ja-mode-map (kbd "SPC") #'chokan-through-key)
 
 ;; register input method
 
