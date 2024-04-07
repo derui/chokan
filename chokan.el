@@ -761,7 +761,7 @@ contextは、以下のいずれかである。
     (pcase kana
       (`() nil)
       ((and v (pred stringp))
-       (if (eq chokan--internal-mode 'hiragana)
+       (if (chokan--ja-p)
            v
          (chokan--roman-hira-to-kata v))))))
 
@@ -996,6 +996,18 @@ contextは、以下のいずれかである。
     ;; stickyはあらゆる入力で解除される
     (chokan--sticky-deactivate)))
 
+(defun chokan--katakana-enable ()
+  "カタカナモードに遷移する"
+  
+  (setq chokan--internal-mode 'katakana)
+  (setq cursor-type chokan-katakana-cursor-type)
+  )
+
+(defun chokan--hiragana-enable ()
+  "ひらがなモードに遷移する"
+  (setq chokan--internal-mode 'hiragana)
+  (setq cursor-type chokan-ja-cursor-type))
+
 ;; command definition
 (defun chokan-ascii ()
   "chokanをasciiモードに変更する"
@@ -1010,15 +1022,18 @@ contextは、以下のいずれかである。
   (chokan-ja-mode +1))
 
 (defun chokan-toggle-katakana ()
-  "chokanの内部モードをカタカナ入力に変更する"
+  "chokanの内部モードをカタカナ入力に変更する。
+
+カタカナモードに入ったタイミングで、変換起動される。
+"
   (interactive)
+  (chokan--finalize-inverse-if-possible t)
+  (chokan--launch-conversion-if-possible t)
+  
   (when (chokan--ja-p)
     (if (not (chokan--ja-katakana-p))
-        (progn 
-          (setq chokan--internal-mode 'katakana)
-          (setq cursor-type chokan-katakana-cursor-type))
-      (setq chokan--internal-mode 'hiragana)
-      (setq cursor-type chokan-ja-cursor-type))))
+        (chokan--katakana-enable)
+      (chokan--hiragana-enable))))
 
 (defun chokan-insert-normal-alphabet ()
   "変換起動をしないで文字を入力する"
@@ -1032,8 +1047,7 @@ contextは、以下のいずれかである。
   
   ;; 下線部を追加する場合は、カタカナモードからは強制的に離脱する
   (when  (chokan--ja-katakana-p)
-    (setq chokan--internal-mode 'hiragana)
-    (setq cursor-type 'chokan-ja-cursor-type))
+    (chokan--hiragana-enable))
   (chokan--insert t 'normal 'alphabet))
 
 (defun chokan-insert-symbol-key ()
