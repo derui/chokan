@@ -1127,7 +1127,7 @@ contextは、以下のいずれかである。
   (interactive "r")
   (when-let* ((func (assoc 'register-word chokan-conversion-functions)))
     (let* ((word (buffer-substring-no-properties s e))
-           (reading (read-string "読み")))
+           (reading (read-string (format "[辞書登録] <%s> : " word))))
       (funcall (cdr func) word reading 'guess))))
 
 ;; mode definition
