@@ -20,6 +20,47 @@ pub enum Speech {
 }
 
 impl Speech {
+    /// 単語の文字列から品詞を推測する
+    ///
+    /// ここでの推測は、主に動詞の活用を判定するものであり、かつ完全ではない。判定は以下の順に行う。
+    /// * 末尾が動詞の否定形である - **動詞**
+    /// * 末尾が形容詞の基本形である - **形容詞**
+    /// * 末尾が形容動詞の基本形である - **形容動詞**
+    /// * 上記以外の場合は、**一般名詞**として判定する
+    ///
+    /// # Arguments
+    /// * `word` - 送り仮名を含む単語
+    ///
+    /// # Returns
+    /// 推測された品詞と語幹
+    pub(crate) fn guess(word: &str) -> (Speech, String) {
+        let word = word.chars().collect::<Vec<_>>();
+
+        if word.ends_with(&['な', 'い']) && word.len() >= 3 {
+            let char = word[word.len() - 3];
+            if let Some(form) = VerbForm::guess_form(char) {
+                return (
+                    Speech::Verb(form),
+                    word[0..(word.len() - 3)].iter().collect(),
+                );
+            }
+        }
+        if word.ends_with(&['い']) {
+            return (
+                Speech::Adjective,
+                word[0..(word.len() - 1)].iter().collect(),
+            );
+        }
+        if word.ends_with(&['だ']) {
+            return (
+                Speech::AdjectivalVerb,
+                word[0..(word.len() - 1)].iter().collect(),
+            );
+        }
+
+        (Speech::Noun(NounVariant::Common), word.iter().collect())
+    }
+
     /// 各品詞の活用形の一覧を返す
     ///
     /// # Arguments
@@ -444,6 +485,53 @@ impl VerbForm {
         };
         vec.iter().cloned().collect()
     }
+
+    /// 文字に対応する活用形を推測する
+    ///
+    /// # Arguments
+    ///
+    /// * `ch` - 判定用の文字
+    ///
+    /// # Returns
+    /// 対応する活用形。存在しない場合はNone
+    pub fn guess_form(ch: char) -> Option<VerbForm> {
+        match ch {
+            // 五段活用
+            'か' | 'こ' => Some(VerbForm::Godan("カ".to_string())),
+            'が' | 'ご' => Some(VerbForm::Godan("ガ".to_string())),
+            'さ' | 'そ' => Some(VerbForm::Godan("サ".to_string())),
+            'た' | 'と' => Some(VerbForm::Godan("タ".to_string())),
+            'な' | 'の' => Some(VerbForm::Godan("ナ".to_string())),
+            'ば' | 'ぼ' => Some(VerbForm::Godan("バ".to_string())),
+            'ま' | 'も' => Some(VerbForm::Godan("マ".to_string())),
+            'ら' | 'ろ' => Some(VerbForm::Godan("ラ".to_string())),
+            'わ' | 'お' => Some(VerbForm::Godan("ワ".to_string())),
+            // 上一段活用
+            'い' => Some(VerbForm::KamiIchidan("ア".to_string())),
+            'き' => Some(VerbForm::KamiIchidan("カ".to_string())),
+            'ぎ' => Some(VerbForm::KamiIchidan("ガ".to_string())),
+            'し' => Some(VerbForm::KamiIchidan("サ".to_string())),
+            'じ' => Some(VerbForm::KamiIchidan("ザ".to_string())),
+            'ち' => Some(VerbForm::KamiIchidan("タ".to_string())),
+            'に' => Some(VerbForm::KamiIchidan("ナ".to_string())),
+            'び' => Some(VerbForm::KamiIchidan("バ".to_string())),
+            'み' => Some(VerbForm::KamiIchidan("マ".to_string())),
+            'り' => Some(VerbForm::KamiIchidan("ラ".to_string())),
+            // 下一段活用
+            'え' => Some(VerbForm::SimoIchidan("ア".to_string())),
+            'け' => Some(VerbForm::SimoIchidan("カ".to_string())),
+            'げ' => Some(VerbForm::SimoIchidan("ガ".to_string())),
+            'せ' => Some(VerbForm::SimoIchidan("サ".to_string())),
+            'ぜ' => Some(VerbForm::SimoIchidan("ザ".to_string())),
+            'て' => Some(VerbForm::SimoIchidan("タ".to_string())),
+            'で' => Some(VerbForm::SimoIchidan("ダ".to_string())),
+            'ね' => Some(VerbForm::SimoIchidan("ナ".to_string())),
+            'べ' => Some(VerbForm::SimoIchidan("バ".to_string())),
+            'め' => Some(VerbForm::SimoIchidan("マ".to_string())),
+            'れ' => Some(VerbForm::SimoIchidan("ラ".to_string())),
+            _ => None,
+        }
+    }
 }
 
 impl Display for VerbForm {
@@ -497,6 +585,7 @@ mod tests {
         assert!(!Speech::Counter.is_ancillary());
         assert!(Speech::Affix(AffixVariant::Prefix).is_ancillary());
     }
+
     #[test]
     fn test_affix_check() {
         // arrange
@@ -517,5 +606,153 @@ mod tests {
         assert!(!Speech::PreNounAdjectival.is_affix());
         assert!(!Speech::Counter.is_affix());
         assert!(Speech::Affix(AffixVariant::Prefix).is_affix());
+    }
+
+    #[test]
+    fn guess_speech() {
+        // arrange
+
+        // act
+
+        // assert
+        assert_eq!(
+            Speech::guess("食べない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("バ".to_string())),
+                "食".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("受けない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("カ".to_string())),
+                "受".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("告げない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("ガ".to_string())),
+                "告".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("見せない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("サ".to_string())),
+                "見".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("混ぜない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("ザ".to_string())),
+                "混".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("捨てない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("タ".to_string())),
+                "捨".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("茹でない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("ダ".to_string())),
+                "茹".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("尋ねない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("ナ".to_string())),
+                "尋".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("食べない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("バ".to_string())),
+                "食".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("求めない"),
+            (
+                Speech::Verb(VerbForm::SimoIchidan("マ".to_string())),
+                "求".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("書かない"),
+            (
+                Speech::Verb(VerbForm::Godan("カ".to_string())),
+                "書".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("探さない"),
+            (
+                Speech::Verb(VerbForm::Godan("サ".to_string())),
+                "探".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("勝たない"),
+            (
+                Speech::Verb(VerbForm::Godan("タ".to_string())),
+                "勝".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("死なない"),
+            (
+                Speech::Verb(VerbForm::Godan("ナ".to_string())),
+                "死".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("遊ばない"),
+            (
+                Speech::Verb(VerbForm::Godan("バ".to_string())),
+                "遊".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("読まない"),
+            (
+                Speech::Verb(VerbForm::Godan("マ".to_string())),
+                "読".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("切らない"),
+            (
+                Speech::Verb(VerbForm::Godan("ラ".to_string())),
+                "切".to_string()
+            )
+        );
+        assert_eq!(
+            Speech::guess("問わない"),
+            (
+                Speech::Verb(VerbForm::Godan("ワ".to_string())),
+                "問".to_string()
+            )
+        );
+
+        assert_eq!(
+            Speech::guess("大きい"),
+            (Speech::Adjective, "大き".to_string())
+        );
+        assert_eq!(
+            Speech::guess("綺麗だ"),
+            (Speech::AdjectivalVerb, "綺麗".to_string())
+        );
+        assert_eq!(
+            Speech::guess("一般"),
+            (Speech::Noun(NounVariant::Common), "一般".to_string())
+        );
     }
 }

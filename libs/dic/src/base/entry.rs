@@ -23,6 +23,35 @@ impl Entry {
             speech,
         }
     }
+
+    /// 品詞を推測してEntryを生成する
+    ///
+    /// 品詞の推定のため、reading/kanjiはいずれも否定形または形容詞・形容動詞の基本形である必要がある。
+    ///
+    /// # Arguments
+    /// * `reading` - 読み
+    /// * `kanji` - 漢字
+    ///
+    /// # Returns
+    /// 推測された品詞を持つEntry
+    pub fn new_guessed(reading: &str, kanji: &str) -> Entry {
+        let (speech, stem) = Speech::guess(kanji);
+
+        let len_diff = kanji.len() - stem.len();
+        if len_diff > 0 {
+            Entry {
+                stem,
+                stem_reading: reading[0..(reading.len() - len_diff)].to_string(),
+                speech,
+            }
+        } else {
+            Entry {
+                stem: stem.to_string(),
+                stem_reading: reading.to_string(),
+                speech,
+            }
+        }
+    }
 }
 
 impl Display for Entry {
@@ -248,5 +277,23 @@ mod tests {
             )),
             "こい does not contains"
         );
+    }
+
+    #[test]
+    fn guess_entry() {
+        // Arrange
+
+        // Act
+        let entry = Entry::new_guessed("たべない", "食べない");
+
+        // Assert
+        assert_eq!(
+            entry,
+            Entry::from_jisyo(
+                "た",
+                "食",
+                Speech::Verb(VerbForm::SimoIchidan("バ".to_string()))
+            )
+        )
     }
 }
