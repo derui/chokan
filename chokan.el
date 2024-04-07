@@ -636,7 +636,7 @@ w
   "同一のregexpにマッチする連続した文字列を返す"
   (save-excursion
     (let* ((current (point))
-           (char (buffer-substring-no-properties (1- current) current))
+           (char (buffer-substring-no-properties (max 1 (1- current)) current))
            ret)
       (while (string-match-p regexp char)
         (backward-char)
@@ -748,7 +748,8 @@ contextは、以下のいずれかである。
                 (eq cmd 'chokan-force-finalize)
                 (eq cmd 'chokan-toggle-katakana)
                 (eq cmd 'chokan-next-candidate)
-                (eq cmd 'chokan-previous-candidate))
+                (eq cmd 'chokan-previous-candidate)
+                (eq cmd 'chokan-through-key))
             nil)
            (t
             ;; self-insert-commandではない変更が行われた場合は、確定できていない文字を削除する
@@ -763,8 +764,7 @@ contextは、以下のいずれかである。
                         (start (car region))
                         (end (cdr region)))
               (when (<= start (point) end)
-                (chokan--finalize-inverse-if-possible t region)
-                (goto-char (+ (point) (- end start)))))))
+                (chokan--finalize-inverse-if-possible t region)))))
         (error nil)))))
 
 (defun chokan--roman-to-kana (alphabet)
@@ -973,12 +973,13 @@ contextは、以下のいずれかである。
               (candidate (nth chokan--conversion-candidate-pos (plist-get chokan--conversion-candidates :candidates))))
     (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil))
     (delete-overlay chokan--candidate-overlay)
-    (setq chokan--candidate-overlay nil)
 
-    (save-excursion
-      (delete-region (car region) (cdr region))
-      (goto-char (car region))
-      (insert (cdr candidate)))
+    (let ((current (point)))
+      (save-excursion
+        (delete-region (car region) (cdr region))
+        (goto-char (car region))
+        (insert (cdr candidate)))
+      )
 
     (when-let* ((func (assoc 'update-frequency chokan-conversion-functions)))
       (funcall (cdr func) session-id (car candidate)))))
@@ -1197,16 +1198,16 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 (define-key chokan-ja-mode-map (kbd "C-j") #'chokan-force-finalize)
 (define-key chokan-ja-mode-map (kbd "M-c") #'chokan-ascii)
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
-(define-key chokan-ja-mode-map (kbd "C-h") #'chokan-next-candidate)
-(define-key chokan-ja-mode-map (kbd "C-g") #'chokan-previous-candidate)
-(define-key chokan-ja-mode-map (kbd ";") #'chokan-sticky)
+(define-key chokan-ja-mode-map (kbd "C-n") #'chokan-next-candidate)
+(define-key chokan-ja-mode-map (kbd "C-p") #'chokan-previous-candidate)
+(define-key chokan-ja-mode-map (kbd "'") #'chokan-sticky)
 (define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
-(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" "'"))
+(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
 
 (define-key chokan-ja-mode-map (kbd "RET") #'chokan-through-key)
