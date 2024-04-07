@@ -391,6 +391,12 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
     ("Ja" . "じゃ")
     ("Ju" . "じゅ")
     ("Jo" . "じょ")
+    ("zya" . "じゃ")
+    ("zyu" . "じゅ")
+    ("zyo" . "じょ")
+    ("Zya" . "じゃ")
+    ("Zyu" . "じゅ")
+    ("Zyo" . "じょ")
 
     ("bya" . "びゃ")
     ("byu" . "びゅ")
@@ -758,7 +764,7 @@ contextは、以下のいずれかである。
                         (end (cdr region)))
               (when (<= start (point) end)
                 (chokan--finalize-inverse-if-possible t region)
-                (goto-char end)))))
+                (goto-char (+ (point) (- end start)))))))
         (error nil)))))
 
 (defun chokan--roman-to-kana (alphabet)
