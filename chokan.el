@@ -111,11 +111,11 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
   "変換対象とする文字を検索するための正規表現")
 
 (defvar chokan--numeral-context-regexp
-  "[0-9０-９]"
+  "[0-9０-９]+"
   "数字のcontextとして利用する文字列の正規表現")
 
 (defvar chokan--foreign-word-context-regexp
-  "[a-zA-Z]"
+  "[ア-ンー]+"
   "外来語のcontextとして利用する文字列の正規表現")
 
 
@@ -638,8 +638,8 @@ w
         (setq char (buffer-substring-no-properties (1- (point)) (point))))
       (seq-reverse ret))))
 
-(defun chokan--get-previous-context ()
-  "現在位置より前のcontextを取得する。contextは consの形式で返却され、carにはcontextの種別、cdrにはcontextの文字列が格納される。
+(defun chokan--get-previous-context (start)
+  "`START'のpointより前のcontextを取得する。contextは consの形式で返却され、carにはcontextの種別、cdrにはcontextの文字列が格納される。
 
 contextは、以下のいずれかである。
 
@@ -648,12 +648,14 @@ contextは、以下のいずれかである。
 - 連続したアルファベット :: type = `foreign-word'
 "
   (save-excursion
+    (goto-char start)
     (let* ((context-fw (chokan--same-type-string-backward chokan--foreign-word-context-regexp))
            (context-number (chokan--same-type-string-backward chokan--numeral-context-regexp)))
       (pcase (list context-fw context-number)
-        (`(,(pred numberp) ,_) (cons 'foreign-word context-fw))
-        (`(,_ ,(pred numberp)) (cons 'numeral context-number))
+        (`(,(pred (not null)) ,_) (cons 'foreign-word context-fw))
+        (`(,_ ,(pred (not null))) (cons 'numeral context-number))
         (_ '(normal))))))
+
 
 (defun chokan--get-conversion-region ()
   "現在の下線部があれば、その周辺で変換対象のregionと種別、さらにcontextを取得する。
@@ -668,7 +670,7 @@ contextは、以下のいずれかである。
                          (goto-char start)
                          (re-search-forward chokan--target-character-regexp current t)))
                   (detail (get-text-property start 'chokan-conversion-detail))
-                  (context (chokan--get-previous-context)))
+                  (context (chokan--get-previous-context start)))
         (list start end detail context)))))
 
 ;;;###autoload
