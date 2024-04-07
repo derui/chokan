@@ -7,11 +7,13 @@ use std::{
 use dic::{
     base::{
         dictionary::Dictionary,
+        entry::Entry,
         io::{DictionaryReader, DictionaryWriter},
+        speech::Speech,
     },
     standard::io::{StandardDictionaryReader, StandardDictionaryWriter},
 };
-use kkc::{context::Context, frequency::ConversionFrequency};
+use kkc::{context::Context, frequency::ConversionFrequency, Candidate};
 
 const USER_DICTIONARY_NAME: &str = "user.dic";
 const USER_FREQUENCY_NAME: &str = "frequency.bin";
@@ -49,6 +51,27 @@ impl UserPref {
     /// * `context` - コンテキスト
     pub fn update_frequency(&mut self, word: &str, context: &Context) {
         self.frequency.update_word(word, context);
+    }
+
+    /// ユーザー定義辞書に複合語を登録する
+    ///
+    /// ここでの複合語は、接辞が含まれるもののみに限っており、一般的に言う複合語とは異なる。
+    ///
+    /// # Arguments
+    /// * `candidate` - 対象のcandidate
+    pub fn update_compound_words(&mut self, candidate: &Candidate) -> Option<Entry> {
+        candidate
+            .to_string_with_affix()
+            .map(|(word, reading)| {
+                Entry::from_jisyo(
+                    &reading,
+                    &word,
+                    Speech::Noun(dic::base::speech::NounVariant::Common),
+                )
+            })
+            .inspect(|entry| {
+                self.user_dictionary.add_entry(entry.clone());
+            })
     }
 
     pub fn frequency(&self) -> &ConversionFrequency {
@@ -107,9 +130,7 @@ impl UserPref {
                 Dictionary::new(vec![]),
                 Some(user_directory.clone()),
             )),
-            Err(e) => {
-                return Err(anyhow::anyhow!("Failed to create directory: {}", e));
-            }
+            Err(e) => Err(anyhow::anyhow!("Failed to create directory: {}", e)),
         }
     }
 

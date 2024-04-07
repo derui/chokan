@@ -10,18 +10,10 @@ use crate::{context::Context, score::Score, GraphDictionary};
 /// 解析で利用するグラフと、それを入力文字列から構築する処理を提供する
 
 /// 各Nodeに対して設定されるconst
-#[derive(Debug, PartialEq, Clone, Eq, Hash, Copy)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash, Copy, Default)]
 pub struct NodeScore {
     // startからこのnodeまでのコスト
     cost_from_start: Score,
-}
-
-impl Default for NodeScore {
-    fn default() -> Self {
-        NodeScore {
-            cost_from_start: Default::default(),
-        }
-    }
 }
 
 impl From<NodeScore> for Score {
@@ -122,8 +114,8 @@ impl Node {
     /// EOS/BOSのついてはスコアという概念はないので、あくまで
     pub(crate) fn get_score(&self) -> NodeScore {
         match self {
-            Node::WordNode(_, _, score) => score.clone(),
-            Node::Virtual(_, _, score) => score.clone(),
+            Node::WordNode(_, _, score) => *score,
+            Node::Virtual(_, _, score) => *score,
             Node::EOS => Default::default(),
             Node::BOS => Default::default(),
         }
@@ -152,8 +144,8 @@ impl Node {
     /// 新しいNode
     fn clone_with(&self, pointer: NodePointer) -> Self {
         match self {
-            Self::WordNode(_, w, s) => Self::WordNode(pointer, w.clone(), s.clone()),
-            Self::Virtual(_, w, s) => Self::Virtual(pointer, w.clone(), s.clone()),
+            Self::WordNode(_, w, s) => Self::WordNode(pointer, w.clone(), *s),
+            Self::Virtual(_, w, s) => Self::Virtual(pointer, w.clone(), *s),
             // EOSとBOSはscoreがどうか？という判定自体しない
             Self::EOS => Self::EOS,
             Self::BOS => Self::BOS,
@@ -379,7 +371,7 @@ impl Graph {
                             ..
                         },
                         _,
-                    ) if node.start_at() == 0 => prefix_nodes.push(p.clone()),
+                    ) if node.start_at() == 0 => prefix_nodes.push(*p),
                     _ => (),
                 }
             }

@@ -1,9 +1,6 @@
 use std::collections::{BinaryHeap, HashMap};
 
-use dic::base::{
-    speech::{AffixVariant, Speech},
-    word::Word,
-};
+use dic::base::word::Word;
 use score::{Score, MIN_SCORE};
 use serde::{Deserialize, Serialize};
 
@@ -117,24 +114,28 @@ impl Candidate {
         }
     }
 
-    fn to_string_prefix(&self) -> Option<String> {
+    fn to_string_prefix(&self) -> Option<(String, String)> {
         match &self.current_node {
-            graph::Node::WordNode(_, w, _) if w.speech.is_prefix() => Some(w.word.iter().collect()),
+            graph::Node::WordNode(_, w, _) if w.speech.is_prefix() => {
+                Some((w.word.iter().collect(), w.reading.iter().collect()))
+            }
             _ => None,
         }
     }
 
-    fn to_string_suffix(&self) -> Option<String> {
+    fn to_string_suffix(&self) -> Option<(String, String)> {
         match &self.current_node {
-            graph::Node::WordNode(_, w, _) if w.speech.is_suffix() => Some(w.word.iter().collect()),
+            graph::Node::WordNode(_, w, _) if w.speech.is_suffix() => {
+                Some((w.word.iter().collect(), w.reading.iter().collect()))
+            }
             _ => None,
         }
     }
 
-    fn to_string_independent(&self) -> Option<String> {
+    fn to_string_independent(&self) -> Option<(String, String)> {
         match &self.current_node {
             graph::Node::WordNode(_, w, _) if !w.speech.is_ancillary() => {
-                Some(w.word.iter().collect())
+                Some((w.word.iter().collect(), w.reading.iter().collect()))
             }
             _ => None,
         }
@@ -155,8 +156,8 @@ impl Candidate {
     /// - 接頭辞 + 自立語 + 接尾辞
     ///
     /// # Returns
-    /// 接辞と自立語をセットで取得した文字列。candidateとして接辞が含まれない場合にはNoneを返す
-    pub fn to_string_with_affix(&self) -> Option<String> {
+    /// 接辞と自立語をセットで取得した漢字と読みのタプル。candidateとして接辞が含まれない場合にはNoneを返す
+    pub fn to_string_with_affix(&self) -> Option<(String, String)> {
         let current = self;
         let next = self.next.as_ref().filter(|v| v.is_word_node());
         let next_to_next = self
@@ -172,13 +173,14 @@ impl Candidate {
             // 接頭と接尾が両方あるとして検定
             (Some(next), Some(next_to_next)) => {
                 let prefix = current.to_string_prefix();
-                let independent = next.to_string_only_independent();
+                let independent = next.to_string_independent();
                 let suffix = next_to_next.to_string_suffix();
 
                 match (prefix, independent, suffix) {
-                    (Some(prefix), Some(independent), Some(suffix)) => {
-                        Some(format!("{}{}{}", prefix, independent, suffix))
-                    }
+                    (Some(prefix), Some(independent), Some(suffix)) => Some((
+                        format!("{}{}{}", prefix.0, independent.0, suffix.0),
+                        format!("{}{}{}", prefix.1, independent.1, suffix.1),
+                    )),
                     _ => None,
                 }
             }
@@ -190,12 +192,14 @@ impl Candidate {
                 let next_independent = next.to_string_independent();
 
                 match (prefix, next_independent, independent, suffix) {
-                    (Some(prefix), Some(independent), None, None) => {
-                        Some(format!("{}{}", prefix, independent))
-                    }
-                    (None, None, Some(independent), Some(suffix)) => {
-                        Some(format!("{}{}", independent, suffix))
-                    }
+                    (Some(prefix), Some(independent), None, None) => Some((
+                        format!("{}{}", prefix.0, independent.0),
+                        format!("{}{}", prefix.1, independent.1),
+                    )),
+                    (None, None, Some(independent), Some(suffix)) => Some((
+                        format!("{}{}", independent.0, suffix.0),
+                        format!("{}{}", independent.1, suffix.1),
+                    )),
                     _ => None,
                 }
             }
@@ -318,7 +322,7 @@ pub fn get_tankan_candidates(input: &str, dic: &TankanDictionary) -> Vec<String>
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashSet, fmt::Pointer};
+    use std::collections::HashSet;
 
     use dic::base::speech::{AffixVariant, NounVariant, Speech};
 
@@ -442,7 +446,7 @@ mod tests {
         let ret = c.to_string_with_affix();
 
         // assert
-        assert_eq!(ret, Some("あいう".to_string()))
+        assert_eq!(ret, Some(("あいう".to_string(), "あいう".to_string())))
     }
     #[test]
     fn candidate_with_suffix() {
@@ -479,7 +483,7 @@ mod tests {
         let ret = c.to_string_with_affix();
 
         // assert
-        assert_eq!(ret, Some("あう".to_string()))
+        assert_eq!(ret, Some(("あう".to_string(), "あう".to_string())))
     }
 
     #[test]
@@ -517,6 +521,6 @@ mod tests {
         let ret = c.to_string_with_affix();
 
         // assert
-        assert_eq!(ret, Some("あい".to_string()))
+        assert_eq!(ret, Some(("あい".to_string(), "あい".to_string())))
     }
 }
