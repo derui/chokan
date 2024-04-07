@@ -79,6 +79,10 @@ impl UserPref {
         &self.frequency
     }
 
+    pub fn user_dictionary(&self) -> &Dictionary {
+        &self.user_dictionary
+    }
+
     /// ユーザーごとの設定を復元する
     ///
     /// # Arguments

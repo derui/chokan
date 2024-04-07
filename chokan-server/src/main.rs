@@ -60,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
         .try_init()?;
 
     let args = Args::parse();
-    let dictionary = read_dictionary_from(&args.dictionary_path)?;
+    let mut dictionary = read_dictionary_from(&args.dictionary_path)?;
     let user_dictionary_dir = args
         .user_dictionary_dir
         .map(|v| PathBuf::from(v).into_boxed_path());
@@ -74,6 +74,27 @@ async fn main() -> anyhow::Result<()> {
             Dictionary::new(vec![]),
             None,
         ));
+
+    {
+        for e in user_pref.user_dictionary().entries_ref().iter() {
+            let words: Vec<Word> = e.into();
+            for word in words {
+                let reading = word.reading.iter().collect::<String>();
+                let _wording = word.word.iter().collect::<String>();
+                let _ = dictionary.graph.standard_trie.insert(&reading);
+                dictionary
+                    .graph
+                    .standard_dic
+                    .entry(reading)
+                    .and_modify(|v| v.push(word.clone()))
+                    .or_insert(vec![word]);
+            }
+        }
+        tracing::info!(
+            "Merged user dictionary {} words",
+            user_pref.user_dictionary().entries().len()
+        );
+    }
 
     let module = define_module(dictionary, user_pref, args.number_of_conversions)?;
 

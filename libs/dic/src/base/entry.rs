@@ -47,6 +47,20 @@ impl From<Entry> for Vec<Word> {
     }
 }
 
+impl From<&Entry> for Vec<Word> {
+    /// Entryから活用した形式一覧をWordのリストに変換する
+    fn from(val: &Entry) -> Self {
+        let mut words = Vec::new();
+        let forms = &val.speech.to_forms(&val.stem, &val.stem_reading);
+
+        for (formed, form_reading) in forms {
+            words.push(Word::new(formed, form_reading, val.speech.clone()));
+        }
+
+        words
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::base::speech::VerbForm;
