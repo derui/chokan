@@ -10,10 +10,18 @@ use crate::{context::Context, score::Score, GraphDictionary};
 /// 解析で利用するグラフと、それを入力文字列から構築する処理を提供する
 
 /// 各Nodeに対して設定されるconst
-#[derive(Debug, PartialEq, Clone, Eq, Hash, Default)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash, Copy)]
 pub struct NodeScore {
     // startからこのnodeまでのコスト
     cost_from_start: Score,
+}
+
+impl Default for NodeScore {
+    fn default() -> Self {
+        NodeScore {
+            cost_from_start: Default::default(),
+        }
+    }
 }
 
 impl From<NodeScore> for Score {
@@ -23,7 +31,7 @@ impl From<NodeScore> for Score {
 }
 
 /// 構築が完了したgraphにおいて、安全なアクセスを提供するnew type
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash, Copy)]
 pub struct NodePointer(usize, usize);
 
 impl NodePointer {
@@ -34,7 +42,7 @@ impl NodePointer {
     ///
     /// # Returns
     /// 新しいNodePointer
-    fn new(index_at_input: usize, index_at_words: usize) -> NodePointer {
+    pub fn new(index_at_input: usize, index_at_words: usize) -> NodePointer {
         NodePointer(index_at_input, index_at_words)
     }
 

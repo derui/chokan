@@ -96,6 +96,30 @@ impl Speech {
             Speech::Affix(_) => true,
         }
     }
+
+    /// 該当の品詞が、接辞かどうかを返す
+    pub fn is_affix(&self) -> bool {
+        match self {
+            Speech::Affix(_) => true,
+            _ => false,
+        }
+    }
+
+    /// 該当の品詞が、接頭辞かどうかを返す
+    pub fn is_prefix(&self) -> bool {
+        match self {
+            Speech::Affix(AffixVariant::Prefix) => true,
+            _ => false,
+        }
+    }
+
+    /// 該当の品詞が、接尾辞かどうかを返す
+    pub fn is_suffix(&self) -> bool {
+        match self {
+            Speech::Affix(AffixVariant::Suffix) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for Speech {
@@ -472,5 +496,26 @@ mod tests {
         assert!(!Speech::PreNounAdjectival.is_ancillary());
         assert!(!Speech::Counter.is_ancillary());
         assert!(Speech::Affix(AffixVariant::Prefix).is_ancillary());
+    }
+    #[test]
+    fn test_affix_check() {
+        // arrange
+
+        // act
+
+        // assert
+        // 一通りの品詞をcheckする
+        assert!(!Speech::Noun(NounVariant::Common).is_affix());
+        assert!(!Speech::Verb(VerbForm::Godan("カ".to_string())).is_affix());
+        assert!(!Speech::Adjective.is_affix());
+        assert!(!Speech::Adverb.is_affix());
+        assert!(!Speech::AdjectivalVerb.is_affix());
+        assert!(!Speech::Verbatim.is_affix());
+        assert!(!Speech::Conjunction.is_affix());
+        assert!(!Speech::Particle(ParticleType::Other).is_affix());
+        assert!(!Speech::AuxiliaryVerb.is_affix());
+        assert!(!Speech::PreNounAdjectival.is_affix());
+        assert!(!Speech::Counter.is_affix());
+        assert!(Speech::Affix(AffixVariant::Prefix).is_affix());
     }
 }

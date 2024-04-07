@@ -1,6 +1,9 @@
 use std::collections::{BinaryHeap, HashMap};
 
-use dic::base::word::Word;
+use dic::base::{
+    speech::{AffixVariant, Speech},
+    word::Word,
+};
 use score::{Score, MIN_SCORE};
 use serde::{Deserialize, Serialize};
 
@@ -111,6 +114,92 @@ impl Candidate {
                 .next
                 .as_ref()
                 .and_then(|v| v.to_string_only_independent()),
+        }
+    }
+
+    fn to_string_prefix(&self) -> Option<String> {
+        match &self.current_node {
+            graph::Node::WordNode(_, w, _) if w.speech.is_prefix() => Some(w.word.iter().collect()),
+            _ => None,
+        }
+    }
+
+    fn to_string_suffix(&self) -> Option<String> {
+        match &self.current_node {
+            graph::Node::WordNode(_, w, _) if w.speech.is_suffix() => Some(w.word.iter().collect()),
+            _ => None,
+        }
+    }
+
+    fn to_string_independent(&self) -> Option<String> {
+        match &self.current_node {
+            graph::Node::WordNode(_, w, _) if !w.speech.is_ancillary() => {
+                Some(w.word.iter().collect())
+            }
+            _ => None,
+        }
+    }
+
+    fn is_word_node(&self) -> bool {
+        match &self.current_node {
+            graph::Node::WordNode(_, _, _) => true,
+            _ => false,
+        }
+    }
+
+    /// 接辞と自立語をセットで取得する
+    ///
+    /// ここで取得するパターンは、以下のいずれかのみである。
+    /// - 接頭辞 + 自立語
+    /// - 自立語 + 接尾辞
+    /// - 接頭辞 + 自立語 + 接尾辞
+    ///
+    /// # Returns
+    /// 接辞と自立語をセットで取得した文字列。candidateとして接辞が含まれない場合にはNoneを返す
+    pub fn to_string_with_affix(&self) -> Option<String> {
+        let current = self;
+        let next = self.next.as_ref().filter(|v| v.is_word_node());
+        let next_to_next = self
+            .next
+            .as_ref()
+            .and_then(|v| v.next.as_ref().filter(|v| v.is_word_node()));
+
+        if !current.is_word_node() {
+            return None;
+        }
+
+        match (next, next_to_next) {
+            // 接頭と接尾が両方あるとして検定
+            (Some(next), Some(next_to_next)) => {
+                let prefix = current.to_string_prefix();
+                let independent = next.to_string_only_independent();
+                let suffix = next_to_next.to_string_suffix();
+
+                match (prefix, independent, suffix) {
+                    (Some(prefix), Some(independent), Some(suffix)) => {
+                        Some(format!("{}{}{}", prefix, independent, suffix))
+                    }
+                    _ => None,
+                }
+            }
+            // 接頭または接辞として検定
+            (Some(next), None) => {
+                let prefix = current.to_string_prefix();
+                let independent = current.to_string_independent();
+                let suffix = next.to_string_suffix();
+                let next_independent = next.to_string_independent();
+
+                match (prefix, next_independent, independent, suffix) {
+                    (Some(prefix), Some(independent), None, None) => {
+                        Some(format!("{}{}", prefix, independent))
+                    }
+                    (None, None, Some(independent), Some(suffix)) => {
+                        Some(format!("{}{}", independent, suffix))
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
         }
     }
 }
@@ -229,11 +318,15 @@ pub fn get_tankan_candidates(input: &str, dic: &TankanDictionary) -> Vec<String>
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fmt::Pointer};
 
-    use dic::base::speech::{NounVariant, Speech};
+    use dic::base::speech::{AffixVariant, NounVariant, Speech};
 
-    use crate::{context::Context, test_dic::LABELS};
+    use crate::{
+        context::Context,
+        graph::{NodePointer, NodeScore},
+        test_dic::LABELS,
+    };
 
     use super::*;
 
@@ -303,5 +396,127 @@ mod tests {
             HashSet::from_iter(result.iter().map(|c| c.to_string())),
             HashSet::from(["此れでいける".to_string(),])
         )
+    }
+
+    #[test]
+    fn candidate_with_prefix_suffix() {
+        // arrange
+        let score: NodeScore = Default::default();
+        let np = NodePointer::new(0, 0);
+
+        let c = Candidate {
+            current_node: graph::Node::WordNode(
+                np,
+                Word::new("あ", "あ", Speech::Affix(AffixVariant::Prefix)),
+                score,
+            ),
+            next: Some(Box::new(Candidate {
+                current_node: graph::Node::WordNode(
+                    np,
+                    Word::new("い", "い", Speech::Noun(NounVariant::Common)),
+                    score,
+                ),
+                next: Some(Box::new(Candidate {
+                    current_node: graph::Node::WordNode(
+                        np,
+                        Word::new("う", "う", Speech::Affix(AffixVariant::Suffix)),
+                        score,
+                    ),
+                    next: Some(Box::new(Candidate {
+                        current_node: graph::Node::Virtual(np, vec!['i'], score),
+                        next: None,
+                        score: MIN_SCORE,
+                        priority: 0,
+                    })),
+                    score: MIN_SCORE,
+                    priority: 0,
+                })),
+                score: MIN_SCORE,
+                priority: 0,
+            })),
+            score: MIN_SCORE,
+            priority: 0,
+        };
+
+        // act
+        let ret = c.to_string_with_affix();
+
+        // assert
+        assert_eq!(ret, Some("あいう".to_string()))
+    }
+    #[test]
+    fn candidate_with_suffix() {
+        // arrange
+        let score: NodeScore = Default::default();
+        let np = NodePointer::new(0, 0);
+
+        let c = Candidate {
+            current_node: graph::Node::WordNode(
+                np,
+                Word::new("あ", "あ", Speech::Noun(NounVariant::Common)),
+                score,
+            ),
+            next: Some(Box::new(Candidate {
+                current_node: graph::Node::WordNode(
+                    np,
+                    Word::new("う", "う", Speech::Affix(AffixVariant::Suffix)),
+                    score,
+                ),
+                next: Some(Box::new(Candidate {
+                    current_node: graph::Node::Virtual(np, vec!['i'], score),
+                    next: None,
+                    score: MIN_SCORE,
+                    priority: 0,
+                })),
+                score: MIN_SCORE,
+                priority: 0,
+            })),
+            score: MIN_SCORE,
+            priority: 0,
+        };
+
+        // act
+        let ret = c.to_string_with_affix();
+
+        // assert
+        assert_eq!(ret, Some("あう".to_string()))
+    }
+
+    #[test]
+    fn candidate_with_prefix() {
+        // arrange
+        let score: NodeScore = Default::default();
+        let np = NodePointer::new(0, 0);
+
+        let c = Candidate {
+            current_node: graph::Node::WordNode(
+                np,
+                Word::new("あ", "あ", Speech::Affix(AffixVariant::Prefix)),
+                score,
+            ),
+            next: Some(Box::new(Candidate {
+                current_node: graph::Node::WordNode(
+                    np,
+                    Word::new("い", "い", Speech::Noun(NounVariant::Common)),
+                    score,
+                ),
+                next: Some(Box::new(Candidate {
+                    current_node: graph::Node::Virtual(np, vec!['i'], score),
+                    next: None,
+                    score: MIN_SCORE,
+                    priority: 0,
+                })),
+                score: MIN_SCORE,
+                priority: 0,
+            })),
+            score: MIN_SCORE,
+            priority: 0,
+        };
+
+        // act
+        let ret = c.to_string_with_affix();
+
+        // assert
+        assert_eq!(ret, Some("あい".to_string()))
     }
 }
