@@ -56,12 +56,7 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
   "Keymap for `chokan-ja-mode'. ")
 
 (defvar chokan-conversion-functions
-  (list
-   '(normal . chokan-websocket-get-candidates)
-   '(tankan . chokan-websocket-get-tankan-candidates)
-   '(update-frequency . chokan-websocket-update-frequency)
-   '(register-word . chokan-websocket-register-word)
-   )
+  nil
   "変換起動した文字列から、実際に候補を取得する関数のマッピング。
 
 マッピングのキーとしては、次が利用可能である。
@@ -744,7 +739,10 @@ contextは、以下のいずれかである。
                 (eq cmd 'chokan-insert-conversion-start-key)
                 (eq cmd 'chokan-insert-symbol-key)
                 (eq cmd 'chokan-insert-tankan-start-key)
-                (eq cmd 'chokan-force-finalize))
+                (eq cmd 'chokan-force-finalize)
+                (eq cmd 'chokan-toggle-katakana)
+                (eq cmd 'chokan-next-candidate)
+                (eq cmd 'chokan-previous-candidate))
             nil)
            (t
             ;; self-insert-commandではない変更が行われた場合は、確定できていない文字を削除する
@@ -759,7 +757,8 @@ contextは、以下のいずれかである。
                         (start (car region))
                         (end (cdr region)))
               (when (<= start (point) end)
-                (chokan--finalize-inverse-if-possible t region)))))
+                (chokan--finalize-inverse-if-possible t region)
+                (goto-char end)))))
         (error nil)))))
 
 (defun chokan--roman-to-kana (alphabet)

@@ -141,11 +141,17 @@ fn spawn_save_user_pref_per_count(
 /// * `entry_receiver` - 更新されたエントリを受信するためのchannel
 fn spawn_update_dictionary_with_entry(
     dict: Arc<Mutex<ChokanDictionary>>,
+    user_pref: Arc<Mutex<UserPref>>,
     tx: Receiver<Entry>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         loop {
             if let Ok(entry) = tx.recv() {
+                {
+                    let mut user_pref = user_pref.lock().unwrap();
+                    user_pref.user_dictionary_mut().add_entry(entry.clone());
+                }
+
                 let mut dict = dict.lock().unwrap();
                 let words: Vec<Word> = entry.into();
 
@@ -214,7 +220,7 @@ fn define_module(
         }
     });
     spawn_save_user_pref_per_count(user_pref.clone(), number_of_conversion, conversion_reciever);
-    spawn_update_dictionary_with_entry(dictionary.clone(), entry_reciever);
+    spawn_update_dictionary_with_entry(dictionary.clone(), user_pref.clone(), entry_reciever);
 
     Ok(module)
 }

@@ -83,6 +83,10 @@ impl UserPref {
         &self.user_dictionary
     }
 
+    pub fn user_dictionary_mut(&mut self) -> &mut Dictionary {
+        &mut self.user_dictionary
+    }
+
     /// ユーザーごとの設定を復元する
     ///
     /// # Arguments
@@ -115,10 +119,7 @@ impl UserPref {
                     let mut reader = StandardDictionaryReader::new(file);
                     let mut user_dictionary = Dictionary::new(vec![]);
                     reader.read_all(&mut user_dictionary)?;
-                    tracing::info!(
-                        "Restored user frequency information from {}",
-                        path.display()
-                    );
+                    tracing::info!("Restored user dictionary from {}", path.display());
                     user_dictionary
                 } else {
                     Dictionary::new(vec![])

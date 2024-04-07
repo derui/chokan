@@ -155,4 +155,14 @@
 
 ;; public functions
 
+(defun chokan-websocket-setup ()
+  "chokanにwebsocketを利用するように設定する"
+  
+  (setq chokan-conversion-functions (list
+                                     '(normal . chokan-websocket-get-candidates)
+                                     '(tankan . chokan-websocket-get-tankan-candidates)
+                                     '(update-frequency . chokan-websocket-update-frequency)
+                                     '(register-word . chokan-websocket-register-word)
+                                     )))
+
 (provide 'chokan-websocket)
