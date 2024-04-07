@@ -196,8 +196,9 @@ fn define_module(
         &mut module,
         store.clone(),
         conversion_notifier,
-        entry_sender,
+        entry_sender.clone(),
     )?;
+    method::make_register_word(&mut module, entry_sender.clone())?;
 
     let store_in_thread = store.clone();
     // ここでのthreadは、後始末する必要がない

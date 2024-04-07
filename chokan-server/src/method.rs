@@ -1,6 +1,9 @@
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
-use dic::base::entry::Entry;
+use dic::base::{
+    entry::Entry,
+    speech::{NounVariant, Speech},
+};
 use jsonrpsee::{core::RpcResult, RpcModule};
 use kkc::{context::Context, get_candidates, get_tankan_candidates, Candidate};
 use serde::{Deserialize, Serialize};
@@ -210,6 +213,72 @@ pub(crate) fn make_update_frequency_method(
         notifier.send(()).unwrap();
 
         RpcResult::Ok(UpdateFrequencyResponse {})
+    })?;
+
+    Ok(())
+}
+
+/// 登録する単語の品詞の種類
+///
+/// 基本的に動詞・形容詞・形容動詞は推測できるため、名詞の区別のみ行う
+/// 固有名詞は、固有名詞を優先する際に使う
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RegisterWordKind {
+    /// 推測した品詞を使う
+    Guess,
+    /// 一般名詞
+    CommonNoun,
+    /// 固有名詞
+    ProperNoun,
+}
+
+/// 単語を登録するrequest
+///
+/// `reading`と`word`は、それぞれ一対一で対応している必要があり、 `食べない` という動詞を登録する場合は、 `たべない` と入力する必要がある
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RegisterWordRequest {
+    /// 種別
+    kind: RegisterWordKind,
+    /// 単語の読み
+    reading: String,
+    /// 単語
+    word: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RegisterWordResponse {}
+
+/// UpdateFrequency の実装を登録する
+///
+/// 内部でMutexを利用しているため、ここ以外でlockを取得している場所と同時に呼び出すとデッドロックが発生する可能性がある
+///
+/// # Arguments
+/// * `module` - 登録するmodule
+/// * `entry_updater` - 単語を登録するためのchannel
+pub(crate) fn make_register_word(
+    module: &mut RpcModule<MethodContext>,
+    entry_updater: Sender<Entry>,
+) -> anyhow::Result<()> {
+    module.register_method("RegisterWord", move |params, ctx| {
+        let params = params.parse::<RegisterWordRequest>()?;
+        {
+            let entry = match params.kind {
+                RegisterWordKind::Guess => Entry::new_guessed(&params.reading, &params.word),
+                RegisterWordKind::CommonNoun => Entry::from_jisyo(
+                    &params.reading,
+                    &params.word,
+                    Speech::Noun(NounVariant::Common),
+                ),
+                RegisterWordKind::ProperNoun => Entry::from_jisyo(
+                    &params.reading,
+                    &params.word,
+                    Speech::Noun(NounVariant::Proper),
+                ),
+            };
+            entry_updater.send(entry).unwrap();
+        }
+
+        RpcResult::Ok(RegisterWordResponse {})
     })?;
 
     Ok(())
