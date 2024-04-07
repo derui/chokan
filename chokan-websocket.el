@@ -110,7 +110,7 @@
   "contextをserver向けに変換する"
   (cond
    ((eq name 'normal) "Normal")
-   ((eq name 'foreign-word) "BorrowedWord")
+   ((eq name 'foreign-word) "ForeignWord")
    ((eq name 'numeral) "Numeral")))
 
 (defun chokan-websocket-get-candidates (input ctx)
