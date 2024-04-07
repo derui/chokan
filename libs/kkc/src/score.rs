@@ -85,7 +85,7 @@ pub fn get_node_score(
             let frequency =
                 frequencies.get_frequency_of_word(&w.word.iter().collect::<String>(), context);
             Score(
-                ((frequency % 1000) + w.reading.len() as u64)
+                ((frequency % 1000) + (w.reading.len() as u64) * 2)
                     .try_into()
                     .unwrap(),
             )
@@ -173,17 +173,17 @@ fn get_edge_score_between_words(_context: &Context, prev: &Word, current: &Word)
         (Speech::Verb(_), Speech::Particle(ParticleType::Conjunctive)) => Score(2),
         (Speech::AuxiliaryVerb, Speech::Particle(ParticleType::Conjunctive)) => Score(2),
         // 副助詞は色々つくことができる
-        (_, Speech::Particle(ParticleType::Adverbial)) => Score(2),
+        (_, Speech::Particle(ParticleType::Adverbial)) => Score(1),
         // 終助詞は文末につくが、文末を保証するのがむずかしいので、副助詞と同様にする
-        (_, Speech::Particle(ParticleType::SentenceFinal)) => Score(2),
+        (_, Speech::Particle(ParticleType::SentenceFinal)) => Score(1),
         // 助動詞は用言の後につく
         (Speech::Verb(_), Speech::AuxiliaryVerb) => Score(2),
         // 接頭辞は動詞または名詞の前につく
-        (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(2),
-        (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(2),
+        (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(1),
+        (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(1),
         // 接尾辞は動詞または名詞の後につく。ただしかな漢字変換では、基本的に接尾辞は名詞の後につく
-        (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(2),
-        (Speech::Verb(_), Speech::Affix(AffixVariant::Suffix)) => Score(2),
+        (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
+        (Speech::Verb(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
 
         // 上記以外は接続しないものとして扱う
         _ => Score(-1),
