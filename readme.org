@@ -1,0 +1,77 @@
+* Chokan
+Chokanは、 *ちょっとKanzen* の頭文字をとった、日本語入力の一方式です。
+
+** Kanzenとは
+https://www.nue.org/nue/tao/kanzen/wdj.html
+
+[[https://ja.wikipedia.org/wiki/SKK][SKK]]の開発において、参考にしたとされるかな漢字変換システムです。
+
+** 特徴
+- ほぼオリジナルのKanzenを元にした変換処理
+- SKKの方針も参考にした、より現実的なキーバインド
+  - 現代のEmacsでは受け入れ難いキーバインドについては別に割り当てています
+- 現代的なスタックで再構築
+- Emacsネイティブで動作するが、フロントエンド自体は他でも利用できるように仕立て直した
+- 辞書はSKKを利用して動的に構成可能
+
+
+* インストール
+現時点では、chokanはローカルでビルドすることを前提としています。ビルドするにあたって、以下のツールキットが必要です。
+
+- Rust
+- Cargo
+  - [[https://rustup.rs/][rustup]]でのインストールを推奨します
+- [[https://taskfile.dev/][Task]]
+  - 辞書の構築時に必要です
+
+
+
+
+** ビルド
+ビルドについては以下のコマンドを実行するのみです。
+
+#+begin_src shell
+  $ cargo install --release
+#+end_src
+
+** 辞書の構築
+chokanで利用する辞書は、速度のために、各ユーザーの環境上で構築する必要があります。
+
+#+begin_src shell
+  $ task make-dic
+#+end_src
+
+実行すると、 ~chokan-dic/dictionary.dat~ が作成されます。このファイルは、任意の場所に移動することが出来ます。
+
+* サーバーの実行
+chokanはサーバー・クライアントシステムを採用しているため、サーバーの起動が必要です。
+
+#+begin_src shell
+  $ chokan-server -d <dictionary.datへのpath> -u <user設定の保存場所>
+#+end_src
+
+user設定を設定していない場合は、後述する内容が保存されません。
+
+** User設定の内容
+chokanでは、ユーザー設定として以下の情報を保存します。
+
+- 確定した単語の頻度
+- ユーザーが保存した単語
+
+
+これらは、 ~chokan-server~ の起動時に ~-n~ で指定した回数確定するか、一定時間が経過するたびに ~-u~ で指定したディレクトリに保存されます。
+
+* Emacsでの設定
+現状ではmelpaなどに登録していないため、straight.elなど、GitHubからのインストールをサポートしているpackage managerを推奨します。
+
+#+begin_src emacs-lisp
+  (leaf chokan
+    :straight (chokan :type git :host github :repo "derui/chokan")
+    :config
+    (leaf chokan-websocket
+      :require t
+      :config
+      (chokan-websocket-setup))
+    ;; input methodとして登録しているため、toggle-input-methodなどから起動できます
+    (setq default-input-method 'japanese-chokan))
+#+end_src
