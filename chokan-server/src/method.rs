@@ -1,5 +1,6 @@
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
+use dic::base::entry::Entry;
 use jsonrpsee::{core::RpcResult, RpcModule};
 use kkc::{context::Context, get_candidates, get_tankan_candidates, Candidate};
 use serde::{Deserialize, Serialize};
@@ -179,6 +180,7 @@ pub(crate) fn make_update_frequency_method(
     module: &mut RpcModule<MethodContext>,
     store: Arc<Mutex<SessionStore>>,
     notifier: Sender<()>,
+    entry_updater: Sender<Entry>,
 ) -> anyhow::Result<()> {
     module.register_method("UpdateFrequency", move |params, ctx| {
         let params = params.parse::<UpdateFrequencyRequest>()?;
@@ -187,19 +189,21 @@ pub(crate) fn make_update_frequency_method(
             let mut store = store.lock().unwrap();
 
             let session = store.pop_session(&SessionId::from(session_id));
-            let word = session
-                .clone()
-                .and_then(|session| {
-                    session
-                        .find_candidate(params.candidate_id)
-                        .map(|v| (v, session.context))
-                })
-                .and_then(|(v, ctx)| v.body.to_string_only_independent().map(|v| (v, ctx)));
+            let candidate = session.clone().and_then(|session| {
+                session
+                    .find_candidate(params.candidate_id)
+                    .map(|v| (v, session.context))
+            });
 
-            if let Some((word, context)) = word {
+            if let Some((c, context)) = candidate {
                 let mut user_pref = ctx.user_pref.lock().unwrap();
 
-                user_pref.update_frequency(&word, &context);
+                if let Some(word) = c.body.to_string_only_independent() {
+                    user_pref.update_frequency(&word, &context);
+                }
+                let _ = user_pref
+                    .update_compound_words(&c.body)
+                    .inspect(|v| entry_updater.send(v.clone()).unwrap());
             }
         }
         // 成否に関わらずに送っておく

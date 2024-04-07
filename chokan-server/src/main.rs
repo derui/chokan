@@ -9,7 +9,7 @@ use std::{
 
 use chokan_dic::ChokanDictionary;
 use clap::Parser;
-use dic::base::dictionary::Dictionary;
+use dic::base::{dictionary::Dictionary, entry::Entry, word::Word};
 use jsonrpsee::{
     server::{RpcServiceBuilder, Server},
     RpcModule,
@@ -113,6 +113,36 @@ fn spawn_save_user_pref_per_count(
     })
 }
 
+/// ユーザー辞書に更新があった際に全体辞書を更新するtaskをspawnする
+///
+/// # Arguments
+/// * `dictionary` - 利用する辞書
+/// * `entry_receiver` - 更新されたエントリを受信するためのchannel
+fn spawn_update_dictionary_with_entry(
+    dict: Arc<Mutex<ChokanDictionary>>,
+    tx: Receiver<Entry>,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        loop {
+            if let Ok(entry) = tx.recv() {
+                let mut dict = dict.lock().unwrap();
+                let words: Vec<Word> = entry.into();
+
+                for word in words {
+                    let reading = word.reading.iter().collect::<String>();
+                    let _wording = word.word.iter().collect::<String>();
+                    let _ = dict.graph.standard_trie.insert(&reading);
+                    dict.graph
+                        .standard_dic
+                        .entry(reading)
+                        .and_modify(|v| v.push(word.clone()))
+                        .or_insert(vec![word]);
+                }
+            }
+        }
+    })
+}
+
 /**
 RPCモジュールを定義する。
 
@@ -132,15 +162,21 @@ fn define_module(
     let dictionary = Arc::new(Mutex::new(dictionary));
     let user_pref = Arc::new(Mutex::new(user_pref));
 
-    let ctx = method_context::MethodContext::new(dictionary, user_pref.clone());
+    let ctx = method_context::MethodContext::new(dictionary.clone(), user_pref.clone());
     let mut module = RpcModule::new(ctx);
     let (session_sender, session_receiver) = std::sync::mpsc::channel();
     let (conversion_notifier, conversion_reciever) = std::sync::mpsc::channel();
+    let (entry_sender, entry_reciever) = std::sync::mpsc::channel();
     let store = Arc::new(Mutex::new(SessionStore::new()));
 
     method::make_get_candidates_method(&mut module, session_sender)?;
     method::make_get_tankan_candidates_method(&mut module)?;
-    method::make_update_frequency_method(&mut module, store.clone(), conversion_notifier)?;
+    method::make_update_frequency_method(
+        &mut module,
+        store.clone(),
+        conversion_notifier,
+        entry_sender,
+    )?;
 
     let store_in_thread = store.clone();
     // ここでのthreadは、後始末する必要がない
@@ -156,6 +192,7 @@ fn define_module(
         }
     });
     spawn_save_user_pref_per_count(user_pref.clone(), number_of_conversion, conversion_reciever);
+    spawn_update_dictionary_with_entry(dictionary.clone(), entry_reciever);
 
     Ok(module)
 }

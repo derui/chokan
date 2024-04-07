@@ -71,6 +71,7 @@ impl UserPref {
             })
             .inspect(|entry| {
                 self.user_dictionary.add_entry(entry.clone());
+                tracing::info!("Learned new entry: {}", entry);
             })
     }
 
