@@ -121,8 +121,6 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
 
 (defvar chokan--candidate-overlay nil
   "候補を表現するためのoverlay")
-(defvar chokan--conversion-overlay nil
-  "変換起動部分を表現するためのoverlay")
 
 ;; faces
 
@@ -693,8 +691,6 @@ contextは、以下のいずれかである。
               (context (cadddr region))
               (str (buffer-substring-no-properties start end)))
     (let ((func (assoc type chokan-conversion-functions)))
-      ;; 下線部は存在していることがここで確定しているので、overlayを削除する
-      (delete-overlay chokan--conversion-overlay)
       (if func
           (progn
             (setq chokan--conversion-candidate-pos 0)
@@ -795,7 +791,7 @@ contextは、以下のいずれかである。
   "現在のpointを含む反転部の領域を取得する。
 反転部がない場合は `NIL' を返す。
 
-仕様上、未確定領域は現在のポイントから前にしか存在しない。"
+反転部は、仕様上は現時点の位置と無関係なので、探索の範囲を多少広くしないといけない。"
   (save-excursion
     (if-let* ((overlay chokan--candidate-overlay)
               (start (overlay-start overlay))
@@ -859,6 +855,12 @@ contextは、以下のいずれかである。
       (`(nil nil t)
        (put-text-property start end 'chokan-inverse t)))))
 
+(defun chokan--get-face-target ()
+  "font-lockが有効な場合はfont-lock-faceを、そうでない場合はfaceを返す"
+  (if font-lock-mode
+      'font-lock-face
+    'face))
+
 (defun chokan--propertize-keep-conversion (converted original)
   "`ORIGINAL'の文字列にあるpropertyからconversion-startを判定し、必要ならpropertizeした文字列を返す。
 
@@ -870,13 +872,14 @@ contextは、以下のいずれかである。
     
     (let* ((conversion-start (get-text-property (point-min) 'chokan-conversion-start))
            (conversion-detail (get-text-property (point-min) 'chokan-conversion-detail))
-           (head (seq-take converted 1))
-           (last (seq-drop converted 1)))
-      (cons conversion-start
-            
-            (concat (propertize head 'chokan-conversion-start conversion-start
-                                'chokan-conversion-detail conversion-detail)
-                    last)))))
+           (face (if conversion-detail 'chokan-conversion-start nil)))
+      (delete-region (point-min) (point-max))
+      (insert converted)
+      (add-text-properties 1 2 (list 'chokan-conversion-start conversion-start
+                                     'chokan-conversion-detail conversion-detail))
+      (when face 
+        (add-text-properties 1 2 (list (chokan--get-face-target) face)))
+      (buffer-substring (point-min) (point-max)))))
 
 (defun chokan--self-insert (key char-type char-props)
   "chokanでキーに対応する文字を入力するための関数。
@@ -902,14 +905,8 @@ contextは、以下のいずれかである。
           (when region
             (delete-region (car region) (cdr region))
             (goto-char (car region)))
-          (let* ((converted (chokan--propertize-keep-conversion converted content))
-                 (content (cdr converted))
-                 (overlay-need (car converted)))
-            ;; 変換できる場合で、かつ下線部がある場合は、一応overlayを移動しておく
-            (insert content)
-            (when-let* (overlay-need
-                        (start (- (point) (length content))))
-              (move-overlay chokan--conversion-overlay start (1+ start) (current-buffer)))))))
+          (let* ((content (chokan--propertize-keep-conversion converted content)))
+            (insert content)))))
      ((eq char-type 'symbols)
       (let ((key (or (chokan--symbol-convert-to-ja key) key)))
         (chokan--insert-with-type key char-props))))))
@@ -953,7 +950,6 @@ contextは、以下のいずれかである。
       (chokan--insert-with-type key `((roman . ,(and alphabet (null kana)))
                                       (conversion-start . ,conversion-startable)
                                       (inverse . nil)))
-      (move-overlay chokan--conversion-overlay current (point) (current-buffer))
       
       (save-excursion
         ;; 変換できた場合、romanのfaceはいらないので、削除する
@@ -971,15 +967,16 @@ contextは、以下のいずれかである。
                           (chokan--get-inverse-region)))
               (session-id (plist-get chokan--conversion-candidates :id))
               (candidate (nth chokan--conversion-candidate-pos (plist-get chokan--conversion-candidates :candidates))))
-    (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil))
-    (delete-overlay chokan--candidate-overlay)
+    (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil display nil))
 
     (let ((current (point)))
       (save-excursion
         (delete-region (car region) (cdr region))
         (goto-char (car region))
         (insert (cdr candidate)))
-      )
+      ;; 末尾でこれが発動すると、pointがdelete-regionした場所の先頭に戻ってしまうので、ここで対処する必要がある。
+      (when (= (car region) (point))
+        (goto-char (cdr region))))
 
     (when-let* ((func (assoc 'update-frequency chokan-conversion-functions)))
       (funcall (cdr func) session-id (car candidate)))))
@@ -1166,10 +1163,6 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   (setq-local chokan--sticky nil)
   (setq-local chokan--conversion-candidates nil)
   (setq-local chokan--conversion-candidate-pos 0)
-  (setq-local chokan--conversion-overlay (make-overlay 1 1))
-  (overlay-put chokan--conversion-overlay 'face 'chokan-conversion-start)
-  ;; これをやっておかないと、余計なfaceが反映されてしまう
-  (delete-overlay chokan--conversion-overlay)
   (chokan-ja-mode)
   )
 
