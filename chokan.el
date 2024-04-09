@@ -1070,8 +1070,8 @@ contextは、以下のいずれかである。
 (defun chokan-through-key ()
   "元々割り当てられているcommandを実行するが、変換起動は実行する"
   (interactive)
-  (let ((chokan-ja-mode nil)
-        (old-func (key-binding (this-command-keys))))
+  (let* ((chokan-ja-mode nil)
+         (old-func (key-binding (this-command-keys))))
     (call-interactively old-func)
     (chokan--finalize-inverse-if-possible t)
     (chokan--launch-conversion-if-possible t)))
@@ -1200,7 +1200,7 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
 (define-key chokan-ja-mode-map (kbd "C-n") #'chokan-next-candidate)
 (define-key chokan-ja-mode-map (kbd "C-p") #'chokan-previous-candidate)
-(define-key chokan-ja-mode-map (kbd "'") #'chokan-sticky)
+(define-key chokan-ja-mode-map (kbd ";") #'chokan-sticky)
 (define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
