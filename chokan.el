@@ -974,11 +974,15 @@ contextは、以下のいずれかである。
     (remove-text-properties (car region) (cdr region) '(chokan-inverse t face nil))
     (delete-overlay chokan--candidate-overlay)
 
-    (let ((current (point)))
+    (let* ((current (point))
+           (point-contains-region (<= (car region) current (cdr region))))
       (save-excursion
         (delete-region (car region) (cdr region))
         (goto-char (car region))
         (insert (cdr candidate)))
+      ;; region内部に含まれている場合、ここでずらさないと、
+      (when point-contains-region
+        (forward-char (length (cdr candidate))))
       )
 
     (when-let* ((func (assoc 'update-frequency chokan-conversion-functions)))
