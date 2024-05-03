@@ -81,7 +81,7 @@ pub fn get_node_score(
 ) -> Score {
     // 読みが長い方が選択される可能性は高いものの、score自体はある程度の影響しかしないようにしておく
     match current {
-        Node::WordNode(_, w, _) => {
+        Node::Word(_, w, _) => {
             let frequency =
                 frequencies.get_frequency_of_word(&w.word.iter().collect::<String>(), context);
             Score(
@@ -91,8 +91,8 @@ pub fn get_node_score(
             )
         }
         Node::Virtual(_, _, _) => Default::default(),
-        Node::BOS => Default::default(),
-        Node::EOS => Default::default(),
+        Node::Bos => Default::default(),
+        Node::Eos => Default::default(),
     }
 }
 
@@ -109,7 +109,7 @@ pub fn get_node_score(
 /// edgeに対するscore
 pub fn get_edge_score(context: &Context, prev: &Node, current: &Node) -> Score {
     match prev {
-        Node::BOS => get_edge_score_of_head(context, current),
+        Node::Bos => get_edge_score_of_head(context, current),
         _ => get_edge_score_impl(context, prev, current),
     }
 }
@@ -119,7 +119,7 @@ pub fn get_edge_score(context: &Context, prev: &Node, current: &Node) -> Score {
 /// 主に、contextがNormal以外の場合、数詞や接辞を優先するようなscoreを構成する
 fn get_edge_score_of_head(context: &Context, current: &Node) -> Score {
     match current {
-        Node::WordNode(_, w, _) => match w.speech {
+        Node::Word(_, w, _) => match w.speech {
             Speech::Counter if context.is_numeral() => Score(2),
             Speech::Affix(AffixVariant::Prefix) if context.is_foreign_word() => Score(2),
             _ => Default::default(),
@@ -130,10 +130,10 @@ fn get_edge_score_of_head(context: &Context, current: &Node) -> Score {
 
 fn get_edge_score_impl(context: &Context, prev: &Node, current: &Node) -> Score {
     match (prev, current) {
-        (Node::WordNode(_, prev, _), Node::WordNode(_, current, _)) => {
+        (Node::Word(_, prev, _), Node::Word(_, current, _)) => {
             get_edge_score_between_words(context, prev, current)
         }
-        (Node::WordNode(_, prev, _), Node::Virtual(_, _, _)) => {
+        (Node::Word(_, prev, _), Node::Virtual(_, _, _)) => {
             get_edge_score_allow_virtual_word(context, prev)
         }
         // BOS/EOSとの接続関係は影響しない

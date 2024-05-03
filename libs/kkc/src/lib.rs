@@ -1,4 +1,7 @@
-use std::collections::{BinaryHeap, HashMap};
+use std::{
+    collections::{BinaryHeap, HashMap},
+    fmt::Display,
+};
 
 use dic::base::word::Word;
 use score::{Score, MIN_SCORE};
@@ -104,9 +107,7 @@ impl Candidate {
     /// 自立語のみを取得した文字列
     pub fn to_string_only_independent(&self) -> Option<String> {
         match &self.current_node {
-            graph::Node::WordNode(_, w, _) if !w.speech.is_ancillary() => {
-                Some(w.word.iter().collect())
-            }
+            graph::Node::Word(_, w, _) if !w.speech.is_ancillary() => Some(w.word.iter().collect()),
             _ => self
                 .next
                 .as_ref()
@@ -116,7 +117,7 @@ impl Candidate {
 
     fn to_string_prefix(&self) -> Option<(String, String)> {
         match &self.current_node {
-            graph::Node::WordNode(_, w, _) if w.speech.is_prefix() => {
+            graph::Node::Word(_, w, _) if w.speech.is_prefix() => {
                 Some((w.word.iter().collect(), w.reading.iter().collect()))
             }
             _ => None,
@@ -125,7 +126,7 @@ impl Candidate {
 
     fn to_string_suffix(&self) -> Option<(String, String)> {
         match &self.current_node {
-            graph::Node::WordNode(_, w, _) if w.speech.is_suffix() => {
+            graph::Node::Word(_, w, _) if w.speech.is_suffix() => {
                 Some((w.word.iter().collect(), w.reading.iter().collect()))
             }
             _ => None,
@@ -134,7 +135,7 @@ impl Candidate {
 
     fn to_string_independent(&self) -> Option<(String, String)> {
         match &self.current_node {
-            graph::Node::WordNode(_, w, _) if !w.speech.is_ancillary() => {
+            graph::Node::Word(_, w, _) if !w.speech.is_ancillary() => {
                 Some((w.word.iter().collect(), w.reading.iter().collect()))
             }
             _ => None,
@@ -142,10 +143,7 @@ impl Candidate {
     }
 
     fn is_word_node(&self) -> bool {
-        match &self.current_node {
-            graph::Node::WordNode(_, _, _) => true,
-            _ => false,
-        }
+        matches!(&self.current_node, graph::Node::Word(_, _, _))
     }
 
     /// 接辞と自立語をセットで取得する
@@ -208,11 +206,11 @@ impl Candidate {
     }
 }
 
-impl ToString for Candidate {
-    fn to_string(&self) -> String {
+impl Display for Candidate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.next {
-            Some(next) => format!("{}{}", self.current_node.to_string(), next.to_string()),
-            None => self.current_node.to_string(),
+            Some(next) => write!(f, "{}{}", self.current_node, next),
+            None => write!(f, "{}", self.current_node),
         }
     }
 }
@@ -242,7 +240,7 @@ fn get_n_best_candidates(
     let mut result = vec![];
 
     queue.push(Candidate {
-        current_node: graph::Node::EOS,
+        current_node: graph::Node::Eos,
         next: None,
         score: Default::default(),
         priority: 0,
@@ -256,7 +254,7 @@ fn get_n_best_candidates(
             ..
         } = &candidate;
 
-        if *current_node == graph::Node::BOS {
+        if *current_node == graph::Node::Bos {
             result.push(candidate.clone());
             if result.len() >= n {
                 break;
@@ -409,19 +407,19 @@ mod tests {
         let np = NodePointer::new(0, 0);
 
         let c = Candidate {
-            current_node: graph::Node::WordNode(
+            current_node: graph::Node::Word(
                 np,
                 Word::new("あ", "あ", Speech::Affix(AffixVariant::Prefix)),
                 score,
             ),
             next: Some(Box::new(Candidate {
-                current_node: graph::Node::WordNode(
+                current_node: graph::Node::Word(
                     np,
                     Word::new("い", "い", Speech::Noun(NounVariant::Common)),
                     score,
                 ),
                 next: Some(Box::new(Candidate {
-                    current_node: graph::Node::WordNode(
+                    current_node: graph::Node::Word(
                         np,
                         Word::new("う", "う", Speech::Affix(AffixVariant::Suffix)),
                         score,
@@ -455,13 +453,13 @@ mod tests {
         let np = NodePointer::new(0, 0);
 
         let c = Candidate {
-            current_node: graph::Node::WordNode(
+            current_node: graph::Node::Word(
                 np,
                 Word::new("あ", "あ", Speech::Noun(NounVariant::Common)),
                 score,
             ),
             next: Some(Box::new(Candidate {
-                current_node: graph::Node::WordNode(
+                current_node: graph::Node::Word(
                     np,
                     Word::new("う", "う", Speech::Affix(AffixVariant::Suffix)),
                     score,
@@ -493,13 +491,13 @@ mod tests {
         let np = NodePointer::new(0, 0);
 
         let c = Candidate {
-            current_node: graph::Node::WordNode(
+            current_node: graph::Node::Word(
                 np,
                 Word::new("あ", "あ", Speech::Affix(AffixVariant::Prefix)),
                 score,
             ),
             next: Some(Box::new(Candidate {
-                current_node: graph::Node::WordNode(
+                current_node: graph::Node::Word(
                     np,
                     Word::new("い", "い", Speech::Noun(NounVariant::Common)),
                     score,

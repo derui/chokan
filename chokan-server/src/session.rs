@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use kkc::{context::Context, Candidate};
 use uuid::Uuid;
@@ -20,9 +20,9 @@ impl From<String> for SessionId {
     }
 }
 
-impl ToString for SessionId {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl Display for SessionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

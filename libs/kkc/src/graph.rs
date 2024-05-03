@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
 use dic::base::{
     speech::{AffixVariant, Speech},
@@ -50,24 +50,24 @@ impl NodePointer {
 /// Graphの中で使われるNode
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum Node {
-    WordNode(NodePointer, Word, NodeScore),
+    Word(NodePointer, Word, NodeScore),
     /// 仮想Nodeに対応する型である。構築したグラフ内に存在しない場合もある
     Virtual(NodePointer, Vec<char>, NodeScore),
 
     // 開始地点を表すnode
-    BOS,
+    Bos,
 
     // 終了地点を表すnode
-    EOS,
+    Eos,
 }
 
-impl ToString for Node {
-    fn to_string(&self) -> String {
+impl Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Node::WordNode(_, w, _) => w.word.iter().collect::<String>(),
-            Node::Virtual(_, v, _) => v.iter().collect::<String>(),
-            Node::BOS => String::new(),
-            Node::EOS => String::new(),
+            Node::Word(_, w, _) => write!(f, "{}", w.word.iter().collect::<String>()),
+            Node::Virtual(_, v, _) => write!(f, "{}", v.iter().collect::<String>()),
+            Node::Bos => write!(f, ""),
+            Node::Eos => write!(f, ""),
         }
     }
 }
@@ -80,32 +80,32 @@ impl Node {
     #[inline]
     fn start_at(&self) -> usize {
         match self {
-            Node::WordNode(NodePointer(end_at, _), word, _) => end_at - (word.reading.len() - 1),
+            Node::Word(NodePointer(end_at, _), word, _) => end_at - (word.reading.len() - 1),
             Node::Virtual(NodePointer(end_at, _), s, _) => end_at - (s.len() - 1),
             // EOS/BOSは固定された位置にあるので、定義しない
-            Node::EOS => 0,
-            Node::BOS => 0,
+            Node::Eos => 0,
+            Node::Bos => 0,
         }
     }
 
     #[inline]
     fn end_at(&self) -> usize {
         match self {
-            Node::WordNode(NodePointer(end_at, _), _, _) => *end_at,
+            Node::Word(NodePointer(end_at, _), _, _) => *end_at,
             Node::Virtual(NodePointer(end_at, _), _, _) => *end_at,
             // EOS/BOSは固定された位置にあるので、定義しない
-            Node::EOS => 0,
-            Node::BOS => 0,
+            Node::Eos => 0,
+            Node::Bos => 0,
         }
     }
 
     /// nodeが付属後かどうかを返す
     fn is_ancillary(&self) -> bool {
         match self {
-            Node::WordNode(_, w, _) => w.speech.is_ancillary(),
+            Node::Word(_, w, _) => w.speech.is_ancillary(),
             Node::Virtual(_, _, _) => false,
-            Node::EOS => false,
-            Node::BOS => false,
+            Node::Eos => false,
+            Node::Bos => false,
         }
     }
 
@@ -114,10 +114,10 @@ impl Node {
     /// EOS/BOSのついてはスコアという概念はないので、あくまで
     pub(crate) fn get_score(&self) -> NodeScore {
         match self {
-            Node::WordNode(_, _, score) => *score,
+            Node::Word(_, _, score) => *score,
             Node::Virtual(_, _, score) => *score,
-            Node::EOS => Default::default(),
-            Node::BOS => Default::default(),
+            Node::Eos => Default::default(),
+            Node::Bos => Default::default(),
         }
     }
 
@@ -127,11 +127,11 @@ impl Node {
     /// * `score` - 設定するscore
     pub(crate) fn set_score(&mut self, score: Score) {
         match self {
-            Node::WordNode(_, _, s) => s.cost_from_start = score,
+            Node::Word(_, _, s) => s.cost_from_start = score,
             Node::Virtual(_, _, s) => s.cost_from_start = score,
             // EOSとBOSはscoreがどうか？という判定自体しない
-            Node::EOS => {}
-            Node::BOS => {}
+            Node::Eos => {}
+            Node::Bos => {}
         }
     }
 
@@ -144,11 +144,11 @@ impl Node {
     /// 新しいNode
     fn clone_with(&self, pointer: NodePointer) -> Self {
         match self {
-            Self::WordNode(_, w, s) => Self::WordNode(pointer, w.clone(), *s),
+            Self::Word(_, w, s) => Self::Word(pointer, w.clone(), *s),
             Self::Virtual(_, w, s) => Self::Virtual(pointer, w.clone(), *s),
             // EOSとBOSはscoreがどうか？という判定自体しない
-            Self::EOS => Self::EOS,
-            Self::BOS => Self::BOS,
+            Self::Eos => Self::Eos,
+            Self::Bos => Self::Bos,
         }
     }
 }
@@ -211,15 +211,15 @@ impl Graph {
     /// nodeの前のnodeの一覧
     pub fn previsous_nodes(&self, node: &Node) -> Vec<Node> {
         let index = match node {
-            Node::WordNode(NodePointer(i, _), w, _) => Some(*i as i32 - w.reading.len() as i32),
+            Node::Word(NodePointer(i, _), w, _) => Some(*i as i32 - w.reading.len() as i32),
             Node::Virtual(NodePointer(i, _), w, _) => Some(*i as i32 - w.len() as i32),
-            Node::EOS => Some(self.nodes.len() as i32 - 1_i32),
-            Node::BOS => None,
+            Node::Eos => Some(self.nodes.len() as i32 - 1_i32),
+            Node::Bos => None,
         };
 
         match index {
             None => vec![],
-            Some(i) if i < 0 => vec![Node::BOS],
+            Some(i) if i < 0 => vec![Node::Bos],
             Some(i) => self.nodes[i as usize].to_vec(),
         }
     }
@@ -236,10 +236,10 @@ impl Graph {
     /// 指定されたNodeが存在しない場合にはpanicする
     pub fn get_node_mut(&mut self, node: &Node) -> Option<&mut Node> {
         match node {
-            Node::WordNode(NodePointer(i, j), _, _) => Some(&mut self.nodes[*i][*j]),
+            Node::Word(NodePointer(i, j), _, _) => Some(&mut self.nodes[*i][*j]),
             Node::Virtual(NodePointer(i, j), _, _) => Some(&mut self.nodes[*i][*j]),
-            Node::EOS => None,
-            Node::BOS => None,
+            Node::Eos => None,
+            Node::Bos => None,
         }
     }
 
@@ -269,7 +269,7 @@ impl Graph {
         // 先頭である場合、contextによってmerge出来るものが変わってくる
         if start_at == 0 {
             match aicillary {
-                Node::WordNode(_, w, _) => match w.speech {
+                Node::Word(_, w, _) => match w.speech {
                     // 接頭語は、常にmerge可能
                     Speech::Affix(AffixVariant::Prefix) => true,
                     Speech::Affix(AffixVariant::Suffix) => context.is_foreign_word(),
@@ -337,7 +337,7 @@ impl Graph {
                 for word in words {
                     found_indices.insert(i);
                     let pointer = NodePointer(i, self.nodes[i].len());
-                    self.nodes[i].push(Node::WordNode(pointer, word.clone(), Default::default()));
+                    self.nodes[i].push(Node::Word(pointer, word.clone(), Default::default()));
                 }
             }
         }
@@ -364,7 +364,7 @@ impl Graph {
         for nodes in ancillaries {
             for node in nodes {
                 match node {
-                    Node::WordNode(
+                    Node::Word(
                         p,
                         Word {
                             speech: Speech::Affix(AffixVariant::Prefix),
@@ -390,11 +390,7 @@ impl Graph {
                 if let Some(words) = words {
                     for word in words {
                         let pointer = NodePointer(i, self.nodes[i].len());
-                        self.nodes[i].push(Node::WordNode(
-                            pointer,
-                            word.clone(),
-                            Default::default(),
-                        ));
+                        self.nodes[i].push(Node::Word(pointer, word.clone(), Default::default()));
                     }
                 }
             }
@@ -424,7 +420,7 @@ impl Graph {
                 if let Some(words) = words {
                     for word in words {
                         let pointer = NodePointer(j, nodes[j].len());
-                        nodes[j].push(Node::WordNode(pointer, word.clone(), Default::default()));
+                        nodes[j].push(Node::Word(pointer, word.clone(), Default::default()));
                     }
                 }
 
@@ -475,7 +471,7 @@ mod tests {
         assert_eq!(
             graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([
-                Node::WordNode(
+                Node::Word(
                     NodePointer(1, 0),
                     Word::new(
                         "来る",
@@ -484,7 +480,7 @@ mod tests {
                     ),
                     Default::default()
                 ),
-                Node::WordNode(
+                Node::Word(
                     NodePointer(1, 1),
                     Word::new(
                         "繰る",
@@ -497,7 +493,7 @@ mod tests {
         );
         assert_eq!(
             graph.nodes[2].iter().cloned().collect::<HashSet<_>>(),
-            HashSet::from([Node::WordNode(
+            HashSet::from([Node::Word(
                 NodePointer(2, 0),
                 Word::new("車", "くるま", Speech::Noun(NounVariant::Common)),
                 Default::default()
@@ -506,12 +502,12 @@ mod tests {
         assert_eq!(
             graph.nodes[3].iter().cloned().collect::<HashSet<_>>(),
             HashSet::from([
-                Node::WordNode(
+                Node::Word(
                     NodePointer(3, 0),
                     Word::new("まで", "まで", Speech::Particle(ParticleType::Adverbial)),
                     Default::default()
                 ),
-                Node::WordNode(
+                Node::Word(
                     NodePointer(3, 1),
                     Word::new("で", "で", Speech::Particle(ParticleType::Case)),
                     Default::default()
@@ -612,7 +608,7 @@ mod tests {
         // assert
         assert_eq!(
             graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
-            HashSet::from([Node::WordNode(
+            HashSet::from([Node::Word(
                 NodePointer(1, 0),
                 Word::new("新", "しん", Speech::Affix(AffixVariant::Prefix)),
                 Default::default()
@@ -620,7 +616,7 @@ mod tests {
         );
         assert_eq!(
             graph.nodes[2].iter().cloned().collect::<HashSet<_>>(),
-            HashSet::from([Node::WordNode(
+            HashSet::from([Node::Word(
                 NodePointer(2, 0),
                 Word::new("来", "こ", Speech::Verb(VerbForm::Hen("カ".to_string())),),
                 Default::default()
@@ -666,7 +662,7 @@ mod tests {
         // assert
         assert_eq!(
             graph.nodes[1].iter().cloned().collect::<HashSet<_>>(),
-            HashSet::from([Node::WordNode(
+            HashSet::from([Node::Word(
                 NodePointer(1, 0),
                 Word::new("的", "てき", Speech::Affix(AffixVariant::Suffix)),
                 Default::default()
@@ -712,7 +708,7 @@ mod tests {
         // assert
         assert_eq!(
             graph.nodes[0].iter().cloned().collect::<HashSet<_>>(),
-            HashSet::from([Node::WordNode(
+            HashSet::from([Node::Word(
                 NodePointer(0, 0),
                 Word::new("個", "こ", Speech::Counter),
                 Default::default()
