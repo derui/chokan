@@ -57,7 +57,7 @@ impl Trie {
             assert!(*node != conflicted_node, "each node should be different");
 
             let mut current_labels = self.nodes.find_labels_of(node, &self.labels);
-            let conflicted_labels = self.nodes.find_labels_of(&conflicted_node, &self.labels);
+            let _conflicted_labels = self.nodes.find_labels_of(&conflicted_node, &self.labels);
             current_labels.push(*label);
 
             // conflictしたlabel自体も対象に加えて、移動する方を決定する

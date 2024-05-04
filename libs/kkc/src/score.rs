@@ -165,7 +165,7 @@ fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
 ///
 /// # Returns
 /// edgeに対するscore
-fn get_edge_score_between_words(_context: &Context, prev: &Word, current: &Word) -> Score {
+fn get_edge_score_between_words(context: &Context, prev: &Word, current: &Word) -> Score {
     match (&prev.speech, &current.speech) {
         // 格助詞は体言の後につく
         (Speech::Noun(_), Speech::Particle(ParticleType::Case)) => Score(2),

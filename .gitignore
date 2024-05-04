@@ -5,6 +5,7 @@ target/
 skk-notes-converter/dic/
 skk-tankan-converter/dic/
 skk-noun-converter/dic/
+skk-jinmei-converter/dic/
 
 # ignore compiled elisp
 *.elc

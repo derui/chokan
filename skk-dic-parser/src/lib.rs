@@ -34,10 +34,11 @@ peg::parser! {
       rule space() = [' ' | '\t' ]
       rule kana() -> String = n:$(['あ'..='ん' | 'ゐ' | 'ゃ' | 'ゅ' | 'ょ' | 'ぁ' | 'ぃ' | 'ぅ' | 'ぇ' | 'ぉ' | 'っ' | 'ー']) { n.to_string() }
       rule alphabet() -> String = n:$(['a'..='z']) { n.to_string() }
+      rule annotation() = ";" [^ '/']*
 
       rule reading() -> String = n:kana()+ { n.concat() }
       rule okuri() -> Option<String> = n:alphabet()* { if n.is_empty() { None } else { Some(n.concat()) } }
-      rule kanji() -> String = n:$([^ ' ' | '/']+) "/" { n.to_string() }
+      rule kanji() -> String = n:$([^ ' ' | '/' | ';']+) annotation()? "/" { n.to_string() }
       rule entry() -> SkkEntry = r:reading() o:okuri() space()+ "/" s:kanji()+ {
           SkkEntry {reading: r, okuri: o, words: s}
       }
@@ -83,6 +84,18 @@ mod tests {
     fn parse_entry_with_root_function() {
         assert_eq!(
             parse_skk_entry("むち /鞭/無知/"),
+            Ok(Some(SkkEntry {
+                reading: "むち".to_string(),
+                okuri: None,
+                words: vec!["鞭".to_string(), "無知".to_string()]
+            }))
+        );
+    }
+
+    #[test]
+    fn ignore_annotation() {
+        assert_eq!(
+            parse_skk_entry("むち /鞭;名詞/無知/"),
             Ok(Some(SkkEntry {
                 reading: "むち".to_string(),
                 okuri: None,
