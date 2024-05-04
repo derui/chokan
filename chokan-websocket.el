@@ -136,6 +136,18 @@
          (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
     `(:id ,session-id :candidates ,candidates)))
 
+(defun chokan-websocket-get-proper-candidates (input ctx)
+  "固有名詞優先変換の変換候補を取得する。
+
+事前に対応するserverが起動している必要がある。サーバーのアドレスは `chokan-websocket-address' で設定する。"
+  (let* ((input (substring input 1))
+         (conn (chokan-websocket--current-connection))
+         (res (jsonrpc-request conn :GetProperCandidates `(:input ,input)))
+         (session-id (plist-get res :session_id))
+         (candidates (plist-get res :candidates))
+         (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
+    `(:id ,session-id :candidates ,candidates)))
+
 (defun chokan-websocket-update-frequency (session-id candidate-id)
   "かな漢字変換における頻度を更新する。
 
@@ -161,6 +173,7 @@
   (setq chokan-conversion-functions (list
                                      '(normal . chokan-websocket-get-candidates)
                                      '(tankan . chokan-websocket-get-tankan-candidates)
+                                     '(proper . chokan-websocket-get-proper-candidates)
                                      '(update-frequency . chokan-websocket-update-frequency)
                                      '(register-word . chokan-websocket-register-word)
                                      )))

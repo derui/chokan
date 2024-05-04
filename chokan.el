@@ -63,10 +63,11 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
 
 - `normal' : 通常の変換を行う場合の関数
 - `tankan' : 単漢字変換を行う場合
+- `proper' : 固有名詞優先変換を行う場合
 - `update-frequency' : かな漢字変換の頻度を更新する
 - `register-word' : かな漢字変換の頻度を更新する
 
-関数は、`normal' および `tankan'は、 引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
+関数は、`normal', `tankan' `proper' は、 引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
 contextが存在しない場合はnilを渡す。
 'type symbol'は、`foreign'か`numeric'のいずれかである。
 
@@ -992,7 +993,7 @@ contextは、以下のいずれかである。
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
 
 `CONVERT-LAUNCHABLE' が `non-nil' の場合、起動したコマンドのキーが変換起動可能であることを表す。
-`UNDERSCORE' が `non-nil' の場合、入力した文字が下線部になる。指定したsymbolに対応する特殊変換がトグルされる
+`CONVERSIOn-DETAIL' が `non-nil' の場合、入力した文字が下線部になる。指定したsymbolに対応する特殊変換がトグルされる
 `CHAR-TYPE' は、 `alphabet' `symbols' のいずれかのsymbolである。
 
 この関数では以下を実行する。
@@ -1084,6 +1085,11 @@ contextは、以下のいずれかである。
   "単漢字変換を起動して文字を入力する"
   (interactive)
   (chokan--insert t 'tankan 'symbols))
+
+(defun chokan-insert-proper-start-key ()
+  "固有名詞を優先する変換を起動して文字を入力する"
+  (interactive)
+  (chokan--insert t 'proper 'symbols))
 
 (defun chokan-next-candidate ()
   "現在の反転部に対する次の候補を表示する
@@ -1206,12 +1212,13 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 (define-key chokan-ja-mode-map (kbd "C-p") #'chokan-previous-candidate)
 (define-key chokan-ja-mode-map (kbd ";") #'chokan-sticky)
 (define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
+(define-key chokan-ja-mode-map (kbd "$") #'chokan-insert-tankan-start-key)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
-(dolist (k '("-" "." "," "=" "+" "_" "|" "$" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">"))
+(dolist (k '("-" "." "," "=" "+" "_" "|" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
 
 (define-key chokan-ja-mode-map (kbd "RET") #'chokan-through-key)
