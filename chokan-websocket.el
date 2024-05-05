@@ -118,7 +118,7 @@
 
 事前に対応するserverが起動している必要がある。サーバーのアドレスは `chokan-websocket-address' で設定する。"
   (let* ((conn (chokan-websocket--current-connection))
-         (res (jsonrpc-request conn :GetCandidates `(:input ,input :context (:type ,(chokan-websocket--context-to-server (car ctx)) :value ,(cdr ctx)))))
+         (res (jsonrpc-request conn :GetCandidates `(:input ,input :context (:kind ,(chokan-websocket--context-to-server (car ctx)) :value ,(cdr ctx)))))
          (session-id (plist-get res :session_id))
          (candidates (plist-get res :candidates))
          (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))

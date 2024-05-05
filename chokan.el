@@ -1212,7 +1212,7 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 (define-key chokan-ja-mode-map (kbd "C-p") #'chokan-previous-candidate)
 (define-key chokan-ja-mode-map (kbd ";") #'chokan-sticky)
 (define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
-(define-key chokan-ja-mode-map (kbd "$") #'chokan-insert-tankan-start-key)
+(define-key chokan-ja-mode-map (kbd "$") #'chokan-insert-proper-start-key)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
