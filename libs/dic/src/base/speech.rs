@@ -161,6 +161,14 @@ impl Speech {
             _ => false,
         }
     }
+
+    /// 該当の品詞が、固有名詞かどうかを返す
+    pub fn is_noun_proper(&self) -> bool {
+        match self {
+            Speech::Noun(NounVariant::Proper) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for Speech {
@@ -606,6 +614,29 @@ mod tests {
         assert!(!Speech::PreNounAdjectival.is_affix());
         assert!(!Speech::Counter.is_affix());
         assert!(Speech::Affix(AffixVariant::Prefix).is_affix());
+    }
+
+    #[test]
+    fn test_noun_proper_check() {
+        // arrange
+
+        // act
+
+        // assert
+        // 一通りの品詞をcheckする
+        assert!(!Speech::Noun(NounVariant::Common).is_noun_proper());
+        assert!(Speech::Noun(NounVariant::Proper).is_noun_proper());
+        assert!(!Speech::Verb(VerbForm::Godan("カ".to_string())).is_noun_proper());
+        assert!(!Speech::Adjective.is_noun_proper());
+        assert!(!Speech::Adverb.is_noun_proper());
+        assert!(!Speech::AdjectivalVerb.is_noun_proper());
+        assert!(!Speech::Verbatim.is_noun_proper());
+        assert!(!Speech::Conjunction.is_noun_proper());
+        assert!(!Speech::Particle(ParticleType::Other).is_noun_proper());
+        assert!(!Speech::AuxiliaryVerb.is_noun_proper());
+        assert!(!Speech::PreNounAdjectival.is_noun_proper());
+        assert!(!Speech::Counter.is_noun_proper());
+        assert!(!Speech::Affix(AffixVariant::Prefix).is_noun_proper());
     }
 
     #[test]

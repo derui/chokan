@@ -196,7 +196,7 @@ fn define_module(
     let (entry_sender, entry_reciever) = std::sync::mpsc::channel();
     let store = Arc::new(Mutex::new(SessionStore::new()));
 
-    method::make_get_candidates_method(&mut module, session_sender)?;
+    method::make_get_candidates_method(&mut module, session_sender.clone())?;
     method::make_get_tankan_candidates_method(&mut module)?;
     method::make_update_frequency_method(
         &mut module,
@@ -205,6 +205,7 @@ fn define_module(
         entry_sender.clone(),
     )?;
     method::make_register_word(&mut module, entry_sender.clone())?;
+    method::make_get_proper_candidates_method(&mut module, session_sender.clone())?;
 
     let store_in_thread = store.clone();
     // ここでのthreadは、後始末する必要がない

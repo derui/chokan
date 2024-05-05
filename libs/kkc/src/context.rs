@@ -7,6 +7,7 @@ pub enum ContextKind {
     Normal,      // 通常のかな漢字変換
     ForeignWord, // 外来語
     Numeral,     // 数詞
+    Proper,      // 固有名詞優先
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
@@ -19,6 +20,13 @@ impl Context {
     pub fn normal() -> Context {
         Context {
             kind: ContextKind::Normal,
+        }
+    }
+
+    /// 固有名詞優先のコンテキストを生成する.
+    pub fn proper() -> Context {
+        Context {
+            kind: ContextKind::Proper,
         }
     }
 
@@ -44,5 +52,10 @@ impl Context {
     /// 現在のコンテキストが数詞かどうかを返す
     pub fn is_numeral(&self) -> bool {
         self.kind == ContextKind::Numeral
+    }
+
+    /// 現在のコンテキストが固有名詞優先かどうかを返す
+    pub fn is_proper(&self) -> bool {
+        self.kind == ContextKind::Proper
     }
 }

@@ -82,10 +82,19 @@ pub fn get_node_score(
     // 読みが長い方が選択される可能性は高いものの、score自体はある程度の影響しかしないようにしておく
     match current {
         Node::Word(_, w, _) => {
+            let proper_priority = if context.is_proper() {
+                if w.speech.is_noun_proper() {
+                    10
+                } else {
+                    0
+                }
+            } else {
+                0
+            };
             let frequency =
                 frequencies.get_frequency_of_word(&w.word.iter().collect::<String>(), context);
             Score(
-                ((frequency % 1000) + (w.reading.len() as u64) * 2)
+                ((frequency % 1000) + (w.reading.len() as u64) * 2 + proper_priority)
                     .try_into()
                     .unwrap(),
             )

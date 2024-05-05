@@ -29,7 +29,7 @@ enum GetCandidatesContextKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 struct GetCandidatesContext {
-    r#type: GetCandidatesContextKind,
+    kind: GetCandidatesContextKind,
     value: Option<String>,
 }
 
@@ -41,9 +41,15 @@ struct GetCandidatesRequest {
     context: Option<GetCandidatesContext>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct GetProperCandidatesRequest {
+    /// かな漢字変換を行う文字列
+    input: String,
+}
+
 impl From<GetCandidatesContext> for Context {
     fn from(val: GetCandidatesContext) -> Self {
-        match val.r#type {
+        match val.kind {
             GetCandidatesContextKind::Normal => Context::normal(),
             GetCandidatesContextKind::ForeignWord => Context::foreign_word(),
             GetCandidatesContextKind::Numeral => Context::numeral(),
@@ -54,7 +60,7 @@ impl From<GetCandidatesContext> for Context {
 impl Default for GetCandidatesContext {
     fn default() -> Self {
         GetCandidatesContext {
-            r#type: GetCandidatesContextKind::Normal,
+            kind: GetCandidatesContextKind::Normal,
             value: None,
         }
     }
@@ -115,6 +121,59 @@ pub(crate) fn make_get_candidates_method(
 
         // sessionを送信して記録しておく
         tx.send((session_id.clone(), candidates.clone(), context.clone()))
+            .unwrap();
+
+        RpcResult::Ok(GetCandidatesResponse {
+            session_id: session_id.to_string(),
+            candidates: candidates
+                .iter()
+                .map(|candidate| CandidateResponse {
+                    id: candidate.id.to_string(),
+                    candidate: candidate.body.to_string(),
+                })
+                .collect(),
+        })
+    })?;
+
+    Ok(())
+}
+
+/// GetProperCandidates の実装を登録する
+///
+/// # Arguments
+/// * `module` - 登録するmodule
+/// * `tx` - sessionを送信するためのchannel
+pub(crate) fn make_get_proper_candidates_method(
+    module: &mut RpcModule<MethodContext>,
+    tx: Sender<(SessionId, Vec<RespondedCandidate>, Context)>,
+) -> anyhow::Result<()> {
+    module.register_method("GetProperCandidates", move |params, ctx| {
+        let params = params.parse::<GetProperCandidatesRequest>()?;
+        let candidates: Vec<Candidate>;
+        {
+            let dict = ctx.dictionary.lock().unwrap();
+            let user_pref = ctx.user_pref.lock().unwrap();
+            candidates = get_candidates(
+                &params.input,
+                &dict.graph,
+                &Context::proper(),
+                user_pref.frequency(),
+                100,
+            );
+        }
+
+        let candidates = candidates
+            .into_iter()
+            .enumerate()
+            .map(|(idx, candidate)| RespondedCandidate {
+                id: idx.to_string(),
+                body: candidate.clone(),
+            })
+            .collect::<Vec<_>>();
+        let session_id = SessionId::new();
+
+        // sessionを送信して記録しておく
+        tx.send((session_id.clone(), candidates.clone(), Context::proper()))
             .unwrap();
 
         RpcResult::Ok(GetCandidatesResponse {
