@@ -1209,7 +1209,7 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 ;; setup initial keymap
 (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
 (define-key chokan-ja-mode-map (kbd "C-j") #'chokan-force-finalize)
-(define-key chokan-ja-mode-map (kbd "M-c") #'chokan-ascii)
+(define-key chokan-ja-mode-map (kbd "C-l") #'chokan-ascii)
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
 (define-key chokan-ja-mode-map (kbd "C-n") #'chokan-next-candidate)
 (define-key chokan-ja-mode-map (kbd "C-p") #'chokan-previous-candidate)
