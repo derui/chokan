@@ -1005,6 +1005,8 @@ contextは、以下のいずれかである。
 5. 自己挿入し、必要ならローマ字かな変換を行う
 "
   (let* ((key (this-command-keys)))
+    (when (and conversion-detail convert-launchable)
+      (chokan--hiragana-enable))
     (chokan--finalize-inverse-if-possible convert-launchable)
     (chokan--launch-conversion-if-possible convert-launchable)
     (chokan--insert-conversion-start-if-possible key (eq char-type 'alphabet) conversion-detail)
@@ -1145,7 +1147,8 @@ contextは、以下のいずれかである。
   (when-let* ((func (assoc 'register-word chokan-conversion-functions)))
     (let* ((word (buffer-substring-no-properties s e))
            (reading (read-string (format "[辞書登録] <%s> : " word))))
-      (funcall (cdr func) word reading 'guess))))
+      (when (and (< 0 (seq-length word)) (< 0 (seq-length reading)))
+        (funcall (cdr func) word reading 'guess)))))
 
 ;; mode definition
 
