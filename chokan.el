@@ -1028,8 +1028,12 @@ contextは、以下のいずれかである。
 
 ;; command definition
 (defun chokan-ascii ()
-  "chokanをasciiモードに変更する"
+  "chokanをasciiモードに変更する。
+
+asciiモードに遷移すると、強制的に変換起動される"
   (interactive)
+  (chokan--finalize-inverse-if-possible t)
+  (chokan--launch-conversion-if-possible t)
   (chokan-ja-mode -1)
   (chokan-ascii-mode +1))
 
@@ -1207,12 +1211,12 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
   )
 
 ;; setup initial keymap
+(define-key chokan-mode-map (kbd "C-n") #'chokan-next-candidate)
+(define-key chokan-mode-map (kbd "C-p") #'chokan-previous-candidate)
 (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
 (define-key chokan-ja-mode-map (kbd "C-j") #'chokan-force-finalize)
 (define-key chokan-ja-mode-map (kbd "C-l") #'chokan-ascii)
 (define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
-(define-key chokan-ja-mode-map (kbd "C-n") #'chokan-next-candidate)
-(define-key chokan-ja-mode-map (kbd "C-p") #'chokan-previous-candidate)
 (define-key chokan-ja-mode-map (kbd ";") #'chokan-sticky)
 (define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
 (define-key chokan-ja-mode-map (kbd "$") #'chokan-insert-proper-start-key)
@@ -1221,7 +1225,7 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
 (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
-(dolist (k '("-" "." "," "=" "+" "_" "|" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">"))
+(dolist (k '("-" "." "," "=" "+" "_" "|" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" "/"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
 
 (define-key chokan-ja-mode-map (kbd "RET") #'chokan-through-key)
