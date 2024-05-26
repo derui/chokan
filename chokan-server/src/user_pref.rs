@@ -20,7 +20,7 @@ const USER_FREQUENCY_NAME: &str = "frequency.bin";
 
 /// ユーザーの更新によって変換されうる辞書の状態を保持するための構造体
 pub struct UserPref {
-    /// ユーザー辞書。この形式のままファイルへの書き込みを行うので、全体標準の形式を利用している。
+    /// ユーザーごとの変換頻度
     frequency: ConversionFrequency,
 
     /// ユーザー辞書。この形式のままファイルへの書き込みを行うので、全体標準の形式を利用している。
