@@ -1152,7 +1152,8 @@ asciiモードに遷移すると、強制的に変換起動される"
     (let* ((word (buffer-substring-no-properties s e))
            (reading (read-string (format "[辞書登録] <%s> : " word))))
       (when (and (< 0 (seq-length word)) (< 0 (seq-length reading)))
-        (funcall (cdr func) word reading 'guess)))))
+        (funcall (cdr func) word reading 'guess)
+        (deactivate-mark)))))
 
 ;; mode definition
 
