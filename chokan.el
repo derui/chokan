@@ -1135,7 +1135,8 @@ asciiモードに遷移すると、強制的に変換起動される"
   "強制的に反転部を確定させる"
   (interactive)
   (chokan--finalize-inverse-if-possible t)
-  (chokan--launch-conversion-if-possible t))
+  (chokan--launch-conversion-if-possible t)
+  (chokan--hiragana-enable))
 
 (defun chokan-sticky ()
   "次に入力するアルファベットを、大文字のアルファベットと同等にする"
@@ -1178,7 +1179,7 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   :after-hook (chokan--hiragana-enable))
 
 (defun chokan-mode--activate ()
-  "chokan-modeが起動するときに実行する処理をまとめた*関数"
+  "chokan-modeが起動するときに実行する処理をまとめた関数"
 
   (setq-local chokan--default-cursor-type cursor-type)
   (setq-local chokan--sticky nil)
