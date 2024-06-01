@@ -1,5 +1,5 @@
 use std::{
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap, HashSet},
     fmt::Display,
 };
 
@@ -238,6 +238,7 @@ fn get_n_best_candidates(
 ) -> Vec<Candidate> {
     let mut queue: BinaryHeap<Candidate> = BinaryHeap::new();
     let mut result = vec![];
+    let mut result_cache: HashSet<String> = HashSet::new();
 
     queue.push(Candidate {
         current_node: graph::Node::Eos,
@@ -255,7 +256,12 @@ fn get_n_best_candidates(
         } = &candidate;
 
         if *current_node == graph::Node::Bos {
+            if result_cache.contains(&candidate.to_string()) {
+                continue;
+            }
+
             result.push(candidate.clone());
+            result_cache.insert(candidate.to_string());
             if result.len() >= n {
                 break;
             }
