@@ -45,7 +45,7 @@ tasks:
     dir: chokan-dic
     cmds:
       - mkdir -p work
-      - cat ./dict/huzoku.dic ../skk-notes-converter/dic/chokan.huzoku.dic > work/huzoku.dic
+      - cp ./dict/huzoku.dic work/huzoku.dic
       - cat ../skk-notes-converter/dic/chokan.notes.dic ../skk-noun-converter/dic/chokan.noun.dic ../skk-jinmei-converter/dic/chokan.jinmei.dic ./dict/standard.dic > work/standard.dic
       - cargo run --bin chokan-dic -- ./work/standard.dic ./work/huzoku.dic ../skk-tankan-converter/dic/chokan.tankan.dic dictionary.dat
     env:

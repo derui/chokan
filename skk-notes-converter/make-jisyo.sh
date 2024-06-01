@@ -16,5 +16,4 @@ cargo build
 cargo run --bin skk-notes-converter -- \
       work/SKK-JISYO.notes \
       dic/chokan.notes.dic \
-      dic/chokan.huzoku.dic \
       2> dic/error.txt
