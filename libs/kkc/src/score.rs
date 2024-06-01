@@ -158,6 +158,8 @@ fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
     match &prev.speech {
         Speech::Verb(_) => Score(1),
         Speech::Noun(_) => Score(1),
+        // 接尾辞は名詞または動詞につくため、文節末を構成しうる
+        Speech::Affix(AffixVariant::Suffix) => Score(1),
         v if !v.is_ancillary() => Score(1),
         _ => Score(-1),
     }
@@ -188,11 +190,11 @@ fn get_edge_score_between_words(context: &Context, prev: &Word, current: &Word) 
         // 助動詞は用言の後につく
         (Speech::Verb(_), Speech::AuxiliaryVerb) => Score(2),
         // 接頭辞は動詞または名詞の前につく
-        (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(1),
-        (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(1),
+        (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(2),
+        (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(2),
         // 接尾辞は動詞または名詞の後につく。ただしかな漢字変換では、基本的に接尾辞は名詞の後につく
-        (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
-        (Speech::Verb(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
+        (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(2),
+        (Speech::Verb(_), Speech::Affix(AffixVariant::Suffix)) => Score(2),
 
         // 上記以外は接続しないものとして扱う
         _ => Score(-1),
