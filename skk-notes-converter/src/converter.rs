@@ -6,6 +6,7 @@ use crate::note_grammer::{Note, NoteEntry, NoteSpeech, Okuri};
 
 /// 変換した後のNoteEntry。SKKから変換できる形式とでは互換性を保つのが難しいので、
 /// 独自の型で表現する
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ConvertedEntry {
     pub headword: String,
     /// 見出し

@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     env,
     error::Error,
     fs::File,
@@ -40,13 +41,14 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     std::io::BufReader::new(transcoded).read_to_string(&mut content)?;
     let lines = content.split('\n').collect::<Vec<_>>();
 
+    let mut all_entries: HashSet<ConvertedEntry> = HashSet::new();
     for (index, line) in lines.iter().enumerate() {
         match note_grammer::parse_note(line) {
             Ok(Some(note)) => {
                 let entries = note.to_entries();
 
                 for entry in entries {
-                    output_note(&mut note_file, &entry)
+                    all_entries.insert(entry);
                 }
             }
             Ok(None) => {}
@@ -54,6 +56,10 @@ fn try_main() -> Result<(), Box<dyn Error>> {
                 eprintln!("Error at line {}: {}", index + 1, e);
             }
         }
+    }
+
+    for entry in all_entries {
+        output_note(&mut note_file, &entry)
     }
 
     Ok(())
