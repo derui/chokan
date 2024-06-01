@@ -2,7 +2,7 @@
 ///
 /// 辞書の各エントリーは以下の形式で登録されている
 ///
-/// 語幹かな\t語幹\t/品詞/\n
+/// 語幹かな\t語幹\t/品詞[/品詞]*/\n
 ///
 use peg::{error::ParseError, str::LineCol};
 
@@ -64,21 +64,24 @@ peg::parser! {
       } }
       rule speech() -> Speech = "/" n:(
           noun() / verb() / adjective() / adjectival_verb() / counter() / verbatim() / pre_noun_adjectival() / adverb() / affix() / conjunction() / particle_case() / particle_other() / particle_adverbial() / particle_conjunctive() / particle_sentence_final() / auxiliary_verb()
-      ) "/" {
+      ) {
+          n
+      }
+      rule speechs() -> Vec<Speech> = n:speech()+ "/" {
           n
       }
 
-      rule entry() -> Entry = k:$(kana()+) "\t" stem:$(no_space()+) "\t" ss:speech() {
-          Entry::from_jisyo(k, stem, ss)
+      rule entry() -> Vec<Entry> = k:$(kana()+) "\t" stem:$(no_space()+) "\t" ss:speechs() {
+          ss.into_iter().map(|s| Entry::from_jisyo(k, stem, s)).collect::<Vec<_>>()
       }
       rule comment() = ";" any()*
-      pub rule root() -> Option<Entry> = comment() {None} / n:entry() { Some(n) }
+      pub rule root() -> Vec<Entry> = comment() {Vec::default()} / n:entry() { n }
 
   }
 }
 
 /// 対象の一行を解析して、Entryを返す
-pub fn parse_entry(s: &str) -> Result<Option<Entry>, ParseError<LineCol>> {
+pub fn parse_entry(s: &str) -> Result<Vec<Entry>, ParseError<LineCol>> {
     entry_parser::root(s)
 }
 
@@ -90,20 +93,20 @@ mod tests {
 
     #[test]
     fn test_parse_comment() {
-        assert_eq!(parse_entry(";; abc"), Ok(None));
-        assert_ne!(parse_entry("abc ; comments in back"), Ok(None));
+        assert_eq!(parse_entry(";; abc"), Ok(vec![]));
+        assert_ne!(parse_entry("abc ; comments in back"), Ok(vec![]));
     }
 
     #[test]
     fn test_parse_entry() {
         assert_eq!(
             parse_entry("を\t惜\t/形容詞/"),
-            Ok(Some(Entry::from_jisyo("を", "惜", Speech::Adjective)))
+            Ok(vec![Entry::from_jisyo("を", "惜", Speech::Adjective)])
         );
 
         assert_eq!(
             parse_entry("ゐ\t居\t/ラ行変/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "ゐ",
                 "居",
                 Speech::Verb(VerbForm::Hen("ラ".to_string()))
@@ -112,7 +115,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("わせだどおり\t早稲田通り\t/一般名詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "わせだどおり",
                 "早稲田通り",
                 Speech::Noun(NounVariant::Common)
@@ -121,7 +124,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("えんきょう\t円強\t/助数詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "えんきょう",
                 "円強",
                 Speech::Counter
@@ -130,7 +133,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("おんみつ\t隠密\t/形容動詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "おんみつ",
                 "隠密",
                 Speech::AdjectivalVerb
@@ -139,7 +142,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("ありがとう\t有り難う\t/感動詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "ありがとう",
                 "有り難う",
                 Speech::Verbatim
@@ -148,7 +151,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("ふ\t不\t/接頭辞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "ふ",
                 "不",
                 Speech::Affix(AffixVariant::Prefix)
@@ -157,7 +160,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("じょう\t状\t/接尾辞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "じょう",
                 "状",
                 Speech::Affix(AffixVariant::Suffix)
@@ -166,7 +169,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("ただし\t但し\t/接続詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "ただし",
                 "但し",
                 Speech::Conjunction
@@ -178,7 +181,7 @@ mod tests {
     fn parse_particle() {
         assert_eq!(
             parse_entry("で\tで\t/格助詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "で",
                 "で",
                 Speech::Particle(ParticleType::Case)
@@ -187,7 +190,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("のに\tのに\t/接続助詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "のに",
                 "のに",
                 Speech::Particle(ParticleType::Conjunctive)
@@ -196,7 +199,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("は\tは\t/副助詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "は",
                 "は",
                 Speech::Particle(ParticleType::Adverbial)
@@ -205,7 +208,7 @@ mod tests {
 
         assert_eq!(
             parse_entry("か\tか\t/終助詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "か",
                 "か",
                 Speech::Particle(ParticleType::SentenceFinal)
@@ -214,11 +217,22 @@ mod tests {
 
         assert_eq!(
             parse_entry("らしい\tらしい\t/助動詞/"),
-            Ok(Some(Entry::from_jisyo(
+            Ok(vec!(Entry::from_jisyo(
                 "らしい",
                 "らしい",
                 Speech::AuxiliaryVerb
             )))
+        );
+        assert_eq!(
+            parse_entry("らしい\tらしい\t/助動詞/ラ行五段/"),
+            Ok(vec![
+                Entry::from_jisyo("らしい", "らしい", Speech::AuxiliaryVerb),
+                Entry::from_jisyo(
+                    "らしい",
+                    "らしい",
+                    Speech::Verb(VerbForm::Godan("ラ".to_string()))
+                )
+            ])
         );
     }
 }

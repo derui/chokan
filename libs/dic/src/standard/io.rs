@@ -57,11 +57,12 @@ impl<R: Read> DictionaryReader for StandardDictionaryReader<R> {
 
         for (index, line) in lines.iter().enumerate() {
             match dic_grammer::parse_entry(line) {
-                Ok(Some(entry)) => {
-                    buf.add_entry(entry);
-                    entry_count += 1;
+                Ok(entries) => {
+                    for entry in entries {
+                        buf.add_entry(entry);
+                        entry_count += 1;
+                    }
                 }
-                Ok(None) => {}
                 Err(e) => {
                     eprintln!("Error at line {}: {}", index + 1, e);
                 }
