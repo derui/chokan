@@ -184,7 +184,7 @@ fn get_edge_score_between_words(context: &Context, prev: &Word, current: &Word) 
         (Speech::Verb(_), Speech::Particle(ParticleType::Conjunctive)) => Score(1),
         (Speech::AuxiliaryVerb, Speech::Particle(ParticleType::Conjunctive)) => Score(1),
         // 副助詞は色々つくことができる
-        (_, Speech::Particle(ParticleType::Adverbial)) => Score(1),
+        (_, Speech::Particle(ParticleType::Adverbial)) => Score(0),
         // 終助詞は文末につくが、文末を保証するのがむずかしいので、副助詞と同様にする
         (_, Speech::Particle(ParticleType::SentenceFinal)) => Score(0),
         // 助動詞は用言の後につく
