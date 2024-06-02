@@ -1110,6 +1110,8 @@ asciiモードに遷移すると、強制的に変換起動される"
                                  next)))
           (chokan--insert-candidate region (cdr candidate)))
       (let* ((chokan-ja-mode nil)
+             (chokan-ascii-mode nil)
+             (chokan-mode nil)
              (old-func (key-binding current-key)))
         (call-interactively old-func)))))
 
@@ -1128,6 +1130,8 @@ asciiモードに遷移すると、強制的に変換起動される"
                                   prev))))
           (chokan--insert-candidate region (cdr candidate)))
       (let* ((chokan-ja-mode nil)
+             (chokan-ascii-mode nil)
+             (chokan-mode nil)
              (old-func (key-binding current-key)))
         (call-interactively old-func)))))
 
