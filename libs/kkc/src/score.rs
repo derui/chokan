@@ -94,7 +94,7 @@ pub fn get_node_score(
             let frequency =
                 frequencies.get_frequency_of_word(&w.word.iter().collect::<String>(), context);
             Score(
-                ((frequency % 1000) + (w.reading.len() as u64) * 2 + proper_priority)
+                ((frequency / 1000) + (w.reading.len() as u64) * 2 + proper_priority)
                     .try_into()
                     .unwrap(),
             )
@@ -156,11 +156,11 @@ fn get_edge_score_impl(context: &Context, prev: &Node, current: &Node) -> Score 
 fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
     // 仮想nodeが続く場合、対象が文節末を構成しうる場合は許容する
     match &prev.speech {
-        Speech::Verb(_) => Score(1),
-        Speech::Noun(_) => Score(1),
+        Speech::Verb(_) => Score(0),
+        Speech::Noun(_) => Score(0),
         // 接尾辞は名詞または動詞につくため、文節末を構成しうる
-        Speech::Affix(AffixVariant::Suffix) => Score(1),
-        v if !v.is_ancillary() => Score(1),
+        Speech::Affix(AffixVariant::Suffix) => Score(0),
+        v if !v.is_ancillary() => Score(0),
         _ => Score(-1),
     }
 }
@@ -179,22 +179,22 @@ fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
 fn get_edge_score_between_words(context: &Context, prev: &Word, current: &Word) -> Score {
     match (&prev.speech, &current.speech) {
         // 格助詞は体言の後につく
-        (Speech::Noun(_), Speech::Particle(ParticleType::Case)) => Score(2),
+        (Speech::Noun(_), Speech::Particle(ParticleType::Case)) => Score(1),
         // 接続助詞は用言または助動詞の後につく
-        (Speech::Verb(_), Speech::Particle(ParticleType::Conjunctive)) => Score(2),
-        (Speech::AuxiliaryVerb, Speech::Particle(ParticleType::Conjunctive)) => Score(2),
+        (Speech::Verb(_), Speech::Particle(ParticleType::Conjunctive)) => Score(1),
+        (Speech::AuxiliaryVerb, Speech::Particle(ParticleType::Conjunctive)) => Score(1),
         // 副助詞は色々つくことができる
         (_, Speech::Particle(ParticleType::Adverbial)) => Score(1),
         // 終助詞は文末につくが、文末を保証するのがむずかしいので、副助詞と同様にする
-        (_, Speech::Particle(ParticleType::SentenceFinal)) => Score(1),
+        (_, Speech::Particle(ParticleType::SentenceFinal)) => Score(0),
         // 助動詞は用言の後につく
-        (Speech::Verb(_), Speech::AuxiliaryVerb) => Score(2),
+        (Speech::Verb(_), Speech::AuxiliaryVerb) => Score(1),
         // 接頭辞は動詞または名詞の前につく
-        (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(2),
-        (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(2),
+        (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(1),
+        (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(1),
         // 接尾辞は動詞または名詞の後につく。ただしかな漢字変換では、基本的に接尾辞は名詞の後につく
-        (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(2),
-        (Speech::Verb(_), Speech::Affix(AffixVariant::Suffix)) => Score(2),
+        (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
+        (Speech::Verb(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
 
         // 上記以外は接続しないものとして扱う
         _ => Score(-1),
