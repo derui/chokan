@@ -1,10 +1,15 @@
 use std::{
     fs::{self, File},
-    future::{self},
+    future,
     io::Read,
     net::SocketAddr,
     path::{Path, PathBuf},
-    sync::{mpsc::Receiver, Arc, Mutex},
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc, Mutex,
+    },
+    thread::sleep,
+    time::{self, Duration},
 };
 
 use chokan_dic::ChokanDictionary;
@@ -43,11 +48,11 @@ struct Args {
     #[arg(short, long)]
     user_dictionary_dir: Option<String>,
 
-    /// 保存するまでの変換回数のタイミングを指定する。
+    /// 保存処理を行う間隔を指定する。
     ///
-    /// デフォルトは100
-    #[arg(short, long, default_value_t = 100)]
-    number_of_conversions: u8,
+    /// デフォルトは60 = 1分
+    #[arg(short, long, default_value_t = 60)]
+    seconds_per_save: u8,
 }
 
 #[tokio::main]
@@ -63,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
     let mut dictionary = read_dictionary_from(&args.dictionary_path)?;
     let user_dictionary_dir = args
         .user_dictionary_dir
+        .clone()
         .map(|v| PathBuf::from(v).into_boxed_path());
     let user_pref = user_dictionary_dir
         .and_then(|v| match UserPref::restore_user_pref(v) {
@@ -96,7 +102,7 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
-    let module = define_module(dictionary, user_pref, args.number_of_conversions)?;
+    let module = define_module(dictionary, user_pref, &args)?;
 
     run_server(args.port, module).await?;
 
@@ -106,30 +112,38 @@ async fn main() -> anyhow::Result<()> {
 }
 
 /// 定期的にユーザー辞書を保存する処理をspawnする
-fn spawn_save_user_pref_per_count(
-    pref: Arc<Mutex<UserPref>>,
-    number_of_conversion: u8,
-    tx: Receiver<()>,
-) -> JoinHandle<()> {
+fn spawn_save_user_pref_per_count(pref: Arc<Mutex<UserPref>>, tx: Receiver<()>) -> JoinHandle<()> {
     tokio::spawn(async move {
-        let mut conversion_counter: u32 = 0;
         loop {
             if let Ok(()) = tx.recv() {
-                if conversion_counter + 1 >= number_of_conversion as u32 {
-                    conversion_counter = 0;
-                    let pref = pref.lock().unwrap();
-                    match pref.save_user_dictionary() {
-                        Ok(()) => {
-                            tracing::debug!("User dictionary saved");
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to save user dictionary: {}", e);
-                        }
+                let pref = pref.lock().unwrap();
+                match pref.save_user_dictionary() {
+                    Ok(()) => {
+                        tracing::debug!("User dictionary saved");
                     }
-                } else {
-                    conversion_counter += 1;
+                    Err(e) => {
+                        tracing::error!("Failed to save user dictionary: {}", e);
+                    }
                 }
             }
+        }
+    })
+}
+
+/// 時間ベースでユーザー辞書を保存する処理をspawnする
+fn spawn_periodic_user_pref_save(seconds_per_save: u8, tx: Sender<()>) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut current = time::SystemTime::now();
+
+        loop {
+            if let Ok(elapsed) = current.elapsed() {
+                if elapsed.as_secs() >= seconds_per_save as u64 {
+                    current = time::SystemTime::now();
+                    tx.send(()).expect("should success");
+                }
+            }
+
+            sleep(Duration::from_secs(1));
         }
     })
 }
@@ -184,7 +198,7 @@ RPCモジュールを定義する。
 fn define_module(
     dictionary: ChokanDictionary,
     user_pref: UserPref,
-    number_of_conversion: u8,
+    args: &Args,
 ) -> anyhow::Result<RpcModule<method_context::MethodContext>> {
     let dictionary = Arc::new(Mutex::new(dictionary));
     let user_pref = Arc::new(Mutex::new(user_pref));
@@ -198,12 +212,7 @@ fn define_module(
 
     method::make_get_candidates_method(&mut module, session_sender.clone())?;
     method::make_get_tankan_candidates_method(&mut module)?;
-    method::make_update_frequency_method(
-        &mut module,
-        store.clone(),
-        conversion_notifier,
-        entry_sender.clone(),
-    )?;
+    method::make_update_frequency_method(&mut module, store.clone(), entry_sender.clone())?;
     method::make_register_word(&mut module, entry_sender.clone())?;
     method::make_get_proper_candidates_method(&mut module, session_sender.clone())?;
 
@@ -220,8 +229,9 @@ fn define_module(
             }
         }
     });
-    spawn_save_user_pref_per_count(user_pref.clone(), number_of_conversion, conversion_reciever);
+    spawn_save_user_pref_per_count(user_pref.clone(), conversion_reciever);
     spawn_update_dictionary_with_entry(dictionary.clone(), user_pref.clone(), entry_reciever);
+    spawn_periodic_user_pref_save(args.seconds_per_save, conversion_notifier.clone());
 
     Ok(module)
 }

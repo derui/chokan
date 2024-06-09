@@ -241,7 +241,6 @@ pub struct UpdateFrequencyResponse {}
 pub(crate) fn make_update_frequency_method(
     module: &mut RpcModule<MethodContext>,
     store: Arc<Mutex<SessionStore>>,
-    notifier: Sender<()>,
     entry_updater: Sender<Entry>,
 ) -> anyhow::Result<()> {
     module.register_method("UpdateFrequency", move |params, ctx| {
@@ -268,8 +267,6 @@ pub(crate) fn make_update_frequency_method(
                     .inspect(|v| entry_updater.send(v.clone()).unwrap());
             }
         }
-        // 成否に関わらずに送っておく
-        notifier.send(()).unwrap();
 
         RpcResult::Ok(UpdateFrequencyResponse {})
     })?;
