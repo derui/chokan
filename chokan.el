@@ -1113,7 +1113,8 @@ asciiモードに遷移すると、強制的に変換起動される"
              (chokan-ascii-mode nil)
              (chokan-mode nil)
              (old-func (key-binding current-key)))
-        (call-interactively old-func)))))
+        (when (not (eq old-func 'chokan-next-candidate))
+          (call-interactively old-func))))))
 
 (defun chokan-previous-candidate ()
   "現在の反転部に対する前の候補を表示する
@@ -1133,7 +1134,8 @@ asciiモードに遷移すると、強制的に変換起動される"
              (chokan-ascii-mode nil)
              (chokan-mode nil)
              (old-func (key-binding current-key)))
-        (call-interactively old-func)))))
+        (when (not (eq old-func 'chokan-previous-candidate))
+          (call-interactively old-func))))))
 
 (defun chokan-force-finalize ()
   "強制的に反転部を確定させる"
