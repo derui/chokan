@@ -6,5 +6,6 @@ members = [
   "skk-notes-converter",
   "libs/dic",
   "libs/kkc",
-  "libs/trie"
-, "chokan-server", "skk-tankan-converter", "skk-dic-parser", "skk-noun-converter", "skk-jinmei-converter"]
+  "libs/trie",
+  "libs/kana-alpha",
+  "chokan-server", "skk-tankan-converter", "skk-dic-parser", "skk-noun-converter", "skk-jinmei-converter", "libs/kana-alpha"]
