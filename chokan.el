@@ -20,6 +20,7 @@
 ;;: Customization:
 
 ;;; Code:
+(require 'text-property-search)
 
 (defgroup chokan nil
   "chokan - cho-tto Kanzen"
@@ -1083,7 +1084,8 @@ asciiモードに遷移すると、強制的に変換起動される"
   (interactive)
   (let* ((chokan-ja-mode nil)
          (old-func (key-binding (this-command-keys))))
-    (call-interactively old-func)
+    (when (not (eq old-func 'chokan-through-key))
+      (call-interactively old-func))
     (chokan--finalize-inverse-if-possible t)
     (chokan--launch-conversion-if-possible t)))
 
