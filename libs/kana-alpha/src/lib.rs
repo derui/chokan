@@ -61,6 +61,11 @@ mod tests {
     }
 
     #[test]
+    fn should_be_nfc() {
+        assert_eq!("papipupepo", convert("ぱぴぷぺぽ"));
+    }
+
+    #[test]
     fn return_alphabet_converted_from_katakana() {
         assert_eq!("aiueo", convert("アイウエオ"));
     }
