@@ -69,4 +69,11 @@ mod tests {
     fn return_alphabet_converted_from_katakana_and_hiragana() {
         assert_eq!("aiukaki", convert("アイうかき"));
     }
+
+    #[test]
+    fn use_longest_word() {
+        assert_eq!("syain", convert("しゃいん"));
+        assert_eq!("program", convert("pろgらm"));
+        assert_eq!("implementation", convert("いmpleめnたちおん"));
+    }
 }

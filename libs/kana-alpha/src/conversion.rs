@@ -618,7 +618,6 @@ pub(crate) fn get_conversions() -> Vec<Conversion> {
     ];
 
     vec.sort_by(|a, b| b.hiragana.len().cmp(&a.hiragana.len()));
-    vec.reverse();
 
     return vec;
 }
