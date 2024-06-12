@@ -13,10 +13,17 @@ mod conversion;
 /// # Returns
 /// - アルファベットのみの文字列
 pub fn convert(str: &str) -> String {
-    nfc_normalize(str)
-        .chars()
-        .map(|v| to_roma_sequence(v))
-        .collect::<String>()
+    let mut normalized = nfc_normalize(str);
+    let mut ret = String::new();
+
+    while !normalized.is_empty() {
+        let (v, rest) = to_roma_sequence(&normalized);
+
+        normalized = rest;
+        ret.push_str(&v);
+    }
+
+    ret
 }
 
 // NFC正規化した文字列を返す
@@ -25,13 +32,17 @@ fn nfc_normalize(str: &str) -> String {
 }
 
 // 1文字をローマ字に変換する
-fn to_roma_sequence(c: char) -> String {
+fn to_roma_sequence(s: &str) -> (String, String) {
     let conversions = get_conversions();
 
-    if let Some(v) = conversions.into_iter().find_map(|conv| conv.expand_roma(c)) {
-        v
+    if let Some((v, len)) = conversions.into_iter().find_map(|conv| conv.expand_roma(s)) {
+        let rest = s.chars().skip(len).collect();
+        (v, rest)
     } else {
-        c.to_string()
+        let v = s.to_string();
+        let ret = v.chars().take(1).collect();
+        let rest = v.chars().skip(1).collect();
+        (ret, rest)
     }
 }
 
