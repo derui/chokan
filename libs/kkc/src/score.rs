@@ -158,8 +158,6 @@ fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
     match &prev.speech {
         Speech::Verb(_) => Score(0),
         Speech::Noun(_) => Score(0),
-        // 接尾辞は名詞または動詞につくため、文節末を構成しうる
-        Speech::Affix(AffixVariant::Suffix) => Score(0),
         v if !v.is_ancillary() => Score(0),
         _ => Score(-1),
     }

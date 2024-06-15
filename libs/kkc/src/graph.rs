@@ -111,7 +111,7 @@ impl Node {
 
     /// Nodeにおける現時点のscoreを返す
     ///
-    /// EOS/BOSのついてはスコアという概念はないので、あくまで
+    /// EOS/BOSのついてはスコアという概念はないので、あくまで対応するようにするものでしかない
     pub(crate) fn get_score(&self) -> NodeScore {
         match self {
             Node::Word(_, _, score) => *score,
@@ -263,12 +263,12 @@ impl Graph {
     }
 
     /// 対象の付属語がマージ可能かどうかを返す
-    fn is_mergeable_ancillary(&self, aicillary: &Node, context: &Context) -> bool {
-        let start_at = aicillary.start_at();
+    fn is_mergeable_ancillary(&self, ancillary: &Node, context: &Context) -> bool {
+        let start_at = ancillary.start_at();
 
         // 先頭である場合、contextによってmerge出来るものが変わってくる
         if start_at == 0 {
-            match aicillary {
+            match ancillary {
                 Node::Word(_, w, _) => match w.speech {
                     // 接頭語は、常にmerge可能
                     Speech::Affix(AffixVariant::Prefix) => true,
@@ -281,6 +281,17 @@ impl Graph {
         } else {
             // 接頭辞以外は、何らかの自立語が存在する場合に限る
             match self.nodes.get(start_at - 1) {
+                // 接尾辞の場合は、そのうしろにさらに付属語が続きうる
+                Some(v)
+                    if v.iter().any(|v| match v {
+                        Node::Word(_, w, _) => {
+                            matches!(w.speech, Speech::Affix(AffixVariant::Suffix))
+                        }
+                        _ => false,
+                    }) =>
+                {
+                    true
+                }
                 Some(v) if v.iter().any(|v| !v.is_ancillary()) => true,
                 Some(_) => false,
                 None => false,
