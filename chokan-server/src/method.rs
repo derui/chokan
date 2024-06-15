@@ -339,3 +339,34 @@ pub(crate) fn make_register_word(
 
     Ok(())
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct GetAlphabeticCandidateRequest {
+    /// 変換を行う文字列
+    input: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct GetAlphabeticCandidateResponse {
+    /// 候補の一覧
+    candidates: Vec<CandidateResponse>,
+}
+/// GetAlphabeticCandidate の実装を登録する
+///
+/// # Arguments
+/// * `module` - 登録するmodule
+pub(crate) fn make_get_alphabetic_candidate_method(
+    module: &mut RpcModule<MethodContext>,
+) -> anyhow::Result<()> {
+    module.register_method("GetAlphabeticCandidate", move |params, _| {
+        let params = params.parse::<GetAlphabeticCandidateRequest>()?;
+        let candidates = vec![CandidateResponse {
+            id: "0".to_string(),
+            candidate: kana_alpha::convert(&params.input),
+        }];
+
+        RpcResult::Ok(GetAlphabeticCandidateResponse { candidates })
+    })?;
+
+    Ok(())
+}

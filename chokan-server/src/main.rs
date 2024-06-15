@@ -215,6 +215,7 @@ fn define_module(
     method::make_update_frequency_method(&mut module, store.clone(), entry_sender.clone())?;
     method::make_register_word(&mut module, entry_sender.clone())?;
     method::make_get_proper_candidates_method(&mut module, session_sender.clone())?;
+    method::make_get_alphabetic_candidate_method(&mut module)?;
 
     let store_in_thread = store.clone();
     // ここでのthreadは、後始末する必要がない

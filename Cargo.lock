@@ -203,6 +203,7 @@ dependencies = [
  "clap",
  "dic",
  "jsonrpsee",
+ "kana-alpha",
  "kkc",
  "postcard",
  "serde",

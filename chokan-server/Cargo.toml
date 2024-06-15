@@ -11,6 +11,7 @@ chokan-dic = { version = "0.1.0", path = "../chokan-dic" }
 clap = { version = "4.5.3", features = ["derive"] }
 dic = { version = "0.1.0", path = "../libs/dic" }
 jsonrpsee = { version = "0.22.3", features = ["server", "macros"] }
+kana-alpha = { version = "0.1.0", path = "../libs/kana-alpha" }
 kkc = { version = "0.1.0", path = "../libs/kkc" }
 postcard = { version = "1.0.8", features = ["alloc"] }
 serde = { version = "1.0.197", features = ["derive"] }

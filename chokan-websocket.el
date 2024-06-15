@@ -165,6 +165,16 @@
                      ((eq speech-kind 'proper) "ProperNoun"))))
     (jsonrpc-request conn :RegisterWord `(:reading ,reading  :word ,word :kind ,kind))))
 
+(defun chokan-websocket-get-alphabetic-candidate (input &rest _)
+  "アルファベット変換の候補を取得する。
+
+事前に対応するserverが起動している必要がある。サーバーのアドレスは `chokan-websocket-address' で設定する。"
+  (let* ((conn (chokan-websocket--current-connection))
+         (res (jsonrpc-request conn :GetAlphabeticCandidate `(:input ,input)))
+         (candidates (plist-get res :candidates))
+         (candidates (seq-map (lambda (c) (cons (plist-get c :id) (plist-get c :candidate))) candidates)))
+    `(:id "0" :candidates ,candidates)))
+
 ;; public functions
 
 (defun chokan-websocket-setup ()
@@ -176,6 +186,7 @@
                                      '(proper . chokan-websocket-get-proper-candidates)
                                      '(update-frequency . chokan-websocket-update-frequency)
                                      '(register-word . chokan-websocket-register-word)
+                                     '(alphabet . chokan-websocket-get-alphabetic-candidate)
                                      )))
 
 (provide 'chokan-websocket)

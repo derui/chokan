@@ -66,7 +66,8 @@ You should call `chokan-mode-setup' to setup keymap for `chokan-mode'.
 - `tankan' : 単漢字変換を行う場合
 - `proper' : 固有名詞優先変換を行う場合
 - `update-frequency' : かな漢字変換の頻度を更新する
-- `register-word' : かな漢字変換の頻度を更新する
+- `register-word' : 単語を登録する
+- `alphabet' : アルファベット変換を行う
 
 関数は、`normal', `tankan' `proper' は、 引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
 contextが存在しない場合はnilを渡す。
@@ -79,6 +80,10 @@ contextが存在しない場合はnilを渡す。
 
 `register-word' は、選択された漢字、その読みと品詞が渡される。
   品詞が指定されていない場合は `GUESS' のシンボルが渡される。
+
+`alphabet'は、引数として変換対象となる文字列のみが渡される
+実行した結果として、以下の形式で候補のリストを返す。
+`(:candidates ((id . candidate)))'
 ")
 
 ;; buffer-local variable
@@ -682,7 +687,7 @@ contextは、以下のいずれかである。
         (list start end detail context)))))
 
 ;;;###autoload
-(defun chokan--conversion-launch (callback)
+(defun chokan--conversion-launch (callback override-conversion)
   "現在のポイントから変換起動を試みる。変換起動が出来ない場合は、何も行わない。
 
 変換起動が出来た場合は、'CALLBACK'に対象のregionの開始位置と終了位置、最初の変換候補を渡して実行する。変換候補がない場合は、変換候補をnilが設定される。
@@ -691,7 +696,7 @@ contextは、以下のいずれかである。
   (when-let* ((region (chokan--get-conversion-region))
               (start (car region))
               (end (cadr region))
-              (type (caddr region))
+              (type (or override-conversion (caddr region)))
               (context (cadddr region))
               (str (buffer-substring-no-properties start end)))
     (let ((func (assoc type chokan-conversion-functions)))
@@ -747,6 +752,7 @@ contextは、以下のいずれかである。
                 (eq cmd 'chokan-insert-conversion-start-key)
                 (eq cmd 'chokan-insert-symbol-key)
                 (eq cmd 'chokan-insert-tankan-start-key)
+                (eq cmd 'chokan-insert-alphabet-start-key)
                 (eq cmd 'chokan-force-finalize)
                 (eq cmd 'chokan-toggle-katakana)
                 (eq cmd 'chokan-next-candidate)
@@ -935,11 +941,13 @@ contextは、以下のいずれかである。
   (let* ((candidate (or (cdr candidate) (buffer-substring-no-properties start end))))
     (chokan--insert-candidate (cons start end) candidate)))
 
-(defun chokan--launch-conversion-if-possible (convert-launchable)
-  "必要なら変換処理を起動し、反転部を作成する。 "
+(defun chokan--launch-conversion-if-possible (convert-launchable &optional override-conversion)
+  "必要なら変換処理を起動し、反転部を作成する。
 
+`CONVERT-LAUNCHABLE' が `non-nil' の場合、変換処理を起動する。`OVERRIDE-CONVERSION' が `non-nil' の場合、指定された変換処理で上書きする。
+"
   (when convert-launchable
-    (chokan--conversion-launch #'chokan--conversion-callback)))
+    (chokan--conversion-launch #'chokan--conversion-callback override-conversion)))
 
 (defun chokan--insert-conversion-start-if-possible (key alphabet conversion-startable)
   "`CONVERSION-STARTABLE' が `non-nil' の場合、 `KEY' を下線部として挿入する。
@@ -994,7 +1002,7 @@ contextは、以下のいずれかである。
   "chokanにおける各文字を入力するためのエントリーポイントとなる関数。特殊な記号による入力はこの関数以外で実行すること。
 
 `CONVERT-LAUNCHABLE' が `non-nil' の場合、起動したコマンドのキーが変換起動可能であることを表す。
-`CONVERSIOn-DETAIL' が `non-nil' の場合、入力した文字が下線部になる。指定したsymbolに対応する特殊変換がトグルされる
+`CONVERSION-DETAIL' が `non-nil' の場合、入力した文字が下線部になる。指定したsymbolに対応する特殊変換がトグルされる
 `CHAR-TYPE' は、 `alphabet' `symbols' のいずれかのsymbolである。
 
 この関数では以下を実行する。
@@ -1093,6 +1101,16 @@ asciiモードに遷移すると、強制的に変換起動される"
   "単漢字変換を起動して文字を入力する"
   (interactive)
   (chokan--insert t 'tankan 'symbols))
+
+(defun chokan-insert-alphabet-start-key ()
+  "単漢字変換を起動して文字を入力する"
+  (interactive)
+  (let* ((chokan-ja-mode nil)
+         (old-func (key-binding (this-command-keys))))
+    (when (not (eq old-func 'chokan-insert-alphabet-start-key))
+      (call-interactively old-func))
+    (chokan--finalize-inverse-if-possible t)
+    (chokan--launch-conversion-if-possible t 'alphabet)))
 
 (defun chokan-insert-proper-start-key ()
   "固有名詞を優先する変換を起動して文字を入力する"
@@ -1239,7 +1257,7 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
 
 (define-key chokan-ja-mode-map (kbd "RET") #'chokan-through-key)
-(define-key chokan-ja-mode-map (kbd "SPC") #'chokan-through-key)
+(define-key chokan-ja-mode-map (kbd "SPC") #'chokan-insert-alphabet-start-key)
 
 ;; register input method
 
