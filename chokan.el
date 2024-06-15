@@ -840,7 +840,7 @@ contextは、以下のいずれかである。
 '
 
 - 'roman' :: ローマ字変換の対象
-- 'conversion-start' :: 変換の起点。下線部表記になる。 'normal' `'tankan'のいずれかを設定する
+- 'conversion-start' :: 変換の起点。下線部表記になる。 'normal' `'tankan', `alphabet' のいずれかを設定する
 - 'inverse' :: 反転部。かな漢字変換をしている場所になる
 "
   (insert str)
@@ -990,10 +990,9 @@ contextは、以下のいずれかである。
         (delete-region (car region) (cdr region))
         (goto-char (car region))
         (insert (cdr candidate)))
-      ;; region内部に含まれている場合、ここでずらさないと、
+      ;; region内部にpointが含まれている場合、ここでずらさないと、変換起動した直後にまた反転部が挿入されてしまう
       (when point-contains-region
-        (forward-char (length (cdr candidate))))
-      )
+        (forward-char (length (cdr candidate)))))
 
     (when-let* ((func (assoc 'update-frequency chokan-conversion-functions)))
       (funcall (cdr func) session-id (car candidate)))))
@@ -1092,10 +1091,11 @@ asciiモードに遷移すると、強制的に変換起動される"
   (interactive)
   (let* ((chokan-ja-mode nil)
          (old-func (key-binding (this-command-keys))))
-    (when (not (eq old-func 'chokan-through-key))
-      (call-interactively old-func))
+    
     (chokan--finalize-inverse-if-possible t)
-    (chokan--launch-conversion-if-possible t)))
+    (chokan--launch-conversion-if-possible t)
+    (when (not (eq old-func 'chokan-through-key))
+      (call-interactively old-func))))
 
 (defun chokan-insert-tankan-start-key ()
   "単漢字変換を起動して文字を入力する"
@@ -1107,10 +1107,10 @@ asciiモードに遷移すると、強制的に変換起動される"
   (interactive)
   (let* ((chokan-ja-mode nil)
          (old-func (key-binding (this-command-keys))))
-    (when (not (eq old-func 'chokan-insert-alphabet-start-key))
-      (call-interactively old-func))
     (chokan--finalize-inverse-if-possible t)
-    (chokan--launch-conversion-if-possible t 'alphabet)))
+    (chokan--launch-conversion-if-possible t 'alphabet)
+    (when (not (eq old-func 'chokan-insert-alphabet-start-key))
+      (call-interactively old-func))))
 
 (defun chokan-insert-proper-start-key ()
   "固有名詞を優先する変換を起動して文字を入力する"
