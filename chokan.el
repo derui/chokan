@@ -605,26 +605,6 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
 (defun chokan--roman-to-hiragana (input) 
   "ローマ字をひらがなに変換する。
 
-変換結果によって、以下のいずれかの結果を返す。
-
-- `nil' : 対応する候補が見つからない場合
-- `\"result\"' : 対応するひらがな
-"
-  (let* ((sokuon "")
-         (input (downcase input)))
-    (while (chokan--roman-sokuon-p input)
-      (setq sokuon (concat sokuon "っ"))
-      (setq input (substring input 1)))
-    (pcase (assoc input chokan--roman-table)
-      ;; 全体の組み合わせで見つからない場合はnil
-      (`() nil)
-      ;; 見つかった場合はそのまま返す
-      (`(,_ . ,ret)
-       (concat sokuon ret)))))
-
-(defun chokan--roman-to-hiragana-2 (input) 
-  "ローマ字をひらがなに変換する。
-
 組み合わせ上変換できない文字は、順次スキップされ、最終的にはすべての文字が変換される。
 "
   (let* ((ret "")
@@ -806,14 +786,11 @@ contextは、以下のいずれかである。
         (error nil)))))
 
 (defun chokan--roman-to-kana (alphabet)
-  "現在のmodeに従って `alphabet' をかなに変換する。"
+  "現在のmodeに従って `alphabet' をかなまたはカナに変換する。"
   (let* ((kana (chokan--roman-to-hiragana alphabet)))
-    (pcase kana
-      (`() nil)
-      ((and v (pred stringp))
-       (if (not (chokan--ja-katakana-p))
-           v
-         (chokan--roman-hira-to-kata v))))))
+    (if (not (chokan--ja-katakana-p))
+        v
+      (chokan--roman-hira-to-kata v))))
 
 (defun chokan--get-roman-content ()
   "現在のpointを含むローマ字の未確定文字列とregionを取得する。返却する文字列にはtext propertyが含まれる。
@@ -822,12 +799,7 @@ contextは、以下のいずれかである。
 返却する形式は `((START . END) . CONTENT)' というconsである。
 
 仕様上、未確定領域は現在のポイントから前にしか存在しない。"
-  (save-excursion
-    (if-let* ((prop (text-property-search-backward 'chokan-alphabet t t)))
-        (cons (cons (prop-match-beginning prop) (prop-match-end prop))
-              
-              (buffer-substring (prop-match-beginning prop) (prop-match-end prop)))
-      nil)))
+  )
 
 (defun chokan--get-inverse-region ()
   "現在のpointを含む反転部の領域を取得する。
@@ -841,21 +813,28 @@ contextは、以下のいずれかである。
         (cons start end)
       nil)))
 
-(defun chokan--convert-roman-to-kana-if-possible (content)
-  "chokanのローマ字変換において、確定できていない文字がある場合に、それを変換する。 `CONTENT' は、実行時点でまだ確定していないローマ字の文字列である。
-
-結果として、変換できた場合は変換した文字を、出来なかった場合は`NIL'を返す
+(defun chokan--convert-roman-to-kana-if-possible (current-point)
+  "chokanのローマ字変換において、確定できていない文字がある場合に、それを変換する。 `CURRENT-POINT' は、
+実行時点で入力された文字の位置である。
 "
   ;; 変換する領域は、現時点を含んで同じpropertyを持つ領域全体である
-  (let* ((ret (if content
-                  (chokan--roman-to-kana content)
-                nil)))
-    (cond
-     ;; 領域がない場合は何もしない
-     ((or (null content)
-          (null ret)) nil)
-     (t
-      ret))))
+  (save-excursion
+    (when-let* ((prop (text-property-search-backward 'chokan-alphabet t t))
+                (begin (prop-match-beginning prop))
+                (end (prop-match-end prop))
+                (content (buffer-substring begin end))
+                (ret (chokan--roman-to-kana content)))
+      ;; 下線部を含む場合は、先頭に限り、text propertyもcopyする
+      (when (and (< 0 (seq-length ret))
+                 (get-text-property begin 'chokan-conversion-start))
+        (let* ((conversion-start (get-text-property begin 'chokan-conversion-start))
+               (conversion-detail (get-text-property begin 'chokan-conversion-detail)))
+          (delete-region start end)
+          (goto-char start)
+          (insert ret)
+          (set-text-properties start start (list
+                                            'chokan-conversion-start conversion-start
+                                            'chokan-conversion-detail conversion-detail)))))))
 
 (defun chokan--insert-with-type (str char-props)
   "指定した種別に対応するtext propertyを付与して文字をinsertする。
@@ -927,27 +906,9 @@ contextは、以下のいずれかである。
   (unless (cdr (assoc 'conversion-start char-props))
     (cond
      ((eq char-type 'alphabet)
-      ;; ローマ字である場合は変換も行う
-      (let* ((content (chokan--get-roman-content))
-             (region (car content))
-             (content (cdr content))
-             (converted (chokan--convert-roman-to-kana-if-possible (concat content key))))
-        ;; 変換できなかった場合はそのまま挿入する
-        (if (not converted)
-            (progn
-              (chokan--insert-with-type key char-props)
-              (put-text-property (1- (point)) (point) (if font-lock-mode 'font-lock-face 'face) 'chokan-kana-roman))
-          (when region
-            (delete-region (car region) (cdr region))
-            (goto-char (car region)))
-          (let* ((converted (chokan--propertize-keep-conversion converted content))
-                 (content (cdr converted))
-                 (overlay-need (car converted)))
-            ;; 変換できる場合で、かつ下線部がある場合は、一応overlayを移動しておく
-            (insert content)
-            (when-let* (overlay-need
-                        (start (- (point) (length content))))
-              (move-overlay chokan--conversion-overlay start (1+ start) (current-buffer)))))))
+      (chokan--insert-with-type key char-props)
+      (put-text-property (1- (point)) (point) (if font-lock-mode 'font-lock-face 'face) 'chokan-kana-roman)
+      (chokan--convert-roman-to-kana-if-possible (point)))
      ((eq char-type 'symbols)
       (let ((key (or (chokan--symbol-convert-to-ja key) key)))
         (chokan--insert-with-type key char-props))))))
@@ -979,21 +940,16 @@ contextは、以下のいずれかである。
   (when convert-launchable
     (chokan--conversion-launch #'chokan--conversion-callback override-conversion)))
 
-(defun chokan--insert-conversion-start-if-possible (key alphabet conversion-startable)
+(defun chokan--insert-conversion-start-if-possible (key conversion-startable)
   "`CONVERSION-STARTABLE' が `non-nil' の場合、 `KEY' を下線部として挿入する。
 
 `ALPHABET' が `non-nil' である場合、対象のkeyは未確定のローマ字であることを示す。
 "
 
   (when conversion-startable
-    (let* ((kana (when alphabet (chokan--convert-roman-to-kana-if-possible key)))
-           (key (or kana key))
-           (face (if (not kana) 'chokan-conversion-start-roman nil))
+    (let* ((face 'chokan-conversion-start-roman)
            (current (point)))
-      (chokan--insert-with-type key `((roman . ,(and alphabet (null kana)))
-                                      (conversion-start . ,conversion-startable)
-                                      (inverse . nil)))
-      (move-overlay chokan--conversion-overlay current (point) (current-buffer))
+      (move-overlay chokan--conversion-overlay current current (current-buffer))
       
       (save-excursion
         ;; 変換できた場合、romanのfaceはいらないので、削除する
@@ -1047,7 +1003,7 @@ contextは、以下のいずれかである。
       (chokan--hiragana-enable))
     (chokan--finalize-inverse-if-possible convert-launchable)
     (chokan--launch-conversion-if-possible convert-launchable)
-    (chokan--insert-conversion-start-if-possible key (eq char-type 'alphabet) conversion-detail)
+    (chokan--insert-conversion-start-if-possible conversion-detail)
     (chokan--self-insert key char-type `((roman . ,(eq char-type 'alphabet))
                                          (conversion-start . ,conversion-detail)
                                          (inverse . nil)))

@@ -19,35 +19,35 @@
 ;; define tests
 
 (ert-deftest alphabet-to-kana ()
-  (should (equal "lx" (chokan--roman-to-hiragana-2 "lx")))
-  (should (equal "l" (chokan--roman-to-hiragana-2 "l")))
-  (should (equal "し" (chokan--roman-to-hiragana-2 "si")))
-  (should (equal "しじ" (chokan--roman-to-hiragana-2 "sizi")))
-  (should (equal "してん" (chokan--roman-to-hiragana-2 "sitenn")))
+  (should (equal "lx" (chokan--roman-to-hiragana "lx")))
+  (should (equal "l" (chokan--roman-to-hiragana "l")))
+  (should (equal "し" (chokan--roman-to-hiragana "si")))
+  (should (equal "しじ" (chokan--roman-to-hiragana "sizi")))
+  (should (equal "してん" (chokan--roman-to-hiragana "sitenn")))
   (should (equal "z"
-                 (chokan--roman-to-hiragana-2 "z")))
+                 (chokan--roman-to-hiragana "z")))
   (should (equal "あ"
-                 (chokan--roman-to-hiragana-2 "a")))
+                 (chokan--roman-to-hiragana "a")))
   (should (equal "qい"
-                 (chokan--roman-to-hiragana-2 "qi")))
+                 (chokan--roman-to-hiragana "qi")))
   )
 
 (ert-deftest sokuon-to-kana ()
   (should (equal "っt"
-                 (chokan--roman-to-hiragana-2 "tt")))
+                 (chokan--roman-to-hiragana "tt")))
   (should (equal "っす"
-                 (chokan--roman-to-hiragana-2 "ssu")))
+                 (chokan--roman-to-hiragana "ssu")))
   (should (equal "っった"
-                 (chokan--roman-to-hiragana-2 "ttta")))
+                 (chokan--roman-to-hiragana "ttta")))
   (should (equal "かったら"
-                 (chokan--roman-to-hiragana-2 "kattara")))
+                 (chokan--roman-to-hiragana "kattara")))
   )
 
 (ert-deftest kana-and-alphabet ()
   (should (equal "pろgらm"
-                 (chokan--roman-to-hiragana-2 "pろgらm")))
+                 (chokan--roman-to-hiragana "pろgらm")))
   (should (equal "とちゅう"
-                 (chokan--roman-to-hiragana-2 "とtyuu")))
+                 (chokan--roman-to-hiragana "とtyuu")))
   )
 
 (ert-deftest hira-to-kata ()
