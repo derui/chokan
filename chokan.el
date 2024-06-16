@@ -604,7 +604,7 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
 
 (defun chokan--roman-to-hiragana (input) 
   "ローマ字をひらがなに変換する。
-w
+
 変換結果によって、以下のいずれかの結果を返す。
 
 - `nil' : 対応する候補が見つからない場合
@@ -621,6 +621,37 @@ w
       ;; 見つかった場合はそのまま返す
       (`(,_ . ,ret)
        (concat sokuon ret)))))
+
+(defun chokan--roman-to-hiragana-2 (input) 
+  "ローマ字をひらがなに変換する。
+
+組み合わせ上変換できない文字は、順次スキップされ、最終的にはすべての文字が変換される。
+"
+  (let* ((ret "")
+         (input (downcase input))
+         (max-table-key-size (seq-reduce (lambda (acc it)
+                                           (let ((l (length (car it))))
+                                             (max acc l)))
+                                         chokan--roman-table
+                                         0)))
+    (while (not (seq-empty-p input))
+      (while (chokan--roman-sokuon-p input)
+        (setq ret (concat ret "っ"))
+        (setq input (substring input 1)))
+      ;; 1-(roman-tableで最大)文字で順次探す。
+      (let* ((found (cl-dotimes (len max-table-key-size)
+                      (let* ((subst (substring input 0 (min (seq-length input) len))))
+                        (pcase (assoc subst chokan--roman-table)
+                          ;; 見つかった場合はそのまま返す
+                          (`(,_ . ,ret)
+                           (setq input (substring input len))
+                           (cl-return ret)))))))
+        (if found
+            (progn
+              (setq ret (concat ret found)))
+          (setq ret (concat ret (substring input 0 1)))
+          (setq input (substring input 1)))))
+    ret))
 
 (defun chokan--roman-hira-to-kata (hira)
   "ひらがなをカタカナに変換する。変換できない文字はそのままで返す"
@@ -686,7 +717,6 @@ contextは、以下のいずれかである。
                   (context (chokan--get-previous-context start)))
         (list start end detail context)))))
 
-;;;###autoload
 (defun chokan--conversion-launch (callback override-conversion)
   "現在のポイントから変換起動を試みる。変換起動が出来ない場合は、何も行わない。
 
