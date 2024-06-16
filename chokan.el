@@ -712,6 +712,9 @@ contextは、以下のいずれかである。
     (let ((func (assoc type chokan-conversion-functions)))
       ;; 下線部は存在していることがここで確定しているので、overlayを削除する
       (delete-overlay chokan--conversion-overlay)
+      (remove-text-properties start end '(chokan-alphabet nil
+                                                          chokan-conversion-start nil
+                                                          chokan-conversion-detail nil))
       (if func
           (progn
             (setq chokan--conversion-candidate-pos 0)
