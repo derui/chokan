@@ -16,7 +16,15 @@ pub struct Score(i32);
 impl Score {
     /// scoreが有効かどうかを返す
     pub fn is_valid(&self) -> bool {
-        self.0 >= 0
+        let var_name = self.0 >= 0;
+        var_name
+    }
+
+    /**
+     * 接続できないことを表すScoreを返す
+     */
+    pub fn non_connect() -> Self {
+        Self(-1)
     }
 }
 
@@ -158,8 +166,10 @@ fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
     match &prev.speech {
         Speech::Verb(_) => Score(0),
         Speech::Noun(_) => Score(0),
+        // 接頭・接尾辞の場合はそもそも文末を構成することがない
+        Speech::Affix(_) => Score::non_connect(),
         v if !v.is_ancillary() => Score(0),
-        _ => Score(-1),
+        _ => Score::non_connect(),
     }
 }
 
@@ -190,12 +200,12 @@ fn get_edge_score_between_words(context: &Context, prev: &Word, current: &Word) 
         // 接頭辞は動詞または名詞の前につく
         (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(1),
         (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(1),
-        // 接尾辞は動詞または名詞の後につく。ただしかな漢字変換では、基本的に接尾辞は名詞の後につく
+        // 接尾辞は動詞または名詞の後につく。ただしかな漢字変換では、基本的に接尾辞は名詞の後につくため、
+        // 動詞に対してはつかないものとする
         (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
-        (Speech::Verb(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
 
         // 上記以外は接続しないものとして扱う
-        _ => Score(-1),
+        _ => Score::non_connect(),
     }
 }
 
