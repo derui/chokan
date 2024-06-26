@@ -1212,8 +1212,6 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
   )
 
 ;; setup initial keymap
-(define-key chokan-mode-map (kbd "C-n") #'chokan-next-candidate)
-(define-key chokan-mode-map (kbd "C-p") #'chokan-previous-candidate)
 (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
 (define-key chokan-ja-mode-map (kbd "C-j") #'chokan-force-finalize)
 (define-key chokan-ja-mode-map (kbd "C-l") #'chokan-ascii)
@@ -1221,6 +1219,8 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 (define-key chokan-ja-mode-map (kbd ";") #'chokan-sticky)
 (define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
 (define-key chokan-ja-mode-map (kbd "$") #'chokan-insert-proper-start-key)
+(define-key chokan-ja-mode-map (kbd "C-n") #'chokan-next-candidate)
+(define-key chokan-ja-mode-map (kbd "C-p") #'chokan-previous-candidate)
 
 (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
   (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
