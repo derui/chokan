@@ -1163,7 +1163,10 @@ asciiモードに遷移すると、強制的に変換起動される"
 
 This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-ja-mode'.
 "
-  :keymap chokan-ascii-mode-map
+  :keymap (let ((keymap (make-sparse-keymap)))
+            (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
+            keymap
+            )
   :after-hook (progn 
                 (setq chokan--internal-mode 'ascii)
                 (setq cursor-type chokan-ascii-cursor-type)))
@@ -1174,11 +1177,32 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-j
 
 This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-ascii-mode'.
 "
-  :keymap chokan-ja-mode-map
+  :keymap (let ((keymap (make-sparse-keymap)))
+            (define-key keymap (kbd "C-j") #'chokan-force-finalize)
+            (define-key keymap (kbd "C-l") #'chokan-ascii)
+            (define-key keymap (kbd "*") #'chokan-toggle-katakana)
+            (define-key keymap (kbd ";") #'chokan-sticky)
+            (define-key keymap (kbd "@") #'chokan-insert-tankan-start-key)
+            (define-key keymap (kbd "$") #'chokan-insert-proper-start-key)
+            (define-key keymap (kbd "C-n") #'chokan-next-candidate)
+            (define-key keymap (kbd "C-p") #'chokan-previous-candidate)
+
+            (dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
+              (define-key keymap (kbd k) #'chokan-insert-normal-alphabet))
+            (dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
+              (define-key keymap (kbd k) #'chokan-insert-conversion-start-key))
+            (dolist (k '("-" "." "," "=" "+" "_" "|" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" "/"))
+              (define-key keymap (kbd k) #'chokan-insert-symbol-key))
+
+            (define-key keymap (kbd "RET") #'chokan-through-key)
+            (define-key keymap (kbd "SPC") #'chokan-insert-alphabet-start-key)
+            keymap
+            )
   :after-hook (chokan--hiragana-enable))
 
 (defun chokan-mode--activate ()
   "chokan-modeが起動するときに実行する処理をまとめた関数"
+  (add-hook 'post-command-hook #'chokan--post-command nil t)
 
   (setq-local chokan--default-cursor-type cursor-type)
   (setq-local chokan--sticky nil)
@@ -1203,34 +1227,14 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 "
   :keymap chokan-mode-map
   :after-hook (progn
-                (add-hook 'post-command-hook #'chokan--post-command nil t)
+                (remove-hook 'post-command-hook #'chokan--post-command t)
+                
                 (if chokan-mode
                     (chokan-mode--activate)
                   (setq cursor-type chokan--default-cursor-type)
                   (chokan-ja-mode -1)
                   (chokan-ascii-mode -1)))
   )
-
-;; setup initial keymap
-(define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
-(define-key chokan-ja-mode-map (kbd "C-j") #'chokan-force-finalize)
-(define-key chokan-ja-mode-map (kbd "C-l") #'chokan-ascii)
-(define-key chokan-ja-mode-map (kbd "*") #'chokan-toggle-katakana)
-(define-key chokan-ja-mode-map (kbd ";") #'chokan-sticky)
-(define-key chokan-ja-mode-map (kbd "@") #'chokan-insert-tankan-start-key)
-(define-key chokan-ja-mode-map (kbd "$") #'chokan-insert-proper-start-key)
-(define-key chokan-ja-mode-map (kbd "C-n") #'chokan-next-candidate)
-(define-key chokan-ja-mode-map (kbd "C-p") #'chokan-previous-candidate)
-
-(dolist (k '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"))
-  (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-normal-alphabet))
-(dolist (k '("A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"))
-  (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-conversion-start-key))
-(dolist (k '("-" "." "," "=" "+" "_" "|" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" "/"))
-  (define-key chokan-ja-mode-map (kbd k) #'chokan-insert-symbol-key))
-
-(define-key chokan-ja-mode-map (kbd "RET") #'chokan-through-key)
-(define-key chokan-ja-mode-map (kbd "SPC") #'chokan-insert-alphabet-start-key)
 
 ;; register input method
 
