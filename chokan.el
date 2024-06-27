@@ -1212,7 +1212,6 @@ for input alphabet, and `JA' mode for input japanese text.
 When called interactively, toggle `chokan-mode'.  With prefix ARG,
 enable `chokan-mode' if ARG is positive, and disable it otherwise.
 "
-  :keymap chokan-mode-map
   :after-hook (progn
                 (remove-hook 'post-command-hook #'chokan--post-command t)
                 
