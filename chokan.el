@@ -1151,7 +1151,7 @@ asciiモードに遷移すると、強制的に変換起動される"
 This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-ja-mode'.
 "
   :keymap (let ((keymap (make-sparse-keymap)))
-            (define-key chokan-ascii-mode-map (kbd "C-j") #'chokan-ja)
+            (define-key keymap (kbd "C-j") #'chokan-ja)
             keymap
             )
   :after-hook (progn 
