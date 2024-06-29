@@ -4,7 +4,7 @@
 ;; Author: derui <derutakayu@gmail.com>
 ;; Maintainer: derui <derutakayu@gmail.com>
 ;; URL: 
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Created: 2024
 ;; Package-Requires: ((emacs "27.1") (websocket) (jsonrpc))
 ;; Keywords: ime
