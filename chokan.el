@@ -42,6 +42,13 @@
   :type 'symbol
   :group 'chokan)
 
+(defcustom chokan-fallback-functions '((chokan-next-candidate . next-line)
+                                       (chokan-previous-candidate . previous-line)
+                                       (chokan-insert-alphabet-start-key . (lambda () (interactive) (insert " "))))
+  "日本語入力モードで利用される関数におけるFallback"
+  :type 'list
+  :group 'chokan)
+
 ;; global variable
 (defvar chokan-conversion-functions
   nil
@@ -560,21 +567,21 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
     ("!" . "！")
     ("?" . "？")
     (";" . "；")
-(":" . "：")
-("/" . "・")
-("\\" . "＼")
-("|" . "｜")
-("$" . "＄")
-("%" . "％")
-("&" . "＆")
-("+" . "＋")
-("=" . "＝")
-("^" . "＾")
-("_" . "＿")
-([return] . "\n")
-;; いくつかの記号は、変換起動などで利用するために一旦定義しない
-)
-"記号類を日本語における記号に変換するテーブル")
+    (":" . "：")
+    ("/" . "・")
+    ("\\" . "＼")
+    ("|" . "｜")
+    ("$" . "＄")
+    ("%" . "％")
+    ("&" . "＆")
+    ("+" . "＋")
+    ("=" . "＝")
+    ("^" . "＾")
+    ("_" . "＿")
+    ([return] . "\n")
+    ;; いくつかの記号は、変換起動などで利用するために一旦定義しない
+    )
+  "記号類を日本語における記号に変換するテーブル")
 
 ;;; roman internal functions
 
@@ -756,8 +763,7 @@ contextは、以下のいずれかである。
                 (eq cmd 'chokan-force-finalize)
                 (eq cmd 'chokan-toggle-katakana)
                 (eq cmd 'chokan-next-candidate)
-                (eq cmd 'chokan-previous-candidate)
-                (eq cmd 'chokan-through-key))
+                (eq cmd 'chokan-previous-candidate))
             nil)
            (t
             ;; self-insert-commandではない変更が行われた場合は、確定できていない文字を削除する
@@ -1046,16 +1052,14 @@ asciiモードに遷移すると、強制的に変換起動される"
   (interactive)
   (chokan--insert t nil 'symbols))
 
-(defun chokan-through-key ()
+(defun chokan-through-key (fallback)
   "元々割り当てられているcommandを実行するが、変換起動は実行する"
-  (interactive)
-  (let* ((chokan-ja-mode nil)
-         (old-func (key-binding (this-command-keys))))
-    
+  (lambda ()
+    (interactive)
     (chokan--finalize-inverse-if-possible t)
     (chokan--launch-conversion-if-possible t)
-    (when (not (eq old-func 'chokan-through-key))
-      (call-interactively old-func))))
+    (when (and fallback)
+      (call-interactively fallback))))
 
 (defun chokan-insert-tankan-start-key ()
   "単漢字変換を起動して文字を入力する"
@@ -1065,12 +1069,12 @@ asciiモードに遷移すると、強制的に変換起動される"
 (defun chokan-insert-alphabet-start-key ()
   "単漢字変換を起動して文字を入力する"
   (interactive)
-  (let* ((chokan-ja-mode nil)
-         (old-func (key-binding (this-command-keys))))
+  (let* ((fallback (assoc this-command chokan-fallback-functions))
+         (fallback (cdr fallback)))
     (chokan--finalize-inverse-if-possible t)
     (chokan--launch-conversion-if-possible t 'alphabet)
-    (when (not (eq old-func 'chokan-insert-alphabet-start-key))
-      (call-interactively old-func))))
+    (when (and fallback )(not (eq fallback this-command))
+          (call-interactively fallback))))
 
 (defun chokan-insert-proper-start-key ()
   "固有名詞を優先する変換を起動して文字を入力する"
@@ -1082,19 +1086,17 @@ asciiモードに遷移すると、強制的に変換起動される"
 
 反転部がない場合は、もともとのキーバインドにフォールバックする。"
   (interactive)
-  (let ((current-key (this-command-keys)))
-    (if-let* ((region (chokan--get-inverse-region))
-              (candidates (plist-get chokan--conversion-candidates :candidates)))
-        (when-let* ((candidate (when-let* ((next (nth (1+ chokan--conversion-candidate-pos) candidates)))
-                                 (setq chokan--conversion-candidate-pos (1+ chokan--conversion-candidate-pos))
-                                 next)))
-          (chokan--insert-candidate region (cdr candidate)))
-      (let* ((chokan-ja-mode nil)
-             (chokan-ascii-mode nil)
-             (chokan-mode nil)
-             (old-func (key-binding current-key)))
-        (when (not (eq old-func 'chokan-next-candidate))
-          (call-interactively old-func))))))
+  (if-let* ((region (chokan--get-inverse-region))
+            (candidates (plist-get chokan--conversion-candidates :candidates)))
+      (when-let* ((candidate (when-let* ((next (nth (1+ chokan--conversion-candidate-pos) candidates)))
+                               (setq chokan--conversion-candidate-pos (1+ chokan--conversion-candidate-pos))
+                               next)))
+        (chokan--insert-candidate region (cdr candidate)))
+    (let* ((fallback (assoc this-command chokan-fallback-functions))
+           (fallback (cdr fallback)))
+      (when (and fallback
+                 (not (eq fallback this-command)))
+        (call-interactively fallback)))))
 
 (defun chokan-previous-candidate ()
   "現在の反転部に対する前の候補を表示する
@@ -1110,12 +1112,10 @@ asciiモードに遷移すると、強制的に変換起動される"
                                   (setq chokan--conversion-candidate-pos (1- chokan--conversion-candidate-pos))
                                   prev))))
           (chokan--insert-candidate region (cdr candidate)))
-      (let* ((chokan-ja-mode nil)
-             (chokan-ascii-mode nil)
-             (chokan-mode nil)
-             (old-func (key-binding current-key)))
-        (when (not (eq old-func 'chokan-previous-candidate))
-          (call-interactively old-func))))))
+      (let* ((fallback (assoc this-command chokan-fallback-functions))
+             (fallback (cdr fallback)))
+        (when (and fallback (not (eq fallback this-command)))
+          (call-interactively fallback))))))
 
 (defun chokan-force-finalize ()
   "強制的に反転部を確定させる"
@@ -1144,7 +1144,6 @@ asciiモードに遷移すると、強制的に変換起動される"
 
 ;; mode definition
 
-;;;###autoload
 (define-minor-mode chokan-ascii-mode
   "Toggle minor mode to enable Input Method `chokan' in this buffer.
 
@@ -1158,7 +1157,6 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-j
                 (setq chokan--internal-mode 'ascii)
                 (setq cursor-type chokan-ascii-cursor-type)))
 
-;;;###autoload
 (define-minor-mode chokan-ja-mode
   "Toggle minor mode to enable Input Method `chokan' in this buffer.
 
@@ -1181,7 +1179,7 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
             (dolist (k '("-" "." "," "=" "+" "_" "|" "%" "&" "^" "~" "!" "?" "\"" "`" "(" ")" "[" "]" "{" "}" "<" ">" "/"))
               (define-key keymap (kbd k) #'chokan-insert-symbol-key))
 
-            (define-key keymap (kbd "RET") #'chokan-through-key)
+            (define-key keymap (kbd "RET") (chokan-through-key 'newline-and-indent))
             (define-key keymap (kbd "SPC") #'chokan-insert-alphabet-start-key)
             keymap
             )
@@ -1202,7 +1200,6 @@ This mode only handle to keymap for changing mode to `chokan-mode' and `chokan-a
   (chokan-ja-mode)
   )
 
-;;;###autoload
 (define-minor-mode chokan-mode
   "Toggle minor mode to enable Input Method `chokan' in this buffer.
 

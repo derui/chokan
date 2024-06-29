@@ -177,6 +177,7 @@
 
 ;; public functions
 
+;;;###autoload
 (defun chokan-websocket-setup ()
   "chokanにwebsocketを利用するように設定する"
   
