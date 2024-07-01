@@ -629,12 +629,14 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
 
 (defun chokan--roman-hira-to-kata (hira)
   "ひらがなをカタカナに変換する。変換できない文字はそのままで返す"
-  (let ((result '()))
-    (seq-doseq (c hira)
-      (if-let ((kata (assoc (string c) chokan--katakana-table)))
-          (push (cdr kata) result)
-        (push (string c) result)))
-    (string-join (seq-reverse result) "")))
+  (let ((hira (split-string hira)))
+    (mapconcat (lambda (c)
+                 (if-let ((kata (assoc c chokan--katakana-table)))
+                     (cdr kata)
+                   c)
+                 )
+               hira)
+    ))
 
 (defun chokan--symbol-convert-to-ja (symbol)
   "SYMBOLを日本語における記号に変換する。変換できない場合はnilを返す"
