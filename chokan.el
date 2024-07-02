@@ -629,7 +629,7 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
 
 (defun chokan--roman-hira-to-kata (hira)
   "ひらがなをカタカナに変換する。変換できない文字はそのままで返す"
-  (let ((hira (split-string hira)))
+  (let ((hira (split-string hira "")))
     (mapconcat (lambda (c)
                  (if-let ((kata (assoc c chokan--katakana-table)))
                      (cdr kata)

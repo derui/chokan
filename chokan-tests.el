@@ -53,6 +53,13 @@
 (ert-deftest hira-to-kata ()
   (should (equal "カ" (chokan--roman-hira-to-kata "か")))
   (should (equal "ッt" (chokan--roman-hira-to-kata "っt")))
+  (should (equal "t" (chokan--roman-hira-to-kata "t")))
+  (should (equal "シュ" (chokan--roman-hira-to-kata "しゅ")))
+  (let* ((prop (propertize "t" :test-prop t))
+         (str (seq-concatenate 'string "っ" prop)))
+    (should (equal "ッt" (chokan--roman-hira-to-kata str)))
+    (should (equal t (get-text-property 1 :test-prop (chokan--roman-hira-to-kata str))))
+    )
   )
 
 (ert-deftest en-symbol-to-ja-symbol ()
