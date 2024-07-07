@@ -35,9 +35,16 @@ fn nfc_normalize(str: &str) -> String {
 fn to_roma_sequence(s: &str) -> (String, String) {
     let conversions = get_conversions();
 
-    if let Some((v, len)) = conversions.into_iter().find_map(|conv| conv.expand_roma(s)) {
-        let rest = s.chars().skip(len).collect();
-        (v, rest)
+    let mut conversions = conversions
+        .into_iter()
+        .filter_map(|conv| conv.expand_roma(s))
+        .collect::<Vec<_>>();
+    conversions.sort_by(|(_, s1), (_, s2)| s1.cmp(s2));
+    conversions.reverse();
+
+    if let Some((v, len)) = conversions.get(0) {
+        let rest = s.chars().skip(*len).collect();
+        (v.clone(), rest)
     } else {
         let v = s.to_string();
         let ret = v.chars().take(1).collect();
@@ -80,5 +87,10 @@ mod tests {
         assert_eq!("syain", convert("しゃいん"));
         assert_eq!("program", convert("pろgらm"));
         assert_eq!("implementation", convert("いmpleめnたちおん"));
+    }
+
+    #[test]
+    fn use_foreign_roman() {
+        assert_eq!("buffer", convert("ぶっふぇr"));
     }
 }

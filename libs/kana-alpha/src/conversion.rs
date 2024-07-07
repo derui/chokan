@@ -6,12 +6,35 @@ pub(crate) struct Conversion {
 }
 
 impl Conversion {
+    /// 先頭の文字列が促音であるかどうかを返す
+    fn is_sokuon(c: &str) -> bool {
+        if let Some(v) = c.chars().position(|v| v == 'っ' || v == 'ッ') {
+            v == 0
+        } else {
+            false
+        }
+    }
+
     /// 渡された文字が[Conversion::hiragana]または[Conversion::katakana]と一致する場合、
     /// ローマ字を展開した文字列と、その文字列の長さを返す
     pub(crate) fn expand_roma(&self, c: &str) -> Option<(String, usize)> {
-        if c.starts_with(&self.hiragana) || c.starts_with(&self.katakana) {
+        let mut ret = c.to_string();
+        let mut sokuon_count = 0;
+
+        while Conversion::is_sokuon(&ret) {
+            sokuon_count += 1;
+            ret = ret.chars().skip(1).collect();
+        }
+
+        if ret.starts_with(&self.hiragana) || ret.starts_with(&self.katakana) {
             let size = self.hiragana.chars().collect::<Vec<_>>().len();
-            Some((self.alphabets[0].clone(), size))
+            let mut alphabet = self.alphabets[0].clone();
+            if sokuon_count > 0 {
+                let tmp = alphabet.chars().take(1).collect::<String>();
+                alphabet = format!("{}{}", tmp.repeat(sokuon_count), alphabet)
+            }
+
+            Some((alphabet, size + sokuon_count))
         } else {
             None
         }
@@ -614,6 +637,31 @@ pub(crate) fn get_conversions() -> Vec<Conversion> {
             hiragana: "ぴょ".into(),
             katakana: "ピョ".into(),
             alphabets: vec!["pyo".to_string()],
+        },
+        Conversion {
+            hiragana: "ふぁ".into(),
+            katakana: "ファ".into(),
+            alphabets: vec!["fa".to_string()],
+        },
+        Conversion {
+            hiragana: "ふぁ".into(),
+            katakana: "ファ".into(),
+            alphabets: vec!["fa".to_string()],
+        },
+        Conversion {
+            hiragana: "ふぃ".into(),
+            katakana: "フィ".into(),
+            alphabets: vec!["fi".to_string()],
+        },
+        Conversion {
+            hiragana: "ふぇ".into(),
+            katakana: "フェ".into(),
+            alphabets: vec!["fe".to_string()],
+        },
+        Conversion {
+            hiragana: "ふぉ".into(),
+            katakana: "フォ".into(),
+            alphabets: vec!["fo".to_string()],
         },
     ];
 
