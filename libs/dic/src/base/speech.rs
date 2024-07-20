@@ -16,7 +16,8 @@ pub enum Speech {
     AuxiliaryVerb,          // 助動詞
     PreNounAdjectival,      // 連体詞
     Counter,                // 助数詞
-    Affix(AffixVariant),    // 接辞
+    /// 接辞。接頭辞や接尾辞を含む
+    Affix(AffixVariant), // 接辞
 }
 
 impl Speech {

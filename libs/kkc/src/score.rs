@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, ops};
+use std::{cmp::Ordering, ops, path::Prefix};
 
 use dic::base::{
     speech::{AffixVariant, ParticleType, Speech},
@@ -90,19 +90,15 @@ pub fn get_node_score(
     // 読みが長い方が選択される可能性は高いものの、score自体はある程度の影響しかしないようにしておく
     match current {
         Node::Word(_, w, _) => {
-            let proper_priority = if context.is_proper() {
-                if w.speech.is_noun_proper() {
-                    10
-                } else {
-                    0
-                }
+            let proper_priority = if context.is_proper() && w.speech.is_noun_proper() {
+                10
             } else {
                 0
             };
             let frequency =
                 frequencies.get_frequency_of_word(&w.word.iter().collect::<String>(), context);
             Score(
-                (frequency.div_ceil(10) + (w.reading.len() as u64) * 2 + proper_priority)
+                (frequency + (w.reading.len() as u64) + proper_priority)
                     .try_into()
                     .unwrap(),
             )
@@ -158,7 +154,7 @@ fn get_edge_score_impl(context: &Context, prev: &Node, current: &Node) -> Score 
     }
 }
 
-/// 現在のnodeが仮想ノードであった場合に、対象のノードが文節を構成しうるかどうかを判定したscoreを返す
+/// 現在のnodeが仮想ノードであった場合に、直前のノードが文節を構成しうるかどうかを判定したscoreを返す
 ///
 /// 文節末を構成できないノードであった場合は、scoreをマイナスする
 fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
@@ -166,8 +162,8 @@ fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
     match &prev.speech {
         Speech::Verb(_) => Score(0),
         Speech::Noun(_) => Score(0),
-        // 接頭・接尾辞の場合はそもそも文末を構成することがない
-        Speech::Affix(_) => Score::non_connect(),
+        // 接尾辞については、名詞につくことができる
+        Speech::Affix(AffixVariant::Suffix) => Score(0),
         v if !v.is_ancillary() => Score(0),
         _ => Score::non_connect(),
     }
@@ -198,11 +194,11 @@ fn get_edge_score_between_words(context: &Context, prev: &Word, current: &Word) 
         // 助動詞は用言の後につく
         (Speech::Verb(_), Speech::AuxiliaryVerb) => Score(1),
         // 接頭辞は動詞または名詞の前につく
-        (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(1),
-        (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(1),
+        (Speech::Affix(AffixVariant::Prefix), Speech::Noun(_)) => Score(0),
+        (Speech::Affix(AffixVariant::Prefix), Speech::Verb(_)) => Score(0),
         // 接尾辞は動詞または名詞の後につく。ただしかな漢字変換では、基本的に接尾辞は名詞の後につくため、
         // 動詞に対してはつかないものとする
-        (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(1),
+        (Speech::Noun(_), Speech::Affix(AffixVariant::Suffix)) => Score(0),
 
         // 上記以外は接続しないものとして扱う
         _ => Score::non_connect(),
@@ -248,5 +244,18 @@ mod tests {
         assert!(MIN_SCORE == MIN_SCORE, "-1 == -1");
         assert!(MIN_SCORE < Score(1), "-1 < 1");
         assert!(MIN_SCORE <= Score(1), "-1 > 1");
+    }
+
+    #[test]
+    fn allow_suffix_before_vitual_node() {
+        // arrange
+        let prev = Word::new("foo", "bar", Speech::Affix(AffixVariant::Suffix));
+        let context = Context::normal();
+
+        // act
+        let score = get_edge_score_allow_virtual_word(&context, &prev);
+
+        // assert
+        assert_eq!(Score(0), score, "same_score");
     }
 }
