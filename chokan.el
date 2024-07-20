@@ -63,23 +63,26 @@
 - `register-word' : 単語を登録する
 - `alphabet' : アルファベット変換を行う
 
-関数は、`normal', `tankan' `proper' は、 引数として変換対象となる文字列と、下線部の直前にあったcontextを受け取る。contextは、 (<type symbol> string) の形式で渡される。
-contextが存在しない場合はnilを渡す。
-'type symbol'は、`foreign'か`numeric'のいずれかである。
+関数は、`normal', `tankan' `proper' は、 引数として変換対象となる文字列と、
+下線部の直前にあったcontextを受け取る。
+
+contextは、 (TYPE_SYMBOL STRING) の形式で渡される。
+contextが存在しない場合は nil を渡す。
+TYPE_SYMBOL は、`foreign' か `numeric' のいずれかである。
 
 実行した結果として、以下の形式で候補のリストを返す。
 
-    '(:id session-id :candidates ((id . candidate)))
+    (:id session-id :candidates ((id . candidate)))
 
 `update-frequency'は、その変換におけるsession idとcandidate idが渡される。
 
 `register-word' は、選択された漢字、その読みと品詞が渡される。
-品詞が指定されていない場合は `GUESS' のシンボルが渡される。
+品詞が指定されていない場合は `guess' のシンボルが渡される。
 
-`alphabet'は、引数として変換対象となる文字列のみが渡される
+`alphabet' は、引数として変換対象となる文字列のみが渡される
 実行した結果として、以下の形式で候補のリストを返す。
 
-    '(:candidates ((id . candidate)))
+    (:candidates ((id . candidate)))
 ")
 
 ;; buffer-local variable
@@ -815,12 +818,13 @@ contextは、以下のいずれかである。
       nil)))
 
 (defun chokan--convert-roman-to-kana-if-possible (current-point)
-  "chokanのローマ字変換において、確定できていない文字がある場合に、それを変換する。 `CURRENT-POINT' は、
-実行時点で入力された文字の位置である。
+  "chokanのローマ字変換において、確定できていない文字がある場合に、それを変換する。
+
+`current-point' は、実行時点で入力された文字の位置である。
 "
   ;; 変換する領域は、現時点を含んで同じpropertyを持つ領域全体である
-  
-  (when-let* ((prop (text-property-search-backward 'chokan-alphabet t t))
+  (when-let* ((inhibit-modification-hooks t)
+              (prop (text-property-search-backward 'chokan-alphabet t t))
               (begin (prop-match-beginning prop))
               (end (prop-match-end prop))
               (content (buffer-substring begin end))
@@ -840,7 +844,6 @@ contextは、以下のいずれかである。
               (if alphabet
                   (put-text-property 0 1 face 'chokan-conversion-start-roman ret)
                 (put-text-property 0 1 face 'chokan-conversion-start ret)))
-            
             (delete-region begin end)
             (goto-char begin)
             (insert ret))
