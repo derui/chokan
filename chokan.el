@@ -68,7 +68,8 @@ contextが存在しない場合はnilを渡す。
 'type symbol'は、`foreign'か`numeric'のいずれかである。
 
 実行した結果として、以下の形式で候補のリストを返す。
-`(:id session-id :candidates ((id . candidate)))'
+
+    '(:id session-id :candidates ((id . candidate)))
 
 `update-frequency'は、その変換におけるsession idとcandidate idが渡される。
 
@@ -77,7 +78,8 @@ contextが存在しない場合はnilを渡す。
 
 `alphabet'は、引数として変換対象となる文字列のみが渡される
 実行した結果として、以下の形式で候補のリストを返す。
-`(:candidates ((id . candidate)))'
+
+    '(:candidates ((id . candidate)))
 ")
 
 ;; buffer-local variable
@@ -107,26 +109,25 @@ candidateは、それぞれ `(:id id :candidate-id candidate-id :candidate value
 (defvar chokan--conversion-candidate-pos 0
   "現在選択している候補の位置を 0オリジンで保持する。")
 
-(defvar chokan--target-character-regexp
+(defconst chokan--target-character-regexp
   "[a-zA-Z0-9あ-ん]+"
   "変換対象とする文字を検索するための正規表現")
 
-(defvar chokan--numeral-context-regexp
+(defconst chokan--numeral-context-regexp
   "[0-9０-９]+"
   "数字のcontextとして利用する文字列の正規表現")
 
-(defvar chokan--foreign-word-context-regexp
-  "[ア-ンー]+"
+(defconst chokan--foreign-word-context-regexp
+  "[ア-ンーa-zA-Z]+"
   "外来語のcontextとして利用する文字列の正規表現")
 
-
+;; overlays
 (defvar chokan--candidate-overlay nil
   "候補を表現するためのoverlay")
 (defvar chokan--conversion-overlay nil
   "変換起動部分を表現するためのoverlay")
 
 ;; faces
-
 (defface chokan-kana-roman
   '((t (:foreground "darkgoldenrod")))
   "ひらがな・カタカナを入力している際に確定されていないアルファベットに対して適用されるface。"
@@ -719,10 +720,12 @@ contextは、以下のいずれかである。
             (let* ((candidate (and chokan--conversion-candidates
                                    (car (plist-get chokan--conversion-candidates :candidates)))))
               (funcall callback start end candidate)))
-        (funcall callback start end nil)))))
+        (funcall callback start end nil)))
+    t))
 
 
 ;;; chokan-core internal functions
+(defvar chokan-mode)
 
 (defsubst chokan--ascii-p ()
   "現在chokanがascii modeであるかどうかを返す"
@@ -921,7 +924,7 @@ contextは、以下のいずれかである。
     (chokan--insert-candidate (cons start end) candidate)))
 
 (defun chokan--launch-conversion-if-possible (convert-launchable &optional override-conversion)
-  "必要なら変換処理を起動し、反転部を作成する。
+  "必要なら変換処理を起動し、反転部を作成する。変換処理が起動した場合は、 `t' を返す。
 
 `CONVERT-LAUNCHABLE' が `non-nil' の場合、変換処理を起動する。`OVERRIDE-CONVERSION' が `non-nil' の場合、指定された変換処理で上書きする。
 "
@@ -1071,12 +1074,15 @@ asciiモードに遷移すると、強制的に変換起動される"
 (defun chokan-insert-alphabet-start-key ()
   "単漢字変換を起動して文字を入力する"
   (interactive)
-  (let* ((fallback (assoc this-command chokan-fallback-functions))
-         (fallback (cdr fallback)))
-    (chokan--finalize-inverse-if-possible t)
-    (chokan--launch-conversion-if-possible t 'alphabet)
-    (when (and fallback )(not (eq fallback this-command))
-          (call-interactively fallback))))
+  (chokan--finalize-inverse-if-possible t)
+
+  ;; launchしていない場合のみfallbackする
+  (let ((conversion-launched (chokan--launch-conversion-if-possible t 'alphabet)))
+    (when-let* ((fallback (assoc this-command chokan-fallback-functions))
+                (fallback (cdr fallback)))
+      (when (and (not conversion-launched)
+                 (not (eq fallback this-command)))
+        (call-interactively fallback)))))
 
 (defun chokan-insert-proper-start-key ()
   "固有名詞を優先する変換を起動して文字を入力する"
@@ -1213,7 +1219,7 @@ enable `chokan-mode' if ARG is positive, and disable it otherwise.
 "
   :after-hook (progn
                 (remove-hook 'post-command-hook #'chokan--post-command t)
-                
+
                 (if chokan-mode
                     (chokan-mode--activate)
                   (setq cursor-type chokan--default-cursor-type)
