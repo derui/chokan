@@ -905,9 +905,9 @@ contextは、以下のいずれかである。
       (chokan--insert-with-props key char-props)))))
 
 (defun chokan--insert-candidate (region candidate)
-  "指定されたregionに対して `CANDIDATE'を挿入し、反転部とする。
+  "指定された `region' に対して `candidate' を挿入し、反転部とする。
 
-ここではoverlayの構築が行われる。"
+必要であれば、反転部用のoverlayを構築する。"
   (let* ((start (car region))
          (end (cdr region))
          (overlay (or chokan--candidate-overlay
@@ -926,16 +926,14 @@ contextは、以下のいずれかである。
 (defun chokan--launch-conversion-if-possible (convert-launchable &optional override-conversion)
   "必要なら変換処理を起動し、反転部を作成する。変換処理が起動した場合は、 `t' を返す。
 
-`CONVERT-LAUNCHABLE' が `non-nil' の場合、変換処理を起動する。`OVERRIDE-CONVERSION' が `non-nil' の場合、指定された変換処理で上書きする。
+`convert-launchable' が non-nil の場合、変換処理を起動する。
+`override-conversion' が non-nil の場合、指定された変換処理で上書きする。
 "
   (when convert-launchable
     (chokan--conversion-launch #'chokan--conversion-callback override-conversion)))
 
 (defun chokan--insert-conversion-start-if-possible (conversion-startable)
-  "`CONVERSION-STARTABLE' が `non-nil' の場合、 `KEY' を下線部として挿入する。
-
-`ALPHABET' が `non-nil' である場合、対象のkeyは未確定のローマ字であることを示す。
-"
+  "`conversion-startable' が non-nil の場合、下線部を挿入する。"
 
   (when conversion-startable
     (let* ((face 'chokan-conversion-start-roman)
