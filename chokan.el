@@ -1138,15 +1138,12 @@ asciiモードに遷移すると、強制的に変換起動される"
   (interactive)
   (chokan--sticky-activate))
 
-(defun chokan-register-word (s e)
-  "指定した範囲を単語として登録する。
-
-追加の引数が追加された場合は、品詞を追加で設定する。
-"
-  (interactive "r")
+(defun chokan-register-word (hiragana)
+  "単語を読みと書きから登録する。"
+  (interactive "s[辞書登録]: ")
   (when-let* ((func (assoc 'register-word chokan-conversion-functions)))
-    (let* ((word (buffer-substring-no-properties s e))
-           (reading (read-string (format "[辞書登録] <%s> : " word))))
+    (let* ((reading hiragana)
+           (word (read-string (format "[辞書登録] <%s> : " reading))))
       (when (and (< 0 (seq-length word)) (< 0 (seq-length reading)))
         (funcall (cdr func) word reading 'guess)
         (deactivate-mark)))))
