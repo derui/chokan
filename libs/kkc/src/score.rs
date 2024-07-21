@@ -98,7 +98,7 @@ pub fn get_node_score(
             let frequency =
                 frequencies.get_frequency_of_word(&w.word.iter().collect::<String>(), context);
             Score(
-                (frequency + (w.reading.len() as u64) + proper_priority)
+                (frequency + (w.reading.len() as u64).pow(2) + proper_priority)
                     .try_into()
                     .unwrap(),
             )
