@@ -97,8 +97,10 @@ pub fn get_node_score(
             };
             let frequency =
                 frequencies.get_frequency_of_word(&w.word.iter().collect::<String>(), context);
+            // scoreを-1しているが、これは1文字単語の影響が大き過ぎるため、1文字単語については
+            // scoreとして換算しないようにするためである
             Score(
-                (frequency + (w.reading.len() as u64).pow(2) + proper_priority)
+                (frequency + (w.reading.len() as u64).pow(2) - 1 + proper_priority)
                     .try_into()
                     .unwrap(),
             )
@@ -160,8 +162,8 @@ fn get_edge_score_impl(context: &Context, prev: &Node, current: &Node) -> Score 
 fn get_edge_score_allow_virtual_word(_context: &Context, prev: &Word) -> Score {
     // 仮想nodeが続く場合、対象が文節末を構成しうる場合は許容する
     match &prev.speech {
-        Speech::Verb(_) => Score(0),
-        Speech::Noun(_) => Score(0),
+        Speech::Verb(_) => Score(1),
+        Speech::Noun(_) => Score(1),
         // 接尾辞については、名詞につくことができる
         Speech::Affix(AffixVariant::Suffix) => Score(0),
         v if !v.is_ancillary() => Score(0),

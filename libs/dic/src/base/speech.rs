@@ -228,11 +228,16 @@ impl Display for NounVariant {
 /// 助詞の種類
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Hash)]
 pub enum ParticleType {
-    Case,          // 格助詞
-    Adverbial,     // 副助詞
-    Conjunctive,   // 接続助詞
-    SentenceFinal, // 終助詞
-    Other,         // その他
+    /// 格助詞
+    Case,
+    /// 副助詞
+    Adverbial,
+    /// 接続助詞
+    Conjunctive,
+    /// 終助詞
+    SentenceFinal,
+    /// その他
+    Other,
 }
 
 impl Display for ParticleType {
