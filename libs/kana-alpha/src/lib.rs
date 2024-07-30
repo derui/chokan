@@ -47,9 +47,9 @@ fn to_roma_sequence(s: &str) -> (String, String) {
         (v.clone(), rest)
     } else {
         let v = s.to_string();
-        let ret = v.chars().take(1).collect();
+        let ret: String = v.chars().take(1).collect();
         let rest = v.chars().skip(1).collect();
-        (ret, rest)
+        (ret.to_lowercase(), rest)
     }
 }
 
@@ -92,5 +92,10 @@ mod tests {
     #[test]
     fn use_foreign_roman() {
         assert_eq!("buffer", convert("ぶっふぇr"));
+    }
+
+    #[test]
+    fn do_not_allow_upper_case() {
+        assert_eq!("program", convert("Pろgらm"));
     }
 }
