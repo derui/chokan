@@ -957,7 +957,9 @@ contextは、以下のいずれかである。
     (delete-overlay chokan--candidate-overlay)
 
     (let* ((current (point))
-           (point-contains-region (<= (car region) current (cdr region))))
+           (point-contains-region (<= (car region) current (cdr region)))
+           ;; 単語確定のタイミングでは一旦gogglesなどを動かさないようにする
+           (inhibit-modification-hooks t))
       (save-excursion
         (delete-region (car region) (cdr region))
         (goto-char (car region))
