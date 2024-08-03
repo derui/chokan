@@ -93,7 +93,7 @@ pub(crate) fn make_get_candidates_method(
     module: &mut RpcModule<MethodContext>,
     tx: Sender<(SessionId, Vec<RespondedCandidate>, Context)>,
 ) -> anyhow::Result<()> {
-    module.register_method("GetCandidates", move |params, ctx| {
+    module.register_method("GetCandidates", move |params, ctx, _| {
         let params = params.parse::<GetCandidatesRequest>()?;
         let context = params.context.unwrap_or_default().into();
         let candidates: Vec<Candidate>;
@@ -147,7 +147,7 @@ pub(crate) fn make_get_proper_candidates_method(
     module: &mut RpcModule<MethodContext>,
     tx: Sender<(SessionId, Vec<RespondedCandidate>, Context)>,
 ) -> anyhow::Result<()> {
-    module.register_method("GetProperCandidates", move |params, ctx| {
+    module.register_method("GetProperCandidates", move |params, ctx, _| {
         let params = params.parse::<GetProperCandidatesRequest>()?;
         let candidates: Vec<Candidate>;
         {
@@ -198,7 +198,7 @@ pub(crate) fn make_get_proper_candidates_method(
 pub(crate) fn make_get_tankan_candidates_method(
     module: &mut RpcModule<MethodContext>,
 ) -> anyhow::Result<()> {
-    module.register_method("GetTankanCandidates", |params, ctx| {
+    module.register_method("GetTankanCandidates", |params, ctx, _| {
         let params = params.parse::<GetCandidatesRequest>()?;
         let dict = ctx.dictionary.lock().unwrap();
         let candidates = get_tankan_candidates(&params.input, &dict.tankan);
@@ -243,7 +243,7 @@ pub(crate) fn make_update_frequency_method(
     store: Arc<Mutex<SessionStore>>,
     entry_updater: Sender<Entry>,
 ) -> anyhow::Result<()> {
-    module.register_method("UpdateFrequency", move |params, ctx| {
+    module.register_method("UpdateFrequency", move |params, ctx, _| {
         let params = params.parse::<UpdateFrequencyRequest>()?;
         {
             let session_id = params.session_id;
@@ -315,7 +315,7 @@ pub(crate) fn make_register_word(
     module: &mut RpcModule<MethodContext>,
     entry_updater: Sender<Entry>,
 ) -> anyhow::Result<()> {
-    module.register_method("RegisterWord", move |params, ctx| {
+    module.register_method("RegisterWord", move |params, ctx, _| {
         let params = params.parse::<RegisterWordRequest>()?;
         {
             let entry = match params.kind {
@@ -358,7 +358,7 @@ struct GetAlphabeticCandidateResponse {
 pub(crate) fn make_get_alphabetic_candidate_method(
     module: &mut RpcModule<MethodContext>,
 ) -> anyhow::Result<()> {
-    module.register_method("GetAlphabeticCandidate", move |params, _| {
+    module.register_method("GetAlphabeticCandidate", move |params, _, _| {
         let params = params.parse::<GetAlphabeticCandidateRequest>()?;
         let candidates = vec![CandidateResponse {
             id: "0".to_string(),
