@@ -31,7 +31,7 @@ fn nfc_normalize(str: &str) -> String {
     str.chars().nfc().collect::<String>()
 }
 
-// 1文字をローマ字に変換する
+/// alphabet混りのひらがなから、できるだけの長さで取除いた文字列を返す
 fn to_roma_sequence(s: &str) -> (String, String) {
     let conversions = get_conversions();
 
@@ -97,5 +97,15 @@ mod tests {
     #[test]
     fn do_not_allow_upper_case() {
         assert_eq!("program", convert("Pろgらm"));
+    }
+
+    #[test]
+    fn should_use_valid_option() {
+        // arrange
+
+        // act
+
+        // assert
+        assert_eq!("chat", convert("ちゃt"))
     }
 }

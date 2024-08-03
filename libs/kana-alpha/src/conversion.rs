@@ -506,17 +506,17 @@ pub(crate) fn get_conversions() -> Vec<Conversion> {
         Conversion {
             hiragana: "ちゃ".into(),
             katakana: "チャ".into(),
-            alphabets: vec!["tya".to_string()],
+            alphabets: vec!["cha".to_string()],
         },
         Conversion {
             hiragana: "ちゅ".into(),
             katakana: "チュ".into(),
-            alphabets: vec!["tyu".to_string()],
+            alphabets: vec!["chu".to_string()],
         },
         Conversion {
             hiragana: "ちょ".into(),
             katakana: "チョ".into(),
-            alphabets: vec!["tyo".to_string()],
+            alphabets: vec!["cho".to_string()],
         },
         Conversion {
             hiragana: "にゃ".into(),
@@ -637,11 +637,6 @@ pub(crate) fn get_conversions() -> Vec<Conversion> {
             hiragana: "ぴょ".into(),
             katakana: "ピョ".into(),
             alphabets: vec!["pyo".to_string()],
-        },
-        Conversion {
-            hiragana: "ふぁ".into(),
-            katakana: "ファ".into(),
-            alphabets: vec!["fa".to_string()],
         },
         Conversion {
             hiragana: "ふぁ".into(),
