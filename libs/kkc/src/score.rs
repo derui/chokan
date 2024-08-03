@@ -24,7 +24,7 @@ impl Score {
      * 接続できないことを表すScoreを返す
      */
     pub fn non_connect() -> Self {
-        Self(-1)
+        MIN_SCORE
     }
 }
 
@@ -50,7 +50,7 @@ impl ops::Add for Score {
 
     fn add(self, rhs: Self) -> Self {
         if self.0 < 0 || rhs.0 < 0 {
-            return Score(-1);
+            return Score::non_connect();
         }
         Score(self.0 + rhs.0)
     }
@@ -100,7 +100,7 @@ pub fn get_node_score(
             // scoreを-1しているが、これは1文字単語の影響が大き過ぎるため、1文字単語については
             // scoreとして換算しないようにするためである
             Score(
-                (frequency + (w.reading.len() as u64).pow(2) - 1 + proper_priority)
+                (frequency + ((w.reading.len() - 1) as u64).pow(2) + proper_priority)
                     .try_into()
                     .unwrap(),
             )
