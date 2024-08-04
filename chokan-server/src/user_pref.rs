@@ -17,6 +17,8 @@ use kkc::{context::Context, frequency::ConversionFrequency, Candidate};
 
 const USER_DICTIONARY_NAME: &str = "user.dic";
 const USER_FREQUENCY_NAME: &str = "frequency.bin";
+/// expireするまでの時間。3日としている
+const FREQUENCY_EXPIRATION_DURATION: i64 = 3 * 24 * 60 * 60 * 1000;
 
 /// ユーザーの更新によって変換されうる辞書の状態を保持するための構造体
 pub struct UserPref {
@@ -49,8 +51,10 @@ impl UserPref {
     /// # Arguments
     /// * `word` - 更新する単語
     /// * `context` - コンテキスト
-    pub fn update_frequency(&mut self, word: &str, context: &Context) {
-        self.frequency.update_word(word, context);
+    pub fn update_frequency(&mut self, word: &str, context: &Context, now: i64) {
+        self.frequency.update_word(word, context, now);
+        self.frequency
+            .expire_frequencies(now, FREQUENCY_EXPIRATION_DURATION)
     }
 
     /// ユーザー定義辞書に複合語を登録する

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.81"
 chokan-dic = { version = "0.1.0", path = "../chokan-dic" }
+chrono = "0.4.38"
 clap = { version = "4.5.3", features = ["derive"] }
 dic = { version = "0.1.0", path = "../libs/dic" }
 jsonrpsee = { version = "0.24.2", features = ["server", "macros"] }

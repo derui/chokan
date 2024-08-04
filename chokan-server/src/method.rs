@@ -13,18 +13,17 @@ use crate::{
     session::{RespondedCandidate, SessionId, SessionStore},
 };
 
-/**
-chokan-serverで提供するmethodの実装を行う。
-*/
+/// chokan-serverで提供するmethodの実装を行う。
 
-/**
-実行時の文脈を表す
-*/
+/// 実行時の文脈を表す
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 enum GetCandidatesContextKind {
-    Normal,      // 通常のかな漢字変換
-    ForeignWord, // 外来語
-    Numeral,     // 数詞
+    /// 通常のかな漢字変換
+    Normal,
+    /// 外来語
+    ForeignWord,
+    /// 数詞
+    Numeral,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -260,7 +259,8 @@ pub(crate) fn make_update_frequency_method(
                 let mut user_pref = ctx.user_pref.lock().unwrap();
 
                 if let Some(word) = c.body.to_string_only_independent() {
-                    user_pref.update_frequency(&word, &context);
+                    let now = ctx.now.clone();
+                    user_pref.update_frequency(&word, &context, now());
                 }
                 let _ = user_pref
                     .update_compound_words(&c.body)

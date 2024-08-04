@@ -1,6 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::SystemTime,
+};
 
 use chokan_dic::ChokanDictionary;
+use chrono::Utc;
 
 use crate::user_pref::UserPref;
 
@@ -10,6 +14,9 @@ pub struct MethodContext {
 
     /// ユーザーの設定として管理するもの
     pub user_pref: Arc<Mutex<UserPref>>,
+
+    /// 現在時刻を取得するための関数
+    pub now: Arc<dyn Fn() -> i64 + Sync + Send>,
 }
 
 impl MethodContext {
@@ -18,6 +25,10 @@ impl MethodContext {
         MethodContext {
             dictionary: dictionary.clone(),
             user_pref: user_pref.clone(),
+            now: Arc::new(move || {
+                let time = Utc::now();
+                time.timestamp_millis()
+            }),
         }
     }
 }
