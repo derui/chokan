@@ -2,7 +2,7 @@
   description = "chokan - chotto kanzen";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-24.05";
     # Rust tool management
     fenix = {
       url = "github:nix-community/fenix";
@@ -35,6 +35,7 @@
         pkgs.rust-analyzer-nightly
         pkgs.gcc
         pkgs.pre-commit
+        pkgs.go-task
       ];
 
       shelHook = ''
