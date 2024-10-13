@@ -1,6 +1,8 @@
 .task/
 target/
 */work/
+.envrc
+.direnv/
 
 skk-notes-converter/dic/
 skk-tankan-converter/dic/
